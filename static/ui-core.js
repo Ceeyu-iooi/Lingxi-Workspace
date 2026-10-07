@@ -72,7 +72,7 @@
     });
   }
   registry.push(['commit','SlideCommit 确认'],['switch','SquishSwitch 开关'],['slider','WakeSlider 调节']);
-  window.WorkbenchUI={e,el,radio,busy,request,job,notify,download,fileBase64,dialog,promptCard,actionMenu,markdown,richText,richHTML,richDoc,preview,diff,registry,refreshControls,version:'0.0.30'};
+  window.WorkbenchUI={e,el,radio,busy,request,job,notify,download,fileBase64,dialog,promptCard,actionMenu,markdown,richText,richHTML,richDoc,preview,diff,registry,refreshControls,version:'0.0.31'};
   let frame;
   const upgrade=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{window.WorkbenchReact.cleanup();document.querySelectorAll('.settings-content,.control-dialog').forEach(root=>{if([...root.querySelectorAll('input')].some(input=>!controls.has(input)&&input.matches('input[type=checkbox],#appearance-font,#appearance-brightness')))refreshControls(root);});document.querySelectorAll('.control-loading:not([data-lattice]),.module-loading:not([data-lattice])').forEach(host=>{const label=host.textContent||'正在读取…';host.dataset.lattice='true';window.WorkbenchReact.loader(host,label);});});};
   const observer=new MutationObserver(upgrade);observer.observe(document.documentElement,{childList:true,subtree:true});

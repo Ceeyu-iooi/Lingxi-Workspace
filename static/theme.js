@@ -1,28 +1,43 @@
 /* Apply the saved appearance before styles paint, including on the login screen. */
 (() => {
   const media = window.matchMedia('(prefers-color-scheme: dark)');
-  let preference = 'zai-dark', theme = 'dark';
+  let preference = 'zai-light', theme = 'light', transition=null;
   try { const saved = localStorage.getItem('zcode-theme') || localStorage.getItem('wb-theme'); if (['light','dark','zai-light','zai-dark','system'].includes(saved)) preference = saved; } catch (_) {}
-  function apply(value) {
+  function apply(value, origin) {
+    const previous=theme;
     preference = value === 'light' ? 'zai-light' : value === 'dark' ? 'zai-dark' : value;
     theme = preference === 'system' ? (media.matches ? 'dark' : 'light') : preference === 'zai-dark' ? 'dark' : 'light';
-    document.documentElement.classList.toggle('theme-zai-light', theme === 'light');
-    document.documentElement.classList.toggle('theme-zai-dark', theme === 'dark');
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.style.colorScheme = theme;
+    const next=theme;
+    const paint=()=>{
+    document.documentElement.classList.toggle('theme-zai-light', next === 'light');
+    document.documentElement.classList.toggle('theme-zai-dark', next === 'dark');
+    document.documentElement.classList.toggle('dark', next === 'dark');
+    document.documentElement.dataset.theme = next;
+    document.documentElement.style.colorScheme = next;
     const button = document.getElementById("theme-toggle");
     if (button) {
-      button.setAttribute("aria-pressed", String(theme === "dark"));
-      button.setAttribute("aria-label", theme === "dark" ? "切换为浅色模式" : "切换为深色模式");
-      document.getElementById("theme-label").textContent = theme === "dark" ? "浅色模式" : "深色模式";
+      button.setAttribute("aria-pressed", String(next === "dark"));
+      button.setAttribute("aria-label", next === "dark" ? "切换为浅色模式" : "切换为深色模式");
+      const label=document.getElementById("theme-label");if(label)label.textContent = next === "dark" ? "浅色模式" : "深色模式";
     }
+    window.dispatchEvent(new Event('workbench:appearance'));
+    };
+    transition?.skipTransition();
+    const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches||document.documentElement.dataset.motion==='reduced';
+    if(!origin||previous===next||reduced||!document.startViewTransition){paint();return;}
+    const rect=(origin instanceof Element?origin:document.getElementById('theme-toggle'))?.getBoundingClientRect();
+    const x=Number.isFinite(origin.clientX)&&origin.clientX>0?origin.clientX:rect?rect.left+rect.width/2:innerWidth/2;
+    const y=Number.isFinite(origin.clientY)&&origin.clientY>0?origin.clientY:rect?rect.top+rect.height/2:innerHeight/2;
+    const radius=Math.hypot(Math.max(x,innerWidth-x),Math.max(y,innerHeight-y));
+    const current=transition=document.startViewTransition(paint);
+    current.ready.then(()=>{if(transition!==current)return;document.documentElement.animate({clipPath:[`circle(0px at ${x}px ${y}px)`,`circle(${radius}px at ${x}px ${y}px)`]},{duration:400,easing:'cubic-bezier(.2,.7,.2,1)',pseudoElement:'::view-transition-new(root)'});}).catch(()=>{});
+    current.finished.finally(()=>{if(transition===current)transition=null;}).catch(()=>{});
   }
   window.workbenchAppearance = {
     get theme() { return preference; },
-    previewTheme(value) { if (!['system','light','dark','zai-light','zai-dark'].includes(value)) return; apply(value); window.dispatchEvent(new Event('workbench:appearance')); },
+    previewTheme(value,origin) { if (!['system','light','dark','zai-light','zai-dark'].includes(value)) return; apply(value,origin); },
     previewFontSize(size) { const value = Math.max(12,Math.min(18,Number(size)||14)); document.documentElement.style.setProperty('--ui-font-size', value + 'px'); },
-    setTheme(value) { if (!['system','light','dark','zai-light','zai-dark'].includes(value)) return; apply(value); try { localStorage.setItem('zcode-theme', preference); localStorage.setItem('wb-theme',theme); } catch (_) {} window.dispatchEvent(new Event('workbench:appearance')); },
+    setTheme(value,origin) { if (!['system','light','dark','zai-light','zai-dark'].includes(value)) return; apply(value,origin); try { localStorage.setItem('zcode-theme', preference); localStorage.setItem('wb-theme',theme); } catch (_) {} },
     setFontSize(size) { const value = Math.max(12,Math.min(18,Number(size)||14)); document.documentElement.style.setProperty('--ui-font-size', value + 'px'); try { localStorage.setItem('wb-ui-font-size',String(value)); } catch (_) {} },
     details(value={}) { document.documentElement.dataset.accent=value.accent||'blue';document.documentElement.dataset.motion=value.reduceMotion?'reduced':'normal';document.documentElement.style.setProperty('--wb-brightness',String((value.brightness||100)/100)); },
     config(value={}) { if(value.theme)this.setTheme(value.theme);if(value.uiFontSize)this.setFontSize(value.uiFontSize);this.details(value); },
@@ -30,10 +45,10 @@
   apply(preference);
   try { window.workbenchAppearance.setFontSize(localStorage.getItem('wb-ui-font-size') || 14); } catch (_) {}
   media.addEventListener('change', () => { if (preference === 'system') apply('system'); });
-  let sidebarCollapsed = false, sidebarWidth = 222;
+  let sidebarCollapsed = false, sidebarWidth = 240;
   try {
     sidebarCollapsed = localStorage.getItem('wb-sidebar-collapsed') === '1';
-    sidebarWidth = Math.max(180, Math.min(340, Number(localStorage.getItem('wb-sidebar-width')) || 222));
+    sidebarWidth = Math.max(180, Math.min(340, Number(localStorage.getItem('wb-sidebar-width')) || 240));
   } catch (_) {}
   function applySidebar() {
     document.documentElement.classList.toggle('sidebar-collapsed', sidebarCollapsed);
@@ -102,11 +117,11 @@
       const name = Object.keys(icons).find(key => el.classList.contains('ico-' + key));
       if (name) el.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]}</svg>`;
     });
-    document.getElementById("theme-toggle").addEventListener("click", () => {
-      window.workbenchAppearance.setTheme(theme === "dark" ? "light" : "dark");
+    document.getElementById("theme-toggle")?.addEventListener("click", event => {
+      window.workbenchAppearance.setTheme(theme === "dark" ? "light" : "dark",event);
     });
   });
   window.addEventListener("storage", event => {
-    if (event.key === 'zcode-theme') apply(event.newValue || 'zai-dark');
+    if (event.key === 'zcode-theme') apply(event.newValue || 'zai-light');
   });
 })();

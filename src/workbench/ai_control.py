@@ -79,7 +79,7 @@ class AIControl:
         state['defaultDshPath']=dsh_path()
         return state
     def update_config(self,owner,body,validate_only=False):
-        allowed={'memoryEnabled','defaultProvider','defaultAgent','codexEnabled','codexPath','zcodeEnabled','zcodePath','dshEnabled','dshPath','workspaceIgnore','interfaceMode','locale','shortcuts','browserDefault','dailyTokenBudget','monthlyTokenBudget','codexValuationEnabled','zcodeValuationEnabled','dshValuationEnabled','promptAutosave','promptAIEnabled','theme','uiFontSize','accent','brightness','reduceMotion'}
+        allowed={'memoryEnabled','defaultProvider','defaultAgent','codexEnabled','codexPath','zcodeEnabled','zcodePath','dshEnabled','dshPath','workspaceIgnore','interfaceMode','locale','shortcuts','browserDefault','dailyTokenBudget','monthlyTokenBudget','codexValuationEnabled','zcodeValuationEnabled','dshValuationEnabled','promptAutosave','promptAIEnabled','theme','uiFontSize','accent','brightness','reduceMotion','onboardingStep'}
         if not isinstance(body,dict) or any(k not in allowed for k in body):raise ValueError('设置项不正确')
         if len(json.dumps(body))>64000:raise ValueError('设置内容过长')
         for key in ('dailyTokenBudget','monthlyTokenBudget'):
@@ -89,6 +89,7 @@ class AIControl:
         if 'interfaceMode' in body and body['interfaceMode'] not in ('coding','office'):raise ValueError('界面模式不正确')
         if 'locale' in body and body['locale'] not in ('system','zh-CN','en-US'):raise ValueError('菜单语言不正确')
         if 'theme' in body and body['theme'] not in ('system','light','dark','zai-light','zai-dark'):raise ValueError('主题不正确')
+        if 'onboardingStep' in body and body['onboardingStep'] not in ('agents','suppliers','complete'):raise ValueError('引导步骤不正确')
         if 'uiFontSize' in body and body['uiFontSize'] not in (12,14,16,18):raise ValueError('字号不正确')
         if 'accent' in body and body['accent'] not in ('blue','violet','teal','orange'):raise ValueError('强调色不正确')
         if 'brightness' in body and (isinstance(body['brightness'],bool) or not isinstance(body['brightness'],int) or not 85<=body['brightness']<=110):raise ValueError('亮度范围为 85–110')

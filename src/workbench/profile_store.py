@@ -221,11 +221,38 @@ def cleanup_legacy(code):
         if root.exists() and not any(root.iterdir()):root.rmdir()
     return dict(removed=removed)
 
+def select_profile(target,bootstrap=None):
+    requested=Path(target)
+    if not requested.is_absolute():raise ValueError('请选择绝对资料路径')
+    for candidate in [requested,*requested.parents]:
+        if candidate.exists() and (candidate.is_symlink() or candidate.is_junction()):raise ValueError('资料路径不能包含目录链接')
+    root=requested.resolve()
+    if root.exists() and not root.is_dir():raise ValueError('资料位置必须是文件夹')
+    existing=(root/'accounts.db').is_file() and (root/'data/.shared-service.json').is_file()
+    if root.exists() and any(root.iterdir()) and not existing:
+        is_bootstrap=bootstrap is not None and root==Path(bootstrap).resolve()
+        if not is_bootstrap or any(p.name not in ('updates','browser','logs','runtime') for p in root.iterdir()):raise ValueError('请选择空文件夹或已有灵犀 Profile；不能合并其他资料')
+    if existing:
+        marker=json.loads((root/'data/.shared-service.json').read_text(encoding='utf-8'))
+        uuid.UUID(marker['profileId']);uuid.UUID(marker['serviceId'])
+        with closing(sqlite3.connect((root/'accounts.db').as_uri()+'?mode=ro',uri=True)) as db:
+            if db.execute('PRAGMA quick_check').fetchone()[0]!='ok':raise ValueError('所选账户数据库校验失败')
+        from workbench.shared_runtime import ProfileLock
+        try:lock=ProfileLock(root/'data')
+        except (SystemExit,PermissionError):raise ValueError('所选 Profile 正在使用，请先关闭对应应用') from None
+        lock.close()
+    root.mkdir(parents=True,exist_ok=True);probe=root/('.wb-select-'+uuid.uuid4().hex)
+    try:
+        with probe.open('xb'):pass
+        probe.unlink()
+    except OSError:raise ValueError('资料位置不可写，请选择其他文件夹') from None
+    return dict(root=str(root),existing=existing)
+
 def main(args=None):
     import argparse
-    parser=argparse.ArgumentParser();parser.add_argument('action',choices=['preflight','migrate','remove-old','compact']);parser.add_argument('--source');parser.add_argument('--target',required=True);parser.add_argument('--desktop',action='store_true')
+    parser=argparse.ArgumentParser();parser.add_argument('action',choices=['preflight','migrate','remove-old','compact','select']);parser.add_argument('--source');parser.add_argument('--target',required=True);parser.add_argument('--desktop',action='store_true')
     a=parser.parse_args(args)
-    value=compact_profile(a.target) if a.action=='compact' else remove_old(a.target) if a.action=='remove-old' else (preflight if a.action=='preflight' else migrate)(a.source,a.target,a.desktop)
+    value=select_profile(a.target,a.source) if a.action=='select' else compact_profile(a.target) if a.action=='compact' else remove_old(a.target) if a.action=='remove-old' else (preflight if a.action=='preflight' else migrate)(a.source,a.target,a.desktop)
     print(json.dumps(value,ensure_ascii=False))
 
 if __name__=='__main__':main()

@@ -240,7 +240,7 @@ function showLogin() {
   $("#main").innerHTML = `
   <div class="login-wrap">
     <div class="card login-card">
-      <div class="brand workbench-brand login-brand"><span class="brand-knot" aria-hidden="true"><img class="brand-knot-light" src="assets/openai-blossom-black.svg" alt=""><img class="brand-knot-dark" src="assets/openai-blossom-white.svg" alt=""></span><span class="brand-name">灵犀工作坊</span></div>
+      <div class="brand workbench-brand login-brand"><span class="brand-knot" aria-hidden="true"><img class="brand-knot-light" src="assets/lingxi-logo.svg" alt=""><img class="brand-knot-dark" src="assets/lingxi-logo.svg" alt=""></span><span class="brand-name">灵犀工作坊</span></div>
       <p class="login-sub">数据保存在本机，登录后进入你的专属空间</p>
       <form id="login-form">
         <label class="login-field">用户名

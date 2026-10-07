@@ -1,0 +1,37 @@
+/* DSH-inspired onboarding layout, adapted to Lingxi's shared semantic tokens. */
+@font-face{font-family:"Lingxi Brush";src:url("assets/fonts/LingxiBrush.woff2") format("woff2");font-display:swap}
+.lingxi-onboarding{position:fixed;inset:0;z-index:1200;display:flex;flex-direction:column;background:var(--color-background,#fff);color:var(--color-foreground,#151517);font-family:system-ui,"Microsoft YaHei UI",sans-serif;overflow:auto}
+.lingxi-onboarding[hidden]{display:none}
+.onboarding-stage{flex:1;display:flex;flex-direction:column;justify-content:center;width:min(980px,calc(100% - 96px));margin:auto;padding:48px 0;box-sizing:border-box;animation:lingxi-page-in 160ms ease-out}
+.onboarding-heading{font-size:28px;line-height:1.45;font-weight:400;letter-spacing:-.025em;margin:0 0 16px;outline:none}
+.onboarding-subtitle{font-size:16px;line-height:1.8;color:var(--color-foreground-subtle,#74747c);margin:0 0 40px;max-width:620px}
+.onboarding-brand{display:flex;align-items:center;gap:14px;margin-bottom:44px}.onboarding-brand img{width:56px;height:56px}.onboarding-brand span{font:32px/1.5 "Lingxi Brush","KaiTi",serif}
+.onboarding-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:0 0 36px}
+.onboarding-card{position:relative;padding:28px;border-radius:24px;border:1px solid var(--color-border,#e7e7e9);background:var(--color-card,#fafafb);color:inherit;min-width:0;text-align:left;transition:border-color 150ms,background 150ms}
+.onboarding-card[data-selected=true]{border-color:var(--accent,#3976f6);background:color-mix(in srgb,var(--accent,#3976f6) 5%,var(--color-card,#fafafb))}
+.onboarding-card h2{font-size:20px;font-weight:400;margin:0 0 12px}.onboarding-card p{font-size:14px;line-height:1.7;color:var(--color-foreground-subtle,#74747c);margin:10px 0}
+.onboarding-card input[type=text]{width:100%;box-sizing:border-box;border:1px solid var(--color-border,#ddd);border-radius:10px;padding:10px 12px;background:var(--color-background,#fff);color:inherit;font:12px/1.5 inherit;margin:10px 0 0}
+.onboarding-switch{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.onboarding-switch input{width:20px;height:20px;accent-color:var(--accent,#3976f6)}
+.onboarding-actions{display:flex;align-items:center;gap:16px;justify-content:flex-end;margin-top:28px}
+.onboarding-action{display:inline-flex;justify-content:center;align-items:center;min-height:44px;min-width:120px;box-sizing:border-box;border:0;border-radius:12px;padding:10px 24px;background:var(--color-foreground,#0f1115);color:var(--color-background,#fff);font:500 14px/1.5 system-ui,"Microsoft YaHei UI",sans-serif;cursor:pointer}
+.onboarding-action.secondary{background:var(--color-selected,#f2f2f3);color:var(--color-foreground,#151517)}
+.onboarding-action.quiet{background:transparent;color:var(--color-foreground-subtle,#74747c);min-width:auto;padding:10px 12px}
+.onboarding-action:hover{opacity:.84}.onboarding-action:disabled{opacity:.45;cursor:wait}
+.onboarding-action:focus-visible,.onboarding-card:focus-visible{outline:2px solid var(--accent,#3976f6);outline-offset:4px}
+.onboarding-error{color:var(--color-destructive,#d34545);font-size:14px;line-height:1.6;min-height:22px;margin:12px 0;white-space:pre-wrap}
+.onboarding-path{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}
+.onboarding-path input{font:14px/1.5 system-ui,"Microsoft YaHei UI",sans-serif!important}
+.onboarding-profile-cards{grid-template-columns:1fr 1fr}.onboarding-profile-cards .onboarding-card{cursor:pointer}
+.onboarding-note{font-size:13px;color:var(--color-foreground-subtle,#74747c);line-height:1.8}
+.onboarding-splash{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;background:var(--color-background,#fff);z-index:3}
+.onboarding-splash img{width:112px;height:112px;animation:lingxi-mark-in 650ms cubic-bezier(.2,.8,.2,1) both}.onboarding-splash span{font:36px/1.5 "Lingxi Brush","KaiTi",serif;margin-top:24px;animation:lingxi-page-in 300ms 280ms both}
+.onboarding-splash[data-exiting]{animation:lingxi-splash-out 180ms forwards}
+.onboarding-top{height:48px;flex:none;-webkit-app-region:drag;padding-right:150px}
+.onboarding-progress{display:flex;gap:6px;margin-bottom:32px}.onboarding-progress i{width:28px;height:3px;border-radius:2px;background:var(--color-border,#e7e7e9)}.onboarding-progress i[data-active=true]{background:var(--accent,#3976f6)}
+.lingxi-onboarding .usage-supplier-manager{z-index:1300}.onboarding-start-again{margin-top:20px}
+@keyframes lingxi-mark-in{from{opacity:0;transform:scale(.8) rotate(-12deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes lingxi-page-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes lingxi-splash-out{to{opacity:0;visibility:hidden}}
+@media(max-width:800px){.onboarding-stage{width:calc(100% - 48px);padding:32px 0}.onboarding-cards{grid-template-columns:1fr}.onboarding-card{padding:22px}.onboarding-subtitle{margin-bottom:24px}.onboarding-brand{margin-bottom:28px}}
+@media(prefers-reduced-motion:reduce){.onboarding-stage,.onboarding-splash img,.onboarding-splash span,.onboarding-splash[data-exiting]{animation:none}.onboarding-card{transition:none}}
+:root[data-motion=reduced] :is(.onboarding-stage,.onboarding-splash img,.onboarding-splash span){animation:none}

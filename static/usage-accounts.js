@@ -197,5 +197,9 @@
     if(state.dialog?.isConnected){if(!state.dialog.open)state.dialog.showModal();return state.dialog;}
     return manageSuppliers(state);
   }
-  window.usageAccounts={render,manage,quotaTone,scope:root=>{const state=accountStates.get(root);if(state)patchInline(state);}};
+  async function onboardingSuppliers(host){
+    host.innerHTML='<div class="usage-stable"><button id="usage-account-add" type="button">管理供应商</button><select id="usage-account"><option value="deepseek">DeepSeek</option></select><div data-onboarding-accounts></div></div>';
+    const root=host.querySelector('[data-onboarding-accounts]'),refresh=()=>render(root,'codex',[],refresh);await refresh();return manage(root);
+  }
+  window.usageAccounts={render,manage,quotaTone,onboardingSuppliers,scope:root=>{const state=accountStates.get(root);if(state)patchInline(state);}};
 })();

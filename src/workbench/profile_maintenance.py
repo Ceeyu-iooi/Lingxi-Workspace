@@ -30,7 +30,28 @@ def storage(services, root):
         blobs=db.execute('SELECT coalesce(sum(length(body)),0),coalesce(sum(raw_size),0) FROM evidence_blobs').fetchone()
         derived=db.execute('SELECT coalesce(sum(length(cast(result as blob))),0) FROM radar_values').fetchone()[0]
     data=Path(root)/'data'
-    return dict(databaseBytes=size(services.monitor.path),businessBytes=size(data),priceEvidenceCompressedBytes=blobs[0],priceEvidenceRawBytes=blobs[1],valuationPayloadBytes=derived,backupsBytes=size(Path(root)/'backups')+size(data/'storage/recovery'),browserCacheBytes=sum(size(Path(root)/'browser'/p) for p in ('Cache','Code Cache','GPUCache')),responseCacheBytes=services.monitor.snapshot_cache.bytes,responseCacheBudget=services.monitor.snapshot_cache.budget,compression=getattr(services.pricing,'migration',{'status':'idle'}))
+    categories=[dict(id=k,label=v,bytes=0) for k,v in [('databases','数据库'),('backups','备份'),('browser','浏览器资料'),('updates','更新安装包'),('logs','日志与崩溃记录'),('other','其他资料')]]
+    totals={row['id']:row for row in categories};incomplete=False
+    def failed(_error):
+        nonlocal incomplete
+        incomplete=True
+    for directory,folders,files in os.walk(root,followlinks=False,onerror=failed):
+        parent=Path(directory)
+        folders[:]=[name for name in folders if not (parent/name).is_symlink() and not (parent/name).is_junction()]
+        for name in files:
+            file=parent/name
+            if file.is_symlink():continue
+            try:
+                parts=file.relative_to(root).parts
+                if parts[0]=='backups' or parts[:3]==('data','storage','recovery'):kind='backups'
+                elif parts[0]=='browser':kind='browser'
+                elif parts[0]=='updates':kind='updates'
+                elif parts[0]=='logs' or parts[:2]==('runtime','crashes'):kind='logs'
+                elif name.lower().endswith(('.db','.sqlite','.sqlite3','.db-wal','.db-shm','.sqlite-wal','.sqlite-shm','.sqlite3-wal','.sqlite3-shm')):kind='databases'
+                else:kind='other'
+                totals[kind]['bytes']+=file.stat().st_size
+            except (OSError,ValueError):incomplete=True
+    return dict(totalBytes=sum(row['bytes'] for row in categories),categories=categories,incomplete=incomplete,databaseBytes=size(services.monitor.path),businessBytes=size(data),priceEvidenceCompressedBytes=blobs[0],priceEvidenceRawBytes=blobs[1],valuationPayloadBytes=derived,backupsBytes=size(Path(root)/'backups')+size(data/'storage/recovery'),browserCacheBytes=sum(size(Path(root)/'browser'/p) for p in ('Cache','Code Cache','GPUCache')),responseCacheBytes=services.monitor.snapshot_cache.bytes,responseCacheBudget=services.monitor.snapshot_cache.budget,compression=getattr(services.pricing,'migration',{'status':'idle'}))
 
 def dispatch(handler,services,code,root,route,body=None):
     if route not in ('/api/profile/storage','/api/profile/location','/api/profile/preflight','/api/profile/migrate','/api/profile/maintenance','/api/profile/clear-cache','/api/profile/remove-old'):return False

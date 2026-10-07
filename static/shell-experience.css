@@ -1,0 +1,41 @@
+/* Lingxi application adapters. DSH layout references are documented in docs/UI_DESIGN.md. */
+:root{--shell-edge:#ececee;--sidebar-width:240px}
+:root[data-theme=dark]{--shell-edge:#000;--color-background-win-alt:#000}
+.layout{background:var(--shell-edge)}
+.desktop-shell .layout{padding-top:0}
+.desktop-shell .shell-bar{background:var(--shell-edge);min-height:48px;-webkit-app-region:drag;padding-right:150px;border:0;border-radius:0}
+.desktop-shell .shell-bar :is(button,a,details,input){-webkit-app-region:no-drag}
+.desktop-shell .shell-bar .workbench-menubar{margin-left:auto}
+.desktop-shell .main-shell{border-top-left-radius:0;border-top-right-radius:0}
+:is(.side,.kit-nav-preview) .nav-item{min-height:44px;font-size:calc(var(--ui-font-size,14px) + 1px);padding:10px 12px;gap:10px;margin-bottom:4px;border-radius:12px}
+:is(.side,.kit-nav-preview) .nav-item .ico{width:20px;height:20px;flex:0 0 20px}
+:is(.side,.kit-nav-preview) .nav-item :is(.ico svg,svg){width:20px;height:20px}
+:is(.side .nav-item.active,.kit-nav-preview .nav-item.active,.side .nav-item.on,.settings-center-content .settings-nav-item.selected){background:var(--color-selected,#f2f2f3);color:var(--ink);font-weight:400;box-shadow:none}
+:is(.side .nav-item.active,.kit-nav-preview .nav-item.active,.side .nav-item.on,.settings-center-content .settings-nav-item.selected) svg{color:var(--accent)}
+.settings-center-content .settings-nav-item{min-height:44px;font-size:calc(var(--ui-font-size,14px) + 1px)}
+.settings-center-content .settings-nav-item svg{width:20px;height:20px}
+.sidebar-collapsed :is(.side,.kit-nav-preview) .nav-item{min-height:44px;justify-content:center;padding:10px 8px}
+.wb-select>button{position:relative;padding-right:42px;font-size:var(--text-ui-base,14px)}
+.wb-select-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:left}
+.wb-select-chevron{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:20px;height:20px;pointer-events:none;flex:none;color:var(--ink-2)}
+.usage-filter-chevron{width:20px;height:20px;flex:0 0 20px;margin-left:auto}
+.usage-filter-label{flex:1;min-width:0}
+.storage-chart{display:grid;grid-template-columns:minmax(180px,240px) minmax(0,1fr);align-items:center;gap:28px;margin:22px 0}
+.storage-pie{width:100%;max-width:240px;aspect-ratio:1;display:block;overflow:visible}
+.storage-pie path{stroke:var(--surface);stroke-width:1.5;transition:opacity 150ms}
+.storage-pie path:hover,.storage-pie path:focus-visible{opacity:.8;outline:none;stroke:var(--accent);stroke-width:3}
+.storage-legend{display:grid;gap:12px;margin:0;padding:0;list-style:none}
+.storage-legend li{display:flex;align-items:center;gap:10px;min-width:0;font-size:var(--text-ui-base,14px)}
+.storage-legend i{width:9px;height:9px;flex:none;border-radius:50%}
+.storage-legend strong{margin-left:auto;white-space:nowrap;font-weight:400;font-variant-numeric:tabular-nums}
+.storage-legend small{color:var(--ink-2);min-width:48px;text-align:right}
+.storage-total{font-size:24px;font-weight:500;letter-spacing:-.03em;margin:12px 0 0}.storage-total small{font-size:13px;letter-spacing:0;color:var(--ink-2);display:block;margin-bottom:6px}
+.settings-center-content .control-section .storage-total{font-size:24px;line-height:1.5;color:var(--ink);font-weight:500}
+.storage-detail{border-top:1px solid var(--line);padding-top:14px;color:var(--ink-2);font-size:13px;line-height:1.8}
+.storage-detail summary{cursor:pointer;color:var(--ink);margin-bottom:6px}
+.storage-detail p{margin:4px 0}
+::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+::view-transition-new(root){z-index:2}
+::view-transition-old(root){z-index:1}
+@media(max-width:600px){.storage-chart{grid-template-columns:1fr;gap:20px}.storage-pie{max-width:190px;justify-self:center}.desktop-shell .shell-bar{padding-right:138px}.desktop-shell .workbench-menubar{gap:4px}.desktop-shell .shell-crumb{display:none}}
+@media(prefers-reduced-motion:reduce){.storage-pie path{transition:none}}
