@@ -6,4 +6,6 @@
 
 profile是私有状态边界。账户、业务库、凭据、日志、备份和维护配置集中于此；源码和应用资源不随profile迁移。SQLite使用一致性备份及完整性核验；迁移取得写入锁，目标必须为空，失败恢复原定位。
 
+桌面新安装默认使用安装目录的profile，也可指定其他位置；安装目录保存profile定位文件。Electron在ready前将userData和sessionData同时指向profile/browser，日志指向profile/logs、崩溃目录指向profile/runtime/crashes，避免浏览器缓存仍写入默认Roaming路径。旧AppData资料保留兼容读取，不自动搬迁。
+
 价格原文按摘要寻址、无损压缩，读取核验长度和摘要。用量是事实，参考金额是可重建派生值；不能删除整份数据库清理计算缓存。普通筛选使用本地索引和账户隔离缓存。

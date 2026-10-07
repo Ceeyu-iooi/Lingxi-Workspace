@@ -21,6 +21,12 @@ def capability():
 
 def main():
     manage='--manage' in sys.argv
+    # Only explicit local configuration enables LAN access. Downloaded source
+    # remains loopback-only; environment configuration has higher priority.
+    config_path=Path(web_layout(CODE)['root'])/'config/web-server.json'
+    config=json.loads(config_path.read_text(encoding='utf-8-sig')) if config_path.exists() else {}
+    host=os.environ.get('WORKBENCH_HOST') or config.get('host','127.0.0.1')
+    if not isinstance(host,str) or not host.strip():raise SystemExit('网页监听地址配置无效')
     try:
         with urlopen(ORIGIN+'/api/runtime',timeout=2) as r:current=json.load(r)
     except OSError:current=None
@@ -28,7 +34,7 @@ def main():
         expected=json.loads((Path(web_layout(CODE)['data'])/'.shared-service.json').read_text())
         if current.get('profileId')!=expected['profileId'] or current.get('serviceId')!=expected['serviceId']:raise SystemExit('8765不是当前资料服务，拒绝连接')
         if manage:webbrowser.open(capability())
-        else:print('8765已运行；本机资料维护入口：python run_web.py --manage')
+        else:print('8765已运行；本次未重启后台。修改源码或监听地址后请先关闭原后台。\n本机资料维护入口：python run_web.py --manage')
         return
     from workbench.shared_runtime import ProfileLock
     supervisor_lock=ProfileLock(Path(web_layout(CODE)['root'])/'runtime/manager')
@@ -37,7 +43,7 @@ def main():
         while True:
             profile=web_layout(CODE);data=Path(profile['data']);data.mkdir(parents=True,exist_ok=True)
             compact_profile(profile['root'])
-            env={**os.environ,**environment(profile),'WORKBENCH_HOST':os.environ.get('WORKBENCH_HOST','127.0.0.1'),'WORKBENCH_PORT':os.environ.get('WORKBENCH_PORT','8765'),'WORKBENCH_MANAGED_WEB':'1','WORKBENCH_OPEN_BROWSER':'0','PYTHONUTF8':'1','PYTHONDONTWRITEBYTECODE':'1'}
+            env={**os.environ,**environment(profile),'WORKBENCH_HOST':host,'WORKBENCH_PORT':os.environ.get('WORKBENCH_PORT','8765'),'WORKBENCH_MANAGED_WEB':'1','WORKBENCH_OPEN_BROWSER':'0','PYTHONUTF8':'1','PYTHONDONTWRITEBYTECODE':'1'}
             logs=Path(profile['root'])/'logs';logs.mkdir(parents=True,exist_ok=True)
             log=(logs/'web-runtime.log').open('ab')
             child=subprocess.Popen([sys.executable,'-B',str(CODE/'run_web.py'),'--backend'],cwd=CODE,env=env,stdin=subprocess.PIPE,stdout=log,stderr=log)
