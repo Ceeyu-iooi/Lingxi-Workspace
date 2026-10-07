@@ -1,0 +1,102 @@
+{
+  "generatedBy": "personal-workbench-builder",
+  "skillVersion": "1.0.0",
+  "appVersion": "0.0.29",
+  "usageVersion": "0.0.29",
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-21T20:30:00+08:00",
+  "complexity": "L3",
+  "deploymentProfile": "local-web",
+  "modules": [
+    {
+      "id": "overview",
+      "version": "1.0.0",
+      "schemaVersion": 1,
+      "status": "ready",
+      "requirements": [
+        "R2",
+        "R4"
+      ]
+    },
+    {
+      "id": "projects-tasks",
+      "version": "1.0.0",
+      "schemaVersion": 1,
+      "status": "ready",
+      "requirements": [
+        "R1",
+        "R2"
+      ]
+    },
+    {
+      "id": "summary",
+      "version": "1.0.0",
+      "schemaVersion": 1,
+      "status": "ready",
+      "requirements": [
+        "R3"
+      ]
+    },
+    {
+      "id": "news",
+      "version": "1.0.0",
+      "schemaVersion": 1,
+      "status": "ready",
+      "requirements": [
+        "R4"
+      ]
+    },
+    {
+      "id": "data-backup",
+      "version": "1.0.0",
+      "schemaVersion": 1,
+      "status": "ready",
+      "requirements": [
+        "R5"
+      ]
+    },
+    {
+      "id": "auth",
+      "version": "1.1.0",
+      "schemaVersion": 1,
+      "status": "ready",
+      "requirements": [
+        "R8"
+      ]
+    },
+    {
+      "id": "ai-parser",
+      "version": "1.1.0",
+      "schemaVersion": 1,
+      "status": "ready",
+      "requirements": [
+        "R9"
+      ]
+    },
+    {
+      "id": "finance",
+      "version": "1.2.0",
+      "schemaVersion": 1,
+      "status": "ready",
+      "requirements": [
+        "bill-import",
+        "charts"
+      ]
+    },
+    {
+      "id": "prompt-library",
+      "version": "0.0.29",
+      "status": "ready"
+    },
+    {
+      "id": "readonly-skills",
+      "version": "0.0.29",
+      "status": "ready"
+    },
+    {
+      "id": "profile-management",
+      "version": "0.0.29",
+      "status": "ready"
+    }
+  ]
+}
