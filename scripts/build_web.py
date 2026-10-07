@@ -6,7 +6,7 @@ for file in (root/'src').rglob('*.py'):ast.parse(file.read_text(encoding='utf-8-
 receipt=json.loads((root/'frontend/application-assets.json').read_text(encoding='utf8'))
 for item in receipt['files']:
     file=root/item['file']
-    if not file.is_file() or hashlib.sha256(file.read_bytes()).hexdigest()!=item['sha256']:raise SystemExit('Application UI resource missing or changed: '+item['file'])
+    if not file.is_file() or hashlib.sha256(file.read_bytes().replace(b'\r\n',b'\n')).hexdigest()!=item['sha256']:raise SystemExit('Application UI resource missing or changed: '+item['file'])
 target=root/'.runtime/web-build';target.mkdir(parents=True,exist_ok=True)
 for directory in ('src','static'):
     shutil.copytree(root/directory,target/directory,dirs_exist_ok=True)
