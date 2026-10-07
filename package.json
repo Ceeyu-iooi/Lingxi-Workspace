@@ -1,0 +1,9 @@
+{
+  "name": "lingxi-workbench-web",
+  "version": "0.0.29",
+  "private": true,
+  "scripts": {
+    "build": "python scripts/build_web.py",
+    "start": "python run_web.py"
+  }
+}

@@ -1,0 +1,41 @@
+/* Uses the workbench's existing theme tokens; independent of React builds. */
+.radio-inputs{position:relative;display:flex;flex-wrap:wrap;align-items:center;border-radius:.5rem;background:var(--surface-soft,#eee);box-sizing:border-box;box-shadow:0 0 0 1px var(--line,rgba(0,0,0,.06));padding:.25rem;width:max-content;max-width:100%;font-size:14px;gap:2px}
+.radio-inputs[hidden]{display:none!important}
+.radio-inputs .radio{flex:1 1 auto;text-align:center;position:relative}
+.radio-inputs .radio input{position:absolute;opacity:0;inset:0;z-index:1;pointer-events:auto;width:100%;height:100%;margin:0;padding:0!important;border:0!important;box-sizing:border-box;cursor:pointer}
+.radio-inputs .radio .name{display:flex;cursor:pointer;align-items:center;justify-content:center;border-radius:.5rem;border:0;padding:.4rem .65rem;color:var(--ink-2,rgba(51,65,85,1));transition:background .15s,color .15s;white-space:nowrap;min-height:30px;box-sizing:border-box}
+.radio-inputs .radio input:checked+.name{background:var(--color-card,#fff);font-weight:600;color:var(--ink)}
+.radio-inputs .radio input:focus-visible+.name{outline:2px solid var(--accent);outline-offset:2px}
+.radio-inputs .radio:hover .name{color:var(--accent)}
+.usage-radio-action{display:none!important}
+.usage-heat-modes,.usage-chart-tools{display:flex;flex-wrap:wrap;gap:8px!important;align-items:center}
+.usage-stable .usage-tabs,.usage-supplier-tabs{position:static!important;top:auto!important;z-index:auto!important}
+.usage-supplier-manager{width:min(940px,calc(100vw - 32px));max-height:calc(100dvh - 40px);padding:0!important;grid-template-columns:210px minmax(0,1fr);overflow:auto;border-radius:16px;background:var(--color-card)}
+.usage-supplier-manager[open]{display:grid}
+.usage-supplier-manager>.control-dialog-head{grid-column:1/-1;padding:22px 26px;border-bottom:1px solid var(--line);margin:0}
+.usage-supplier-manager .usage-supplier-tabs{display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:18px 14px;margin:0;border:0;background:var(--surface-soft);overflow:auto;max-height:65vh}
+.usage-supplier-manager .usage-supplier-tabs .btn{border:0!important;border-radius:8px;margin:0!important;padding:10px 12px;justify-content:flex-start;min-height:40px;text-align:left}
+.usage-supplier-manager .usage-supplier-tabs .btn[aria-selected=true]{background:var(--color-card);color:var(--accent)}
+.usage-supplier-manager [data-managed-accounts]{padding:22px 26px;min-width:0;overflow:auto;max-height:65vh}
+.usage-supplier-manager .usage-supplier-tools{margin-bottom:20px;gap:12px;flex-wrap:wrap}
+.usage-supplier-manager .usage-managed-key{border:1px solid var(--line);border-radius:10px;margin:12px 0;background:var(--color-card)}
+.usage-supplier-manager .usage-managed-key>summary{padding:15px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.usage-supplier-manager .usage-managed-key-body{padding:0 16px 16px;border-top:1px solid var(--line)}
+.usage-key-editor{border-radius:16px;width:min(540px,calc(100vw - 32px));padding:24px!important}
+.usage-key-editor .control-field{margin-block:14px}
+.settings-center-modal{width:min(1050px,calc(100vw - 32px));max-height:calc(100dvh - 40px);height:min(760px,calc(100dvh - 40px));padding:0!important;border-radius:16px;overflow:hidden;background:var(--color-card)}
+.settings-center-modal[open]{display:flex;flex-direction:column}
+.settings-center-head{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid var(--line);flex:none}
+.settings-center-head h2{margin:0;font-size:18px}.settings-center-content{flex:1;min-height:0;overflow:auto}.settings-center-content .settings-layout{min-height:100%;height:100%;gap:0}.settings-center-content .settings-nav{border-radius:0;padding:20px;border-right:1px solid var(--line);overflow:auto}.settings-center-content .settings-panel{padding:24px;overflow:auto;min-width:0}.settings-center-content .settings-nav-top{display:none}
+.settings-center-content .set-row>label{min-width:56px;flex-shrink:0}.settings-center-content .card{resize:none}.settings-center-content fieldset{border:1px solid var(--line);border-radius:10px;margin-bottom:16px;padding:16px}.settings-center-content legend{padding:0 6px;font-weight:600}
+.global-context-menu{position:fixed;margin:0;padding:7px;width:min(260px,calc(100vw - 24px));border:1px solid var(--line);border-radius:12px;background:var(--color-card);color:var(--ink);box-shadow:0 12px 32px rgb(0 0 0 / .15);z-index:2000;box-sizing:border-box}
+.global-context-menu button{display:flex;align-items:center;width:100%;border:0;background:transparent;border-radius:7px;padding:9px 12px;text-align:left;color:inherit;font:inherit;cursor:pointer;gap:10px}.global-context-menu button:hover,.global-context-menu button:focus-visible{background:var(--accent-soft);color:var(--accent);outline:none}.global-context-menu button:disabled{opacity:.4;cursor:default}.global-context-menu .context-title{padding:7px 12px;font-size:12px;color:var(--ink-3)}.global-context-menu hr{border:0;border-top:1px solid var(--line);margin:5px 4px}
+@media(max-width:650px){.usage-supplier-manager{grid-template-columns:minmax(0,1fr)}.usage-supplier-manager .usage-supplier-tabs{flex-direction:row;flex-wrap:nowrap;max-height:none;border-bottom:1px solid var(--line)}.usage-supplier-manager .usage-supplier-tabs .btn{flex-shrink:0}.usage-supplier-manager [data-managed-accounts]{max-height:none;padding:18px}.settings-center-modal{height:calc(100dvh - 24px);max-height:calc(100dvh - 24px);width:calc(100vw - 24px)}.settings-center-content .settings-layout{display:flex;flex-direction:column}.settings-center-content .settings-nav{max-height:200px;flex:none;border-right:0;border-bottom:1px solid var(--line)}.settings-center-content .settings-panel{padding:16px;flex:1}.radio-inputs{font-size:12px}.radio-inputs .radio .name{padding:.4rem .5rem}}
+@media(prefers-reduced-motion:reduce){.radio-inputs .radio .name{transition:none}}
+/* Current-section drafts in the existing settings UI. */
+.settings-unsaved-bar{position:sticky;bottom:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:20px;padding:12px 16px;border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:0 -4px 18px #00000008}
+.settings-unsaved-bar[hidden]{display:none}
+.settings-center-content .settings-panel{min-height:0}
+@media(max-width:650px){.settings-center-content .settings-layout{height:auto;min-height:100%}.settings-center-content .settings-panel{flex:none;height:auto;overflow:visible}}
+.settings-unsaved-bar>div{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:540px){.settings-unsaved-bar{flex-wrap:wrap;padding:12px}.settings-unsaved-bar>div{width:100%;justify-content:flex-end}}

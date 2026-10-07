@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>灵犀工作坊 · 个人工作空间</title>
+<link rel="preload" href="assets/fonts/LingxiBrush.woff2" as="font" type="font/woff2" crossorigin>
+<script src="theme.js"></script>
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="zcode-tokens.css">
+<link rel="stylesheet" href="zcode.css">
+<link rel="stylesheet" href="control-center.css">
+<link rel="stylesheet" href="workbench-ui.css">
+<link rel="stylesheet" href="usage-stable.css">
+<link rel="stylesheet" href="usage-account-refinement.css">
+<link rel="stylesheet" href="news-board.css">
+<link rel="stylesheet" href="reference-layout.css">
+<link rel="stylesheet" href="workbench-design.css">
+<link rel="stylesheet" href="admin-interactions.css">
+<link rel="stylesheet" href="dsh-settings.css">
+<link rel="stylesheet" href="reactbits/workbench-react.css">
+<link rel="stylesheet" href="ui-system.css">
+<link rel="stylesheet" href="usage-v23.css"><link rel="stylesheet" href="usage-v24.css">
+</head>
+<body>
+<div id="app" class="layout">
+  <aside class="side">
+    <button class="brand workbench-brand" id="workbench-brand" type="button" aria-label="灵犀工作坊，收起侧边栏" aria-expanded="true" title="收起侧边栏 · Ctrl+B"><span class="brand-knot" aria-hidden="true"><img class="brand-knot-light" src="assets/openai-blossom-black.svg" alt=""><img class="brand-knot-dark" src="assets/openai-blossom-white.svg" alt=""></span><span class="brand-name" aria-hidden="true"><span>灵犀</span><span class="brand-suffix">工作坊</span></span></button>
+    <div class="hello" id="side-hello">嗨，今天也加油 ✦</div>
+    <nav id="nav">
+      <a href="#/overview" data-view="overview" class="nav-item"><span class="ico ico-home"></span>总览</a>
+      <a href="#/projects" data-view="projects" class="nav-item"><span class="ico ico-list"></span>项目与待办</a>
+      <a href="#/summary" data-view="summary" class="nav-item"><span class="ico ico-book"></span>总结</a>
+      <a href="#/news" data-view="news" class="nav-item"><span class="ico ico-fire"></span>热点</a>
+      <a href="#/finance" data-view="finance" class="nav-item"><span class="ico ico-finance"></span>记账</a>
+      <a href="#/settings" data-view="settings" class="nav-item"><span class="ico ico-gear"></span>设置</a>
+    </nav>
+    <div class="side-foot"><span class="footer-status" hidden><span class="local-dot"></span> <span id="local-status">本地保存</span><br>业务改动自动备份</span></div>
+  </aside>
+
+  <div class="main-shell">
+    <header class="shell-bar"><div class="shell-heading"><button id="sidebar-toggle" type="button" aria-label="收起侧边栏" aria-expanded="true" title="收起侧边栏">☰</button><span class="shell-label">个人工作空间 <span class="shell-divider">/</span> <span id="shell-page">总览</span></span></div><button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false"><span class="theme-symbol" aria-hidden="true">◐</span><span id="theme-label">深色模式</span></button></header>
+    <main id="main"></main>
+  </div>
+
+  <nav class="tabbar" id="tabbar">
+    <a href="#/overview" data-view="overview" class="ph-tab on"><span class="ico ico-home"></span>总览</a>
+    <a href="#/projects" data-view="projects" class="ph-tab"><span class="ico ico-list"></span>项目</a>
+    <a href="#/summary" data-view="summary" class="ph-tab"><span class="ico ico-book"></span>总结</a>
+    <a href="#/news" data-view="news" class="ph-tab"><span class="ico ico-fire"></span>热点</a>
+    <a href="#/finance" data-view="finance" class="ph-tab"><span class="ico ico-finance"></span>记账</a>
+    <a href="#/prompts" data-view="prompts" class="ph-tab"><span class="ico ico-book"></span>提示词</a>
+    <a href="#/skills" data-view="skills" class="ph-tab"><span class="ico ico-list"></span>技能</a>
+    <a href="#/settings" data-view="settings" class="ph-tab"><span class="ico ico-gear"></span>我的</a>
+  </nav>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</div>
+<script src="layout-storage.js"></script>
+<script src="reactbits/workbench.js"></script>
+<script src="ui-core.js"></script>
+<script src="library-views.js"></script>
+<script src="commands.js"></script>
+<script src="usage-charts.js"></script>
+<script src="usage-accounts.js"></script>
+<script src="usage-radios.js"></script>
+<script src="agent-valuation.js"></script><script src="usage-view.js"></script>
+<script src="usage-filters.js"></script>
+<script src="control-center.js"></script>
+<script src="profile-management.js"></script>
+<script src="workbench-design.js"></script>
+<script src="projects-board.js"></script>
+<script src="summary-board.js"></script>
+<script src="news-board.js"></script>
+<script src="overview-board.js"></script>
+<script src="app.js"></script>
+<script src="settings-center.js"></script>
+<script src="context-menu.js"></script>
+<script src="workbench-ui.js"></script>
+<script src="rounded-selects.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+profile/
+.runtime/
+__pycache__/
+*.py[cod]
+.env*
+*.db*
+*.sqlite*
+*.log
