@@ -38,6 +38,8 @@ python -B run_web.py
 
 浏览器打开 **http://127.0.0.1:8765/**，首次使用创建自己的账户。Windows也可运行 `start.bat`。从其他目录启动时可传入 `run_web.py` 完整路径，资料仍写入源码所在目录的 `profile`。
 
+`start.bat` 会显示启动状态和访问地址，后台就绪后打开浏览器。请保留运行后台的窗口；缺少 Python 或启动失败时会留下错误提示，详细日志位于 `profile/logs/web-runtime.log`。
+
 `build_web.py`检查源码和组件资源摘要，生成 `.runtime/web-build` 中的可运行副本；副本第一次启动建立自己的空profile，不导入原目录账户。
 
 默认只监听本机。需要在可信局域网访问时，明确设置 `WORKBENCH_HOST=0.0.0.0`；端口可通过 `WORKBENCH_PORT`指定，默认8765。

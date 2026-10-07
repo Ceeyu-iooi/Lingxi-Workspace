@@ -21,6 +21,7 @@ def capability():
 
 def main():
     manage='--manage' in sys.argv
+    open_browser='--open-browser' in sys.argv
     # Only explicit local configuration enables LAN access. Downloaded source
     # remains loopback-only; environment configuration has higher priority.
     config_path=Path(web_layout(CODE)['root'])/'config/web-server.json'
@@ -35,6 +36,7 @@ def main():
         if current.get('profileId')!=expected['profileId'] or current.get('serviceId')!=expected['serviceId']:raise SystemExit('8765不是当前资料服务，拒绝连接')
         if manage:webbrowser.open(capability())
         else:print('8765已运行；本次未重启后台。修改源码或监听地址后请先关闭原后台。\n本机资料维护入口：python run_web.py --manage')
+        if open_browser and not manage:webbrowser.open(ORIGIN+'/')
         return
     from workbench.shared_runtime import ProfileLock
     supervisor_lock=ProfileLock(Path(web_layout(CODE)['root'])/'runtime/manager')
@@ -45,10 +47,28 @@ def main():
             compact_profile(profile['root'])
             env={**os.environ,**environment(profile),'WORKBENCH_HOST':host,'WORKBENCH_PORT':os.environ.get('WORKBENCH_PORT','8765'),'WORKBENCH_MANAGED_WEB':'1','WORKBENCH_OPEN_BROWSER':'0','PYTHONUTF8':'1','PYTHONDONTWRITEBYTECODE':'1'}
             logs=Path(profile['root'])/'logs';logs.mkdir(parents=True,exist_ok=True)
+            print('正在启动后台；日志：'+str(logs/'web-runtime.log'),flush=True)
             log=(logs/'web-runtime.log').open('ab')
             child=subprocess.Popen([sys.executable,'-B',str(CODE/'run_web.py'),'--backend'],cwd=CODE,env=env,stdin=subprocess.PIPE,stdout=log,stderr=log)
-            if manage:
-                url=capability();time.sleep(2);webbrowser.open(url);manage=False
+            expected=json.loads((data/'.shared-service.json').read_text()) if (data/'.shared-service.json').exists() else None
+            ready=False
+            for _ in range(120):
+                if child.poll() is not None:break
+                try:
+                    with urlopen(ORIGIN+'/api/runtime',timeout=.5) as response:started=json.load(response)
+                    if started.get('pid')==child.pid and (expected is None or (started.get('profileId')==expected['profileId'] and started.get('serviceId')==expected['serviceId'])):
+                        ready=True;break
+                except OSError:pass
+                time.sleep(.25)
+            if not ready:
+                if child.poll() is None:
+                    child.stdin.close()
+                    try:child.wait(timeout=35)
+                    except subprocess.TimeoutExpired:print('后台未及时退出，请检查日志后关闭本窗口。',flush=True)
+                log.close();raise SystemExit('后台启动失败或超时，请查看 '+str(logs/'web-runtime.log'))
+            print('网页版已就绪：'+ORIGIN+'/'+' （监听 '+host+'）',flush=True)
+            if manage:webbrowser.open(capability());manage=False
+            elif open_browser:webbrowser.open(ORIGIN+'/');open_browser=False
             request=data/'.maintenance-request.json'
             maintenance=False
             while child.poll() is None:
@@ -73,7 +93,9 @@ def main():
                     state.update(status='failed',error=str(exc));atomic_json(request,state)
                 break
             log.close()
-            if not maintenance:return
+            if not maintenance:
+                if child.returncode:raise SystemExit('后台异常退出，请查看 '+str(logs/'web-runtime.log'))
+                return
             if child.poll() is None:return
             # Failure restarts the original profile; successful locator restarts target.
     except KeyboardInterrupt:
