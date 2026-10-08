@@ -75,3 +75,10 @@ export interface ApiFailure {
   conflict?: boolean;
   current?: unknown;
 }
+
+export interface CodexAccountSnapshot {
+  authorization: "chatgpt" | "missing" | "expired";
+  observedAt: string;
+  quota?: { rateLimitsByLimitId?: Record<string, unknown>; rateLimits?: unknown; rateLimitResetCredits?: { availableCount: number; credits: Array<{ id: string; expiresAt: number | null }> | null } | null };
+  unavailable: Record<string, string>;
+}

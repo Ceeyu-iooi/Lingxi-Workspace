@@ -349,10 +349,12 @@ const layoutPrefs = {
 
 function setPageZoom(value) {
   const zoom = Math.min(160, Math.max(60, Number(value) || 100));
-  document.documentElement.style.zoom = `${zoom}%`;
+  document.documentElement.style.removeProperty("zoom");
+  document.documentElement.style.setProperty("--ui-scale", String(zoom / 100));
+  document.documentElement.dataset.uiScale = String(zoom);
   document.documentElement.style.setProperty(
     "--page-zoom-scale",
-    String(zoom / 100),
+    "1",
   );
   layoutStorage.setItem(layoutPrefs.zoomKey, String(zoom));
   const output = $("#page-zoom-value");
@@ -366,61 +368,21 @@ function setPageZoom(value) {
 function showProfile() {
   window.settingsCenter?.close(false, true);
   window.workbenchContextMenu?.close();
-  window.workbenchDesign?.clear();
-  layoutStorage.resetSession();
   user = null;
-  state = {
-    projects: [],
-    tasks: [],
-    activities: [],
-    summaries: [],
-    transactions: [],
-    settings: {},
-  };
-  summaryDraft = null;
-  billPreview = null;
-  document.documentElement.style.zoom = "100%";
-  document.documentElement.style.setProperty("--page-zoom-scale", "1");
-  $("#side-hello").textContent = "打开你的个人工作坊";
-  $("#shell-page").textContent = "创建 Profile";
-  window.dispatchEvent(
-    new CustomEvent("workbench:state", {
-      detail: { user: null, projects: [], tasks: [] },
-    }),
-  );
-  $("#main").classList.add("wb-redesign");
-  $("#main").innerHTML =
-    `<div class="login-wrap profile-start"><section class="card login-card"><div class="brand workbench-brand login-brand"><span class="brand-knot" aria-hidden="true"><img src="assets/lingxi-logo.svg" alt=""></span><span class="brand-name">灵犀工作坊</span></div><p class="login-sub">创建 Profile，保存你的工作内容与个人资料。</p><form id="profile-create-form"><label class="login-field">用户名<input id="profile-username" name="username" required maxlength="30" autocomplete="off" placeholder="给你的工作坊起个名字"></label><p class="login-note">用户名和头像可以稍后在设置中修改。</p><div class="login-error" role="alert"></div><div class="login-actions"><button type="submit" class="onboarding-action">创建 Profile</button></div></form></section></div>`;
-  const form = $("#profile-create-form"),
-    input = $("#profile-username"),
-    button = $("[type=submit]", form),
-    error = $("[role=alert]", form);
-  let pending = false;
-  form.onsubmit = async (event) => {
-    event.preventDefault();
-    if (pending || !form.reportValidity()) return;
-    pending = true;
-    button.disabled = true;
-    error.textContent = "";
-    try {
-      const result = await api(
-        "POST",
-        "/api/profile/create",
-        { username: input.value.trim() },
-        { auth: true },
-      );
-      user = result.user;
-      window.lingxiFreshProfile = true;
-      await refresh();
-      render();
-    } catch (err) {
-      if (error.isConnected) error.textContent = err.message;
-    } finally {
-      pending = false;
-      if (button.isConnected) button.disabled = false;
-    }
-  };
-  input.focus();
+  state = { projects: [], tasks: [], activities: [], summaries: [], transactions: [], settings: {} };
+  document.documentElement.style.removeProperty("zoom");
+  document.documentElement.style.setProperty("--ui-scale", "1");
+  $("#main").innerHTML = '<div class="login-wrap profile-start"><section class="login-card"><div class="onboarding-brand"><img src="assets/lingxi-logo.svg" alt="灵犀"><span>灵犀工作坊</span></div><h1 class="onboarding-heading">建立你的个人资料</h1><p class="onboarding-subtitle">资料保存在所选 Profile，用户名与头像可随时修改。</p><div data-profile-editor></div></section></div>';
+  window.LingxiDesign.identity($("[data-profile-editor]"), { create: true, save: async (name, avatar) => {
+    if (!user) {
+      const result = await api("POST", "/api/profile/create", { username: name }, { auth: true }); user = result.user;
+    } else await api("POST", "/api/profile", { displayName: name });
+    if (avatar) await api("POST", "/api/profile/avatar", { data: avatar });
+    window.lingxiFreshProfile = true;
+    await api("POST", "/api/control/config", { onboardingStep: "agents" });
+    await refresh(); render();
+  }});
+  $("#profile-username")?.focus();
 }
 function showInstanceConnection() {
   $("#main").innerHTML =

@@ -1,4 +1,6 @@
 import Fastify from "fastify";
+import { WebUpdates } from "./web-updates.ts";
+import { CodexLogin } from "./codex-login.ts";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve, join, extname, dirname, relative, sep, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -70,6 +72,8 @@ export async function startServer(
     return target;
   };
   try{profileBoundary(profile.root);}catch(error){profile.close();throw error;}
+  let codexLogin: CodexLogin;
+  const webUpdates=new WebUpdates(profile.root,version);
   let business: Business,
     control: Control,
     backups: ProfileBackups,
@@ -103,6 +107,8 @@ export async function startServer(
   const initialize = () => {
     business = new Business(profile);
     control = new Control(profile);
+    codexLogin?.close();
+    codexLogin = new CodexLogin(profile);
     backups = new ProfileBackups(profile);
     jobs = new Jobs();
     prompts = new Prompts(profile);
@@ -825,6 +831,17 @@ export async function startServer(
       ),
     };
   });
+  app.get("/api/updates/state", () => webUpdates.state());
+  app.post("/api/updates/check", (request,reply) => local(request)?webUpdates.check():reply.code(403).send({error:"更新操作仅允许本机访问"}));
+  app.post("/api/updates/download", (request,reply) => local(request)?webUpdates.download():reply.code(403).send({error:"更新操作仅允许本机访问"}));
+  app.get("/api/updates/file", (request,reply) => {if(!local(request))return reply.code(403).send({error:"安装包仅允许本机获取"});const file=webUpdates.file();return reply.header("Content-Disposition",'attachment; filename="'+file.name+'"').type("application/octet-stream").send(file.stream);});
+  app.post("/api/codex/login/start", async request => {
+    const result = await codexLogin.start(String(body(request).mode || "browser"));
+    return result;
+  });
+  app.get("/api/codex/login/status", () => codexLogin.state());
+  app.post("/api/codex/login/cancel", request => codexLogin.cancel(body(request).loginId));
+  app.get("/api/codex/account", () => codexLogin.account());
   app.get("/api/usage/connections", () => accounts.list());
   app.post("/api/usage/connection", (request) => accounts.save(body(request)));
   for (const route of [
@@ -1143,6 +1160,8 @@ export async function startServer(
         accounts.idle(),
       ]);
     }
+    codexLogin?.close();
+    webUpdates.close();
     profile.close();
     if(cliOwned){process.stdin.destroy();setImmediate(()=>process.exit(0));}
   });

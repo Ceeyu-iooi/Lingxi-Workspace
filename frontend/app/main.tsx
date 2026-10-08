@@ -101,7 +101,8 @@ function Menus() {
         event.nativeEvent,
       );
     if (value === "zoom-reset") {
-      document.documentElement.style.zoom = "100%";
+      document.documentElement.style.removeProperty("zoom");
+  document.documentElement.style.setProperty("--ui-scale", "1");
       document.documentElement.style.setProperty("--page-zoom-scale", "1");
     }
     event.currentTarget.closest("details")?.removeAttribute("open");
@@ -139,7 +140,7 @@ function Menus() {
         <summary>帮助</summary>
         <div className="workbench-menu">
           <a href="#/settings/shortcuts">快捷键</a>
-          <a href="ui-kit.html">UI 组件规范</a>
+          <a href="preview.html">设计预览</a>
         </div>
       </details>
     </div>

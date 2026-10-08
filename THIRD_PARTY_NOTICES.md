@@ -66,3 +66,11 @@ DeepSeek Harness, Copyright (c) 2026 DeepSeek, MIT License. Native GDI+ rounded-
 ## TypeScript runtime (0.0.32)
 
 Fastify 5.12.5, better-sqlite3 12.11.1, decimal.js 10.6.0, yaml 2.9.1, yauzl 3.4.0 and yazl 3.3.1 retain their package licenses. Sharp 0.35.5 and libvips retain their upstream licenses. electron-updater 6.8.9 supports manual full-package updates. React 19.3.0, Vite 8.3.2 and TypeScript 7.0.2 build the application shell and page entries; original interaction controllers remain compatibility adapters. README layout and Chinese release-note sections reference Token Monitor; the architecture SVG is original and follows C4 container-diagram principles. Node.js 24.16.0 and its bundled dependency notices are retained verbatim in static/vendor/node/LICENSE.rtf, extracted from the locally cached matching Windows installer license record without a network download. Desktop packages include the identical LICENSE.node.rtf.
+
+## 本次集成与设计参考
+
+- OpenAI Codex CLI 0.161.0：Apache-2.0；官方包 @openai/codex 与对应平台可执行文件，仅用于用户授权及只读账户查询。许可证见 static/vendor/codex/LICENSE，版本与完整性记录在 package-lock.json。源码 https://github.com/openai/codex 。不执行推理任务。
+- VoltAgent awesome-design-md：MIT；仅参考设计文档及在线浅深预览展示结构，使用灵犀自身资源构建实例。许可证见 static/vendor/design-reference/LICENSE，完整来源与摘要见 docs/design-reference-audit.json。
+- marked 与 DOMPurify：原有锁定依赖，用于安全渲染更新 Markdown；脚本、远程图片和任意协议不进入更新内容。
+
+- SloshGauge-JS-CSS 与 ScrubField-JS-CSS：通过配置的 React Bits 公共 registry 安装原始 JSX/CSS，摘要纳入来源回执；使用同一 MIT + Commons Clause 应用集成许可，原源码不进入公开导出。

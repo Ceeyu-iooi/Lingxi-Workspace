@@ -257,7 +257,7 @@
         setWidth(
           startWidth +
             (ev.clientX - startX) /
-              (parseFloat(document.documentElement.style.zoom) / 100 || 1),
+              1,
         );
       const end = () => {
         divider.removeEventListener("pointermove", move);

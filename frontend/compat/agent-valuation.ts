@@ -195,12 +195,15 @@
     panel.dataset.scope = scope;
     panel.querySelector("h3").textContent =
       scope === "codex"
-        ? "Codex 账户 · API 参考等价值"
+        ? "API等效参考价值"
         : names[scope] + " · API 参考等价值";
     const quotaHeading = root.querySelector(".usage-account-heading");
     if (scope === "codex" && quotaHeading) {
-      quotaHeading.querySelector("h3").hidden = true;
-      panel.after(root.querySelector(".usage-account-slot"));
+      quotaHeading.querySelector("h3").hidden = false;
+      const target=root.querySelector("[data-codex-value]");
+      if(target&&panel.parentElement!==target)target.replaceChildren(panel);
+    } else if (panel.parentElement !== root) {
+      root.querySelector(".usage-summary").after(panel);
     }
     panel.querySelector("[data-enabled]").textContent = !compatible
       ? "等待后台更新"
@@ -217,6 +220,7 @@
       state.compatible = compatible;
       window.WorkbenchReact.slideCommit(panel.querySelector("[data-slide]"), {
         enabled,
+        compact: scope === "codex",
         disabled: !compatible,
         onConfirm: () => toggle(scope, enabled),
       });

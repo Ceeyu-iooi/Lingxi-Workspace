@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { Decimal } from "decimal.js";
 import { realpathSync, existsSync } from "node:fs";
 import { Monitor, canonical, iso } from "./monitor.ts";
@@ -854,7 +855,7 @@ export class UsageAccounts {
         let snapshot: JsonObject;
         if (row.kind === "codex") {
           this.claim("codex", this.control.public().defaultCodexPath);
-          snapshot = await readCodexAccount();
+          snapshot = await readCodexAccount(join(this.monitor.profile.root, "data", "credentials", this.monitor.profile.owner, "codex"));
         } else {
           const keys = this.control.profile.credentials(),
             key = keys["usage:" + id];

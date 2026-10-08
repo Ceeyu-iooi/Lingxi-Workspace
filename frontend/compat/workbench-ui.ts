@@ -341,7 +341,7 @@
         '<span class="account-avatar" aria-hidden="true"></span><span class="account-name"></span>';
       profile.onclick = () => {
         if (typeof user !== "undefined" && user)
-          location.hash = "#/settings/general";
+          window.lingxiProfileMenu?.();
         else document.getElementById("lg-user")?.focus();
       };
     }
@@ -367,7 +367,7 @@
     event.preventDefault();
     const zoom =
       Number(storage()?.getItem("wb-page-zoom")) ||
-      parseFloat(document.documentElement.style.zoom) ||
+      Number(document.documentElement.dataset.uiScale) ||
       100;
     if (typeof setPageZoom === "function")
       setPageZoom(reset ? 100 : zoom + (plus ? 5 : -5));

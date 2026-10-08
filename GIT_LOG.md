@@ -1,5 +1,5 @@
 # 发布记录
 
-## v0.0.33
+## 0.0.34
 
-React、TypeScript、Vite 与 Node、SQLite；Profile 实例资料、完整加密备份。桌面双包由 Releases 提供。
+新增设计规范和浅深预览、固定标签与UI缩放、独立关于卡片、头像栏上方菜单。Codex登录缓存只读自动复用，额度布局、两位Credit、到期电池、ScrubField设置；预发布更新与直接校验下载。Windows双包通过Releases分发，本次原生EXE未验收。

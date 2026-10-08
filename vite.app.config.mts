@@ -41,10 +41,10 @@ export default defineConfig({
               readFileSync(
                 resolve(root, "frontend/compat", file),
                 "utf8",
-              ).replace(/^\/\/ @ts-nocheck\s*/, ""),
+              ).replace(/^\/\/ @ts-nocheck\s*/, "").replace(/^import .*?;\s*$/gm, ""),
             )
             .join("\n;\n");
-        return `export function ${standalone ? "installStandalone" : "installRuntime"}(){\nfunction onReady(callback){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',callback,{once:true});else queueMicrotask(()=>callback(new Event('DOMContentLoaded')));}\n${source}\n${standalone ? "" : "return appReady.then(()=>({render,refresh,getUser:()=>user}));"}\n}`;
+        return `import {marked} from "marked"; import DOMPurify from "dompurify"; export function ${standalone ? "installStandalone" : "installRuntime"}(){\nfunction onReady(callback){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',callback,{once:true});else queueMicrotask(()=>callback(new Event('DOMContentLoaded')));}\n${source}\n${standalone ? "" : "return appReady.then(()=>({render,refresh,getUser:()=>user}));"}\n}`;
       },
     },
   ],
@@ -57,6 +57,8 @@ export default defineConfig({
       input: {
         app: resolve(root, "frontend/app/index.html"),
         kit: resolve(root, "frontend/app/ui-kit.html"),
+        preview: resolve(root, "frontend/app/preview.html"),
+        previewDark: resolve(root, "frontend/app/preview-dark.html"),
         prices: resolve(root, "frontend/app/prices.html"),
       },
     },

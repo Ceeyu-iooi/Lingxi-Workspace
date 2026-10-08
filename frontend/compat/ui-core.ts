@@ -421,7 +421,7 @@
           input.name ||
           input.id;
         if (state.slider)
-          window.WorkbenchReact.wakeSlider(state.host, {
+          window.WorkbenchReact.scrubField(state.host, {
             value: Number(input.value),
             min: Number(input.min),
             max: Number(input.max),
@@ -474,7 +474,7 @@
     diff,
     registry,
     refreshControls,
-    version: "0.0.33",
+    version: "0.0.34",
   };
   let frame;
   const upgrade = () => {

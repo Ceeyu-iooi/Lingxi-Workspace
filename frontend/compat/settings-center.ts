@@ -21,7 +21,7 @@
     d.close();
     d.remove();
     if (restore && location.hash.startsWith("#/settings"))
-      history.replaceState(null, "", baseHash);
+      { history.replaceState(null, "", baseHash); window.dispatchEvent(new HashChangeEvent("hashchange")); }
     if (focus?.isConnected) focus.focus({ preventScroll: true });
     identity = null;
     return true;

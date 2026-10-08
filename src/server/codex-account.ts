@@ -3,7 +3,8 @@ import {
   spawnSync,
   type ChildProcessWithoutNullStreams,
 } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { existsSync, readFileSync, mkdirSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { homedir } from "node:os";
 import { fetchJSON } from "./control.ts";
@@ -11,7 +12,8 @@ import { Dataset, FIELDS } from "./usage-summary.ts";
 import { iso } from "./monitor.ts";
 import type { JsonObject } from "./profile.ts";
 
-class CodexRPC {
+export class CodexRPC {
+  notify: (method: string, params: JsonObject) => void = () => {};
   process: ChildProcessWithoutNullStreams;
   private sequence = 0;
   private buffer = "";
@@ -23,50 +25,19 @@ class CodexRPC {
       timer: ReturnType<typeof setTimeout>;
     }
   >();
-  constructor() {
-    const find = (name: string) => {
-      const result = spawnSync(
-        process.platform === "win32" ? "where.exe" : "which",
-        [name],
-        { encoding: "utf8", windowsHide: true },
-      );
-      return result.status === 0
-        ? result.stdout
-            .trim()
-            .split(/\r?\n/)
-            .find((p) => existsSync(p))
-        : undefined;
-    };
-    const explicit = process.env.CODEX_CLI_PATH,
-      exe = explicit || find("codex.exe");
-    let command: string, args: string[];
-    if (exe && existsSync(exe)) {
-      command = exe;
-      args = ["app-server"];
-    } else {
-      const launcher = find("codex"),
-        node = find(process.platform === "win32" ? "node.exe" : "node"),
-        script = launcher
-          ? join(
-              dirname(launcher),
-              "node_modules",
-              "@openai",
-              "codex",
-              "bin",
-              "codex.js",
-            )
-          : "";
-      if (!node || !script || !existsSync(script))
-        throw new Error(
-          "未找到 Codex CLI，请安装官方 CLI 并完成 ChatGPT 登录后重试",
-        );
-      command = node;
-      args = [script, "app-server"];
-    }
+  handleServerRequest: ((method: string, params: JsonObject) => Promise<JsonObject>) | null = null;
+  constructor(home?: string, ephemeral = false) {
+    if (!home) throw new Error("请先在当前 Profile 连接 Codex 账户");
+    const req = createRequire(import.meta.url);
+    const target = process.platform === "win32" ? `${process.arch === "arm64" ? "aarch64" : "x86_64"}-pc-windows-msvc` : process.platform === "darwin" ? `${process.arch === "arm64" ? "aarch64" : "x86_64"}-apple-darwin` : `${process.arch === "arm64" ? "aarch64" : "x86_64"}-unknown-linux-musl`;
+    const pkg = req.resolve(`@openai/codex-${process.platform}-${process.arch}/package.json`);
+    const command = join(dirname(pkg), "vendor", target, "bin", process.platform === "win32" ? "codex.exe" : "codex");
+    if (!existsSync(command)) throw new Error("Codex 账户查询运行依赖缺失，请恢复运行依赖");
+    const args = ["-c", ephemeral ? 'cli_auth_credentials_store="ephemeral"' : 'cli_auth_credentials_store="file"', "app-server"];
     this.process = spawn(command, args, {
       env: {
         ...process.env,
-        CODEX_HOME: process.env.CODEX_HOME || join(homedir(), ".codex"),
+        CODEX_HOME: home,
       },
       windowsHide: true,
       stdio: ["pipe", "pipe", "pipe"],
@@ -86,6 +57,12 @@ class CodexRPC {
         try {
           const message = JSON.parse(line),
             request = this.waiting.get(message.id);
+          if (message.method && message.id != null) {
+            const reply = (payload: JsonObject) => { if (!this.process.stdin.destroyed) this.process.stdin.write(JSON.stringify({id:message.id,...payload})+"\n"); };
+            Promise.resolve(this.handleServerRequest?.(message.method,message.params || {})).then(result=>reply(result?{result}:{error:{code:-32601,message:"Unsupported account request"}})).catch(()=>reply({error:{code:-32000,message:"登录凭据未刷新，请在 Codex 中重新登录"}}));
+            continue;
+          }
+          if (message.method && message.id == null) this.notify(message.method, message.params || {});
           if (!request) continue;
           clearTimeout(request.timer);
           this.waiting.delete(message.id);
@@ -101,6 +78,7 @@ class CodexRPC {
         } catch {}
       }
     });
+    this.process.stderr.on("data", () => {});
     const fail = () => {
       for (const item of this.waiting.values()) {
         clearTimeout(item.timer);
@@ -135,28 +113,19 @@ class CodexRPC {
     if (this.process.exitCode === null) this.process.kill();
   }
 }
-function auth() {
-  const file = join(
-    process.env.CODEX_HOME || join(homedir(), ".codex"),
-    "auth.json",
-  );
-  let value: JsonObject;
+export function cachedChatGPTAuth(home: string) {
   try {
-    value = JSON.parse(readFileSync(file, "utf8"));
-  } catch {
-    throw new Error("未找到当前用户的 Codex 登录，请使用 ChatGPT 登录后同步");
-  }
-  if (
-    value.auth_mode !== "chatgpt" ||
-    !value.tokens?.access_token ||
-    !value.tokens?.account_id
-  )
-    throw new Error("需要 Codex 的 ChatGPT 登录；API Key 不支持订阅额度查询");
-  return {
-    Authorization: "Bearer " + value.tokens.access_token,
-    "ChatGPT-Account-Id": value.tokens.account_id,
-    "User-Agent": "workbench-usage/1.0",
-  };
+    const file=join(home,"auth.json");
+    if(statSync(file).size>65536)throw new Error();
+    const data=JSON.parse(readFileSync(file,"utf8")),tokens=data.tokens;
+    if(typeof tokens?.access_token!=="string"||typeof tokens?.account_id!=="string"||!tokens.access_token||!tokens.account_id)throw new Error();
+    return {accessToken:tokens.access_token,chatgptAccountId:tokens.account_id};
+  } catch { throw new Error("未找到可复用的 Codex ChatGPT 登录，请在 Codex 中登录或使用连接Codex"); }
+}
+function auth(home?: string) {
+  if(!home)throw new Error("请连接 Codex 账户");
+  const tokens=cachedChatGPTAuth(home);
+  return {Authorization:"Bearer "+tokens.accessToken,"ChatGPT-Account-Id":tokens.chatgptAccountId,"User-Agent":"workbench-usage/1.0"};
 }
 const count = (v: any) =>
   typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? v : null;
@@ -209,10 +178,10 @@ export function normalizeActivity(value: any) {
   }
   return result;
 }
-async function quotaHTTP() {
+async function quotaHTTP(home?: string) {
   const data = await fetchJSON(
       "https://chatgpt.com/backend-api/wham/usage",
-      { headers: auth() },
+      { headers: auth(home) },
       1024 * 1024,
       15000,
     ),
@@ -252,10 +221,10 @@ async function quotaHTTP() {
     },
   };
 }
-async function activityHTTP() {
+async function activityHTTP(home?: string) {
   const data = await fetchJSON(
       "https://chatgpt.com/backend-api/wham/profiles/me",
-      { headers: { ...auth(), Accept: "application/json" } },
+      { headers: { ...auth(home), Accept: "application/json" } },
       2 * 1024 * 1024,
       10000,
     ),
@@ -285,18 +254,32 @@ async function activityHTTP() {
           })),
   });
 }
-export async function readCodexAccount() {
+export async function readCodexAccount(home?: string, options: {includeActivity?: boolean} = {}) {
+  if(!home)throw new Error("请先选择 Profile");
+  const sharedHome=process.env.CODEX_HOME || join(homedir(),".codex");
+  const own=existsSync(join(home,"auth.json")),authHome=own?home:sharedHome;
+  const cached=cachedChatGPTAuth(authHome);
+  mkdirSync(home,{recursive:true});
   let rpc: CodexRPC | undefined,
     result: JsonObject = {
       unavailable: {},
       coverage: "官方账户活动与实时配额；本机日志单独查看",
     };
   try {
-    rpc = new CodexRPC();
+    rpc = new CodexRPC(home,!own);
+    rpc.handleServerRequest=async(method,params)=>{
+      if(method!=="account/chatgptAuthTokens/refresh")throw new Error("Unsupported account request");
+      const refreshed=cachedChatGPTAuth(authHome);
+      if(params.previousAccountId && params.previousAccountId!==refreshed.chatgptAccountId)throw new Error("Codex账户已切换");
+      return refreshed;
+    };
     await rpc.call("initialize", {
-      clientInfo: { name: "workbench_usage", version: "1.0.0" },
+      clientInfo: { name: "workbench_usage", version: "0.0.34" },
+      capabilities: { experimentalApi: true },
     });
     rpc.initialized();
+    if(!own)await rpc.call("account/login/start",{type:"chatgptAuthTokens",...cached});
+    result.credentialSource=own?"profile":"local-codex-cache";
     const account =
       (await rpc.call("account/read", { refreshToken: false })).account || {};
     if (account.type !== "chatgpt")
@@ -305,8 +288,8 @@ export async function readCodexAccount() {
       );
     result.planType = account.planType;
     for (const [method, field] of [
-      ["account/usage/read", "tokenActivity"],
       ["account/rateLimits/read", "quota"],
+      ...(options.includeActivity === false ? [] : [["account/usage/read", "tokenActivity"]]),
     ])
       try {
         result[field] = await rpc.call(method);
@@ -319,9 +302,9 @@ export async function readCodexAccount() {
   } finally {
     rpc?.close();
   }
-  if (!result.tokenActivity)
+  if (options.includeActivity !== false && !result.tokenActivity)
     try {
-      result.tokenActivity = await activityHTTP();
+      result.tokenActivity = await activityHTTP(authHome);
       result.activitySource = "codex-backend-readonly";
       delete result.unavailable.tokenActivity;
     } catch (error: any) {
@@ -329,7 +312,7 @@ export async function readCodexAccount() {
     }
   if (!result.quota)
     try {
-      const fallback = await quotaHTTP();
+      const fallback = await quotaHTTP(authHome);
       for (const key of ["planType", "quota", "quotaSource"])
         result[key] = (fallback as JsonObject)[key];
       delete result.unavailable.quota;

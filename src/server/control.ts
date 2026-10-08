@@ -23,6 +23,7 @@ const BOOL = [
   "dshEnabled",
   ...Object.keys(FEATURES),
   "reduceMotion",
+  "closeToTray",
 ];
 const PATHS = [
   "codexPath",
@@ -197,7 +198,7 @@ export class Control {
       interfaceMode: ["coding", "office"],
       locale: ["system", "zh-CN", "en-US"],
       theme: ["system", "light", "dark", "zai-light", "zai-dark"],
-      onboardingStep: ["agents", "suppliers", "complete"],
+      onboardingStep: ["identity", "agents", "codex", "suppliers", "complete"],
       uiFontSize: [12, 14, 16, 18],
       accent: ["blue", "violet", "teal", "orange"],
     }))

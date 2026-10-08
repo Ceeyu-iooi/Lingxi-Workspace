@@ -9,6 +9,7 @@
     ["usage", "用量与实验", "Usage", "services"],
     ["data", "数据与备份", "Data", "account"],
     ["shortcuts", "快捷键", "Shortcuts", "account"],
+    ["about", "关于", "About", "account"],
   ];
   if (window.workbenchDesktop?.updateState)
     sections.push(["updates", "关于与更新", "About and updates", "account"]);
@@ -208,6 +209,10 @@
       panel._wbDispose?.();
       panel._wbUnsaved = null;
     };
+    if (selected[0] === "about") {
+      window.LingxiDesign.mountAbout(panel);
+      return;
+    }
     if (selected[0] === "general") return accountSettings(panel);
     if (selected[0] === "data") return dataSettings(panel);
     if (selected[0] === "appearance") return appearance(panel);
@@ -314,77 +319,13 @@
     };
   }
   function accountSettings(root) {
-    const body = viewHeader(
-      root,
-      "个人资料",
-      "设置当前 Profile 的用户名与头像。",
-    );
-    body.innerHTML = `<section class="control-section"><div class="control-form-grid"><div><img class="wb-avatar-preview" ${data.avatar?.url ? 'src="' + e(data.avatar.url) + '"' : "hidden"} alt="当前头像"><span class="wb-avatar-preview wb-avatar-placeholder" ${data.avatar?.url ? "hidden" : ""} aria-label="尚未设置头像">${e(
-      Array.from(state.settings.display_name || user.display_name || "我")
-        .slice(0, 2)
-        .join(""),
-    )}</span><label class="btn ghost wb-avatar-upload">上传头像<input type="file" data-avatar accept="image/png,image/jpeg,image/webp" hidden></label><button class="btn ghost" data-avatar-remove>移除头像</button><p class="meta">静态 PNG、JPEG 或 WebP，最大 3 MB。</p></div><form data-profile><label class="control-field">用户名<input id="profile-name" name="displayName" maxlength="30" value="${e(state.settings.display_name || user.username)}"></label><p class="control-form-error" role="alert"></p><button type="submit" id="profile-save" class="btn">保存资料</button></form></div></section>`;
-    const identity = user.username,
-      active = () => root.isConnected && user?.username === identity;
-    q("[data-profile]", body).onsubmit = async (event) => {
-      event.preventDefault();
-      const form = event.target,
-        b = q("[type=submit]", form);
-      if (b.disabled) return;
-      b.disabled = true;
-      try {
-        await call(
-          "POST",
-          "/api/profile",
-          Object.fromEntries(new FormData(form)),
-        );
-        if (!active()) return;
-        await refresh();
-        delete q("#profile-name", form).dataset.wbDirty;
-        toast("资料已保存");
-        refreshFooter();
-      } catch (error) {
-        if (active()) q("[role=alert]", form).textContent = error.message;
-      } finally {
-        b.disabled = false;
-      }
-    };
-    q("[data-avatar]", body).onchange = async (ev) => {
-      const input = ev.target,
-        file = input.files[0];
-      if (!file) return;
-      input.disabled = true;
-      try {
-        await call("POST", "/api/profile/avatar", {
-          data: await window.WorkbenchUI.fileBase64(file),
-        });
-        await load();
-        if (active()) {
-          q("img.wb-avatar-preview", body).hidden = false;
-          q(".wb-avatar-placeholder", body).hidden = true;
-          q("img.wb-avatar-preview", body).src = data.avatar.url;
-          delete input.dataset.wbDirty;
-          refreshFooter();
-          toast("头像已更新");
-        }
-      } catch (error) {
-        if (active()) toast(error.message);
-      } finally {
-        input.value = "";
-        input.disabled = false;
-      }
-    };
-    q("[data-avatar-remove]", body).onclick = async () => {
-      await call("POST", "/api/profile/avatar", { remove: true });
-      await load();
-      if (active()) {
-        q("img.wb-avatar-preview", body).removeAttribute("src");
-        q("img.wb-avatar-preview", body).hidden = true;
-        q(".wb-avatar-placeholder", body).hidden = false;
-        refreshFooter();
-        toast("头像已移除");
-      }
-    };
+    const body = viewHeader(root, "个人资料", "设置当前 Profile 的用户名与头像。");
+    window.LingxiDesign.identity(body, { name: state.settings.display_name || user.display_name, avatar: data.avatar?.url, save: async (name, avatar, remove) => {
+      await call("POST", "/api/profile", { displayName: name });
+      if (avatar) await call("POST", "/api/profile/avatar", { data: avatar });
+      if (remove) await call("POST", "/api/profile/avatar", { remove: true });
+      await load(); await refresh(); refreshFooter(); toast("资料已保存");
+    }});
   }
   function dataSettings(root) {
     const body = viewHeader(
@@ -393,7 +334,7 @@
       "备份整个 Profile，包含工作内容、个人资料、设置与凭据。",
     );
     body.innerHTML =
-      '<section class="control-section"><div class="control-actions"><button class="btn" data-backup>创建加密备份</button><button class="btn ghost" data-export-profile>导出加密 Profile</button><label class="btn ghost">导入 Profile<input type="file" data-import-profile accept=".lxprofile,.json" hidden></label><a class="btn ghost" href="ui-kit.html">UI 组件库 ↗</a></div><p class="meta">请妥善保存备份口令，恢复时需要使用。</p><p class="control-form-error" role="alert"></p><div data-backup-list></div></section>';
+      '<section class="control-section"><div class="control-actions"><button class="btn" data-backup>创建加密备份</button><button class="btn ghost" data-export-profile>导出加密 Profile</button><label class="btn ghost">导入 Profile<input type="file" data-import-profile accept=".lxprofile,.json" hidden></label><a class="btn ghost" href="preview.html">设计预览 ↗</a></div><p class="meta">请妥善保存备份口令，恢复时需要使用。</p><p class="control-form-error" role="alert"></p><div data-backup-list></div></section>';
     const identity = user.username,
       active = () => root.isConnected && user?.username === identity;
     const passwordDialog = (title, confirmPassword, submit) =>
@@ -1475,24 +1416,51 @@
   function drawUsage(root, s) {
     window.usageView.update(root, s);
   }
-  function profileMenu() {
-    if (!user) return;
-    const d = dialog(
-      "Profile 与工作台",
-      `<div class="profile-menu"><strong>${e(state.settings.display_name || user.username)}</strong><a class="btn ghost" href="#/settings/general">个人资料与备份</a><a class="btn ghost" href="#/settings/appearance">语言 / 主题 / 界面模式</a><a class="btn ghost" href="#/settings/usage">Token 用量</a><div class="control-actions">${button("缩小", "profile-out")}${button("实际大小", "profile-reset")}${button("放大", "profile-in")}</div></div>`,
-      async () => {},
-    );
-    qa("a", d).forEach((a) => (a.onclick = () => d.close()));
-    q("#profile-out", d).onclick = () =>
-      setPageZoom(
-        Number(window.wbLayoutStorage.getItem("wb-page-zoom") || 100) - 5,
-      );
-    q("#profile-in", d).onclick = () =>
-      setPageZoom(
-        Number(window.wbLayoutStorage.getItem("wb-page-zoom") || 100) + 5,
-      );
-    q("#profile-reset", d).onclick = () => setPageZoom(100);
+  let profilePopover = null, profileMenuOwner = null;
+  function hideProfileMenu(restore = false) {
+    const trigger=document.getElementById("control-profile");
+    if(profilePopover?.matches(":popover-open"))profilePopover.hidePopover();
+    profilePopover?.classList.remove("is-open");
+    trigger?.setAttribute("aria-expanded","false");
+    if(restore)trigger?.focus({preventScroll:true});
   }
+  function positionProfileMenu() {
+    const trigger=document.getElementById("control-profile"),side=trigger?.closest(".side");
+    if(!trigger||!side||!profilePopover)return;
+    const box=trigger.getBoundingClientRect(),column=side.getBoundingClientRect();
+    const width=Math.min(Math.max(200,column.width-16),innerWidth-16);
+    profilePopover.style.width=width+"px";
+    profilePopover.style.left=Math.max(8,Math.min(column.left+8,innerWidth-width-8))+"px";
+    profilePopover.style.top=Math.max(8,box.top-profilePopover.offsetHeight-8)+"px";
+  }
+  function profileMenu() {
+    if(!user)return;
+    const trigger=document.getElementById("control-profile");
+    if(profilePopover?.classList.contains("is-open")){hideProfileMenu(true);return;}
+    if(!profilePopover){
+      profilePopover=document.createElement("div");profilePopover.id="lingxi-profile-menu";
+      profilePopover.className="lingxi-profile-popover";profilePopover.setAttribute("role","menu");
+      profilePopover.setAttribute("aria-label","个人资料与工作台");
+      if(typeof profilePopover.showPopover==="function")profilePopover.setAttribute("popover","auto");
+      document.body.append(profilePopover);
+      profilePopover.addEventListener("toggle",event=>{if(event.newState==="closed"){profilePopover.classList.remove("is-open");trigger?.setAttribute("aria-expanded","false");}});
+      document.addEventListener("pointerdown",event=>{if(profilePopover?.classList.contains("is-open")&&!profilePopover.contains(event.target)&&!trigger.contains(event.target))hideProfileMenu();});
+      document.addEventListener("keydown",event=>{if(!profilePopover?.classList.contains("is-open"))return;if(event.key==="Escape"){event.preventDefault();hideProfileMenu(true);return;}if(["ArrowDown","ArrowUp","Home","End"].includes(event.key)){event.preventDefault();const items=[...profilePopover.querySelectorAll('[role="menuitem"]')],index=items.indexOf(document.activeElement);items[event.key==='Home'?0:event.key==='End'?items.length-1:(index+(event.key==='ArrowDown'?1:-1)+items.length)%items.length]?.focus();}});
+      window.addEventListener("resize",positionProfileMenu);
+      window.addEventListener("hashchange",()=>hideProfileMenu());
+    }
+    profileMenuOwner=user.username;
+    const name=state.settings.display_name||user.display_name||"个人资料",avatar=trigger.querySelector("img")?.src||"";
+    profilePopover.innerHTML=window.LingxiDesign.profileMenuMarkup(name,avatar);
+    profilePopover.querySelector("[data-profile-identity]").onclick=()=>{hideProfileMenu(true);location.hash="#/settings/general";};
+    profilePopover.querySelectorAll("a").forEach(a=>a.addEventListener("click",()=>hideProfileMenu(true)));
+    trigger.setAttribute("aria-haspopup","menu");trigger.setAttribute("aria-controls",profilePopover.id);trigger.setAttribute("aria-expanded","true");
+    if(profilePopover.hasAttribute("popover"))profilePopover.showPopover();
+    profilePopover.classList.add("is-open");positionProfileMenu();
+    profilePopover.querySelector('[role="menuitem"]')?.focus({preventScroll:true});
+  }
+  window.addEventListener("workbench:state",event=>{if(profileMenuOwner&&event.detail?.user?.username!==profileMenuOwner){hideProfileMenu();profileMenuOwner=null;}});
+  window.lingxiProfileMenu = profileMenu;
   function installMenus() {
     const nav = q("#nav");
     if (!nav || q("#usage-nav")) return;
@@ -1521,7 +1489,7 @@
     const menus = document.createElement("div");
     menus.className = "workbench-menubar";
     menus.innerHTML =
-      '<details><summary>文件</summary><div class="workbench-menu"><a href="#/prompts">提示词库</a><a href="#/settings/data">导入 / 导出 / 备份</a></div></details><details><summary>编辑</summary><div class="workbench-menu"><button data-menu="search">搜索与跳转</button><a href="#/skills">本地技能</a></div></details><details><summary>视图</summary><div class="workbench-menu"><button data-menu="sidebar">收起 / 展开侧边栏</button><button data-menu="theme">切换主题</button><button data-menu="zoom-reset">实际大小</button><a href="#/settings/appearance">界面设置</a></div></details><details><summary>帮助</summary><div class="workbench-menu"><a href="#/settings/shortcuts">快捷键</a><a href="ui-kit.html">UI 组件规范</a></div></details>';
+      '<details><summary>文件</summary><div class="workbench-menu"><a href="#/prompts">提示词库</a><a href="#/settings/data">导入 / 导出 / 备份</a></div></details><details><summary>编辑</summary><div class="workbench-menu"><button data-menu="search">搜索与跳转</button><a href="#/skills">本地技能</a></div></details><details><summary>视图</summary><div class="workbench-menu"><button data-menu="sidebar">收起 / 展开侧边栏</button><button data-menu="theme">切换主题</button><button data-menu="zoom-reset">实际大小</button><a href="#/settings/appearance">界面设置</a></div></details><details><summary>帮助</summary><div class="workbench-menu"><a href="#/settings/shortcuts">快捷键</a><a href="preview.html">设计预览</a></div></details>';
     q(".shell-bar").insertBefore(menus, q("#theme-toggle"));
     qa("[data-menu]", menus).forEach(
       (b) =>

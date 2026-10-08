@@ -49,7 +49,7 @@
   function draw() {
     if (!active()) return;
     const host = surface.querySelector(".onboarding-stage");
-    host.innerHTML = `<div class="onboarding-brand"><img src="assets/lingxi-logo.svg" alt="灵犀"><span>灵犀工作坊</span></div><div class="onboarding-progress" aria-label="${step === "agents" ? "第 1 步，共 2 步" : "第 2 步，共 2 步"}"><i data-active="true"></i><i data-active="${step === "suppliers"}"></i></div><h1 class="onboarding-heading" tabindex="-1">${step === "agents" ? "把你的 Agent 用量连起来" : "连接你使用的 API 供应商"}</h1><p class="onboarding-subtitle">${step === "agents" ? "选择允许灵犀读取的本机用量日志。每个工具独立开启，也可以稍后在设置中连接。" : "添加用于查询用量和账单的 API Key。不同供应商的查询能力不同，你可以随时在设置中补充。"}</p>${
+    host.innerHTML = `<div class="onboarding-brand"><img src="assets/lingxi-logo.svg" alt="灵犀"><span>灵犀工作坊</span></div><div class="onboarding-progress" aria-label="${step === "agents" ? "第 1 步，共 3 步" : step === "codex" ? "第 2 步，共 3 步" : "第 3 步，共 3 步"}"><i data-active="true"></i><i data-active="${step !== "agents"}"></i><i data-active="${step === "suppliers"}"></i></div><h1 class="onboarding-heading" tabindex="-1">${step === "agents" ? "把你的 Agent 用量连起来" : "连接你使用的 API 供应商"}</h1><p class="onboarding-subtitle">${step === "agents" ? "选择允许灵犀读取的本机用量日志。每个工具独立开启，也可以稍后在设置中连接。" : "添加用于查询用量和账单的 API Key。不同供应商的查询能力不同，你可以随时在设置中补充。"}</p>${
       step === "agents"
         ? `<div class="onboarding-cards">${[
             ["codex", "Codex", "defaultCodexPath"],
@@ -62,9 +62,14 @@
             )
             .join("")}</div>`
         : '<div class="onboarding-card"><h2>API 供应商</h2><p data-supplier-summary>正在读取连接…</p><button class="onboarding-action secondary" data-add-supplier>添加或管理供应商</button><div data-supplier-host hidden></div></div>'
-    }<p class="onboarding-error" role="alert"></p><div class="onboarding-actions">${step === "suppliers" ? '<button class="onboarding-action quiet" data-back>上一步</button>' : ""}<button class="onboarding-action quiet" data-skip>稍后设置</button><button class="onboarding-action" data-next>${step === "agents" ? "继续" : "进入工作台"}</button></div>`;
+    }<p class="onboarding-error" role="alert"></p><div class="onboarding-actions">${step !== "agents" ? '<button class="onboarding-action quiet" data-back>上一步</button>' : ""}<button class="onboarding-action quiet" data-skip>稍后设置</button><button class="onboarding-action" data-next>${step === "agents" ? "继续" : "进入工作台"}</button></div>`;
     host.querySelector("h1").focus({ preventScroll: true });
-    if (step === "agents")
+    if (step === "codex") {
+      host.querySelector("h1").textContent = "连接 Codex 账户";
+      host.querySelector(".onboarding-subtitle").textContent = "查询五小时额度、每周额度、Credit 和重置卡，也可稍后连接。";
+      const card = host.querySelector(".onboarding-card");
+      window.LingxiDesign.login(card);
+    } else if (step === "agents")
       host.querySelectorAll("[data-switch]").forEach((slot) => {
         const scope = slot.dataset.switch;
         let checked = !!config.config[scope + "Enabled"];
@@ -125,7 +130,7 @@
       host.querySelector("[role=alert]").textContent = "";
       try {
         if (step === "agents") {
-          const body = { onboardingStep: "suppliers" };
+          const body = { onboardingStep: "codex" };
           if (!skip)
             host.querySelectorAll("[data-switch]").forEach((slot) => {
               const id = slot.dataset.switch;
@@ -135,8 +140,10 @@
                 .value.trim();
             });
           await save(body);
-          step = "suppliers";
+          step = "codex";
           draw();
+        } else if (step === "codex") {
+          await save({ onboardingStep: "suppliers" }); step = "suppliers"; draw();
         } else {
           await save({ onboardingStep: "complete" });
           await native?.onboardingComplete();
@@ -157,8 +164,9 @@
     host.querySelector("[data-skip]").onclick = () => go(true);
     host.querySelector("[data-back]")?.addEventListener("click", async () => {
       try {
-        await save({ onboardingStep: "agents" });
-        step = "agents";
+        const previous = step === "suppliers" ? "codex" : "agents";
+        await save({ onboardingStep: previous });
+        step = previous;
         draw();
       } catch (error) {
         if (active())
@@ -191,7 +199,7 @@
     identity = owner;
     config = result;
     step =
-      result.config.onboardingStep === "suppliers" ? "suppliers" : "agents";
+      ["suppliers", "codex"].includes(result.config.onboardingStep) ? result.config.onboardingStep : "agents";
     surface = document.createElement("section");
     surface.className = "lingxi-onboarding";
     surface.setAttribute("role", "dialog");

@@ -143,9 +143,7 @@
           y: box.y + box.height / 2,
         };
       state.tip.show(
-        active === "remaining"
-          ? `${label}\n剩余额度 ${remaining.toFixed(1)}%`
-          : `${label}\n距重置 ${value}\n${reset === null ? "" : time(reset)}`,
+        {primary: active === "remaining" ? `${remaining.toFixed(1)}% 剩余` : `距重置 ${value}`, date:reset === null ? null : time(reset), rows:[{label,value:active === "remaining" ? `${remaining.toFixed(1)}%` : value,color:"#2563EB"}]},
         p.x,
         p.y,
       );
@@ -231,6 +229,7 @@
         return;
       }
       root.querySelectorAll("[data-quota-slot]").forEach(tickQuota);
+      accountStates.get(root)?.paintReset?.();
     }, 1000);
     window.usageCharts?.track(root, stop);
     return stop;
@@ -256,7 +255,7 @@
       state.stopClock?.();
       state.structure = null;
       root.innerHTML =
-        '<div class="section-title usage-account-heading"><h3>Codex 账户</h3></div><div class="account-quota-grid" data-global-codex-quotas></div>';
+        '<div class="section-title usage-account-heading"><h3>Codex账户</h3>'+window.LingxiDesign.connectButton()+'</div><p class="meta lingxi-account-status" data-codex-error role="status"></p><div class="account-quota-grid" data-global-codex-quotas></div>';
       root
         .closest(".usage-stable")
         .querySelector("#usage-account-add").onclick = () => manage(root);
@@ -275,21 +274,41 @@
       .querySelector("#usage-account-add");
     setAttribute(button, "data-account-status", "ready");
     setAttribute(button, "title", "管理API供应商");
-    const windows = quotaWindows(selected?.snapshot?.quota),
+    const windows = quotaWindows(state.liveAccount?.quota || selected?.snapshot?.quota),
       grid = state.root.querySelector("[data-global-codex-quotas]");
     const structure = JSON.stringify([
       selected?.id,
       windows.map((w) => [w.slot, w.minutes]),
     ]);
     if (state.structure !== structure) {
-      grid.innerHTML = windows.map(quotaRow).join("");
+      grid.innerHTML = '<div class="lingxi-codex-account"><div class="lingxi-quota-stack">' + (['primary','secondary'].map((slot,i)=>{const window=windows.find(w=>w.slot===slot);return window ? quotaRow(window) : '<div class="lingxi-quota-placeholder">'+(i?'每周额度':'5 小时额度')+' <strong>—</strong><p class="meta">'+(state.liveAccount||selected?.snapshot ? '官方未返回该额度窗口' : '连接账户后查询')+'</p></div>';}).join('')) + '</div><div class="lingxi-account-details" data-codex-details></div><div class="lingxi-account-actions" hidden><button type="button" data-codex-refresh>刷新账户</button></div></div>';
+      state.root.querySelector('[data-codex-login]').onclick = () => { const d=document.createElement('dialog');d.className='control-dialog';document.body.append(d);window.LingxiDesign.login(d,()=>{d.close();grid.querySelector('[data-codex-refresh]').click();});d.addEventListener('close',()=>d.remove(),{once:true});d.showModal(); };
+      grid.querySelector('[data-codex-refresh]').onclick = async () => {
+        const b=grid.querySelector('[data-codex-refresh]');b.disabled=true;
+        try { state.liveAccount = await call('GET','/api/codex/account'); state.structure=null; patchInline(state); }
+        catch(error){state.root.querySelector('[data-codex-error]').textContent=error.message;}
+        finally{if(b.isConnected)b.disabled=false;}
+      };
       state.structure = structure;
       grid.querySelectorAll("[data-quota-slot]").forEach(bindQuota);
     } else
       windows.forEach((w) =>
         patchQuota(grid.querySelector(`[data-quota-slot="${w.slot}"]`), w),
       );
-    grid.hidden = !windows.length;
+    grid.hidden = false;
+    if (!state.accountAttempted || Date.now()-(state.accountRequestedAt||0)>30000) { state.accountAttempted=true;state.accountRequestedAt=Date.now(); queueMicrotask(()=>grid.querySelector('[data-codex-refresh]')?.click()); }
+
+    const account = state.liveAccount || selected?.snapshot || {}, quota = account.quota || {}, bucket = quota.rateLimitsByLimitId?.codex || quota.rateLimits || {}, credits = bucket.credits || quota.credits, resets = quota.rateLimitResetCredits;
+    const details=grid.querySelector('[data-codex-details]'), wasOpen=details?.querySelector('details')?.open;
+    if(details){
+      const valuePanel=details.querySelector('.agent-value-panel');valuePanel?.remove();
+      const balance=credits?.balance;
+      const text=credits?.unlimited?'不限额':balance!==null&&balance!==undefined&&balance!==''&&Number.isFinite(Number(balance))?Number(balance).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
+      details.innerHTML='<section class="lingxi-value-card"><div data-codex-value>API等效参考价值 · 未开启</div></section><section class="lingxi-credit-single"><h4>剩余 Credit</h4><strong>'+escape(text)+'</strong></section><section class="lingxi-reset-card" data-reset-card-host></section>';
+      if(valuePanel)details.querySelector('[data-codex-value]').replaceChildren(valuePanel);
+      state.paintReset=window.LingxiDesign.resetBatteries(details.querySelector('[data-reset-card-host]'),resets);
+      if(account.credentialSource==='local-codex-cache')state.root.querySelector('[data-codex-error]').textContent='已自动读取本机 Codex 登录';
+    }
   }
   function patchQuota(row, w) {
     setAttribute(row, "data-remaining", w.remaining);
@@ -873,6 +892,7 @@
     render,
     manage,
     quotaTone,
+    quotaPreview: quotaRow,
     onboardingSuppliers,
     scope: (root) => {
       const state = accountStates.get(root);

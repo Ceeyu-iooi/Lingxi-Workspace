@@ -2,13 +2,13 @@
   <img src="static/assets/lingxi-logo.svg" alt="灵犀工作坊" width="100">
   <h1>灵犀工作坊</h1>
   <p><em>把日常工作、AI 用量、提示词与本机技能放进一个个人工作台。</em></p>
-  <a href="https://github.com/Ceeyu-iooi/lingxi-workbench-web/releases"><img src="https://img.shields.io/github/v/release/Ceeyu-iooi/lingxi-workbench-web?style=flat-square&amp;color=2962ed" alt="最新发布"></a>
+  <a href="https://github.com/Ceeyu-iooi/lingxi-workbench-web/releases"><img src="https://img.shields.io/github/v/release/Ceeyu-iooi/lingxi-workbench-web?include_prereleases&amp;style=flat-square&amp;color=2962ed" alt="最新发布"></a>
   <img src="https://img.shields.io/badge/Windows-x64-2962ed?style=flat-square" alt="Windows x64">
   <img src="https://img.shields.io/badge/TypeScript-React%20%2B%20Node-2962ed?style=flat-square" alt="TypeScript">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-CC--BY--NC--4.0-64748b?style=flat-square" alt="许可证"></a>
 </div>
 
-[安装](#安装) · [功能特性](#功能特性) · [App 数据](#app-数据) · [从源码构建](#从源码构建) · [工作原理](#工作原理) · [设置](#设置)
+<p align="center"><a href="#安装">安装</a> · <a href="#功能特性">功能特性</a> · <a href="#app-数据">App 数据</a> · <a href="#从源码构建">从源码构建</a> · <a href="#工作原理">工作原理</a> · <a href="#设置">设置</a></p>
 
 ## 灵犀工作坊是什么？
 
@@ -33,7 +33,7 @@
 
 应用保持白、蓝、浅灰及深色主题，侧栏采用灰色圆角选中与蓝色图标；主页面使用统一圆角外框，保留原有白色模块卡片。设置包含个人资料、外观、AI 服务、用量与实验、数据与备份、快捷键；桌面另有“关于与更新”。
 
-[界面与组件设计说明](docs/UI_DESIGN.md) · [应用内部 UI 组件库](static/ui-kit.html)
+[设计规范](design.md) · [浅色预览](frontend/app/preview.html) · [深色预览](frontend/app/preview-dark.html)
 
 ## 为什么用灵犀工作坊？
 
@@ -178,3 +178,5 @@ React 管理应用壳、路由与页面入口，现有编辑器和图表通过�
 项目采用 [CC BY-NC 4.0](LICENSE)。仓库携带应用内集成的组件 JS/CSS 成品及业务源码，付费第三方原文件不公开，默认构建不重新编译这些组件，也不依赖失效下载地址。成品摘要见 `frontend/application-assets.json`，对应许可见 `static/vendor/`；它们随应用提供，不是可独立销售或分发的组件库。
 
 
+
+Codex 账户优先使用 Profile 自有登录；未连接时只读复用本机 Codex 的 ChatGPT 登录缓存，并通过内存授权查询，不改写全局凭据。查询五小时和每周额度、Credits 与重置卡。Credit 单行保留两位小数，重置卡按张展示 SloshGauge 到期电池；字号与亮度使用 ScrubField。关于页独立卡片包含直接联网检查与校验下载，桌面版可确认安装。
