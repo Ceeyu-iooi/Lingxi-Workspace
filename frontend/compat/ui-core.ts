@@ -474,7 +474,7 @@
     diff,
     registry,
     refreshControls,
-    version: "0.0.32",
+    version: "0.0.33",
   };
   let frame;
   const upgrade = () => {

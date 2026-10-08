@@ -1,5 +1,5 @@
 {
-  "version": "0.0.32",
+  "version": "0.0.33",
   "files": [
     {
       "file": "README.md",
@@ -19,7 +19,7 @@
     },
     {
       "file": "VERSION",
-      "sha256": "fa1f36859b631cc5fe71b91d7a530e2c2eb616f5a4b83900011e3ae943856c47"
+      "sha256": "d3ccac5eb3092c590ac468b32c65ce0c673c35f2eeb622de404e3a15aaa8eb75"
     },
     {
       "file": "start.bat",
@@ -203,7 +203,7 @@
     },
     {
       "file": "frontend/app/ui-kit.html",
-      "sha256": "0e81707003ed7ec26905ccd5c1cc29b8933a9d06d22402390f6e23cc5e7aae73"
+      "sha256": "48894af3346d971cb22a8e86cfba0d7f8968242191a6525d33489c493d1adce6"
     },
     {
       "file": "frontend/compat/agent-valuation.ts",
@@ -279,7 +279,7 @@
     },
     {
       "file": "frontend/compat/ui-core.ts",
-      "sha256": "2bd9c5a861dcf240600ba395ad87822286c4b834e77a363c0e6b274ff0f558d6"
+      "sha256": "eaf12c0279717e6cea9bd70dd6fab57d84fd7d3077c45c3150ec18b7cc8ba2b3"
     },
     {
       "file": "frontend/compat/usage-accounts.ts",
@@ -343,7 +343,7 @@
     },
     {
       "file": "static/assets/lingxi-logo.ico",
-      "sha256": "b5f6603dc08d4d7ccc58ea87499ec63a7137b70f451bbfede2757796b9ac4c13"
+      "sha256": "de97c79ca49b6c7691366044d73e2a87aacd417219facc4e51e68139c7cc6701"
     },
     {
       "file": "static/assets/lingxi-logo.svg",
@@ -407,7 +407,7 @@
     },
     {
       "file": "static/ui-kit.html",
-      "sha256": "1f2812a3d1ba894cb66438fbcccabbff588902fb92fceb5ffde25fd735dfe378"
+      "sha256": "48067c3bcb172b3a136f25cea89b87a8c3a943a2ccdc09e1701a267e85cf15b2"
     },
     {
       "file": "static/ui-system.css",
