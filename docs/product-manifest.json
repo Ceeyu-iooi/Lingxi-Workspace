@@ -1,8 +1,8 @@
 {
   "generatedBy": "personal-workbench-builder",
   "skillVersion": "1.0.0",
-  "appVersion": "0.0.31",
-  "usageVersion": "0.0.31",
+  "appVersion": "0.0.32",
+  "usageVersion": "0.0.32",
   "schemaVersion": 1,
   "generatedAt": "2026-09-21T20:30:00+08:00",
   "complexity": "L3",
@@ -56,8 +56,8 @@
       ]
     },
     {
-      "id": "auth",
-      "version": "1.1.0",
+      "id": "profile",
+      "version": "0.0.32",
       "schemaVersion": 1,
       "status": "ready",
       "requirements": [

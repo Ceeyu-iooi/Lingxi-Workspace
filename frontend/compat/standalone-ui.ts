@@ -1,0 +1,478 @@
+// @ts-nocheck
+/* Internal UI stories and the authenticated experimental price source page. */
+(() => {
+  const U = window.WorkbenchUI,
+    q = (s, r = document) => r.querySelector(s),
+    e = U.e;
+  async function init() {
+    const root = q("[data-standalone-body]");
+    if (document.body.dataset.page === "ui-kit") {
+      kit(root);
+      return;
+    }
+    const stop = U.busy(root, "正在核验Profile…", 0);
+    try {
+      const me = await U.request("GET", "/api/profile/session");
+      if (!me.user) {
+        root.innerHTML =
+          '<section class="wb-empty"><strong>先打开 Profile</strong><a class="btn" href="index.html">打开工作坊</a></section>';
+        return;
+      }
+      const settings = await U.request("GET", "/api/control");
+      window.workbenchAppearance.config(settings.config);
+      if (document.body.dataset.page === "prices") await prices(root);
+      else kit(root);
+    } catch (error) {
+      root.replaceChildren(
+        U.el("p", { class: "wb-inline-error", text: error.message }),
+      );
+    } finally {
+      stop();
+    }
+  }
+  async function prices(root) {
+    root.innerHTML =
+      '<section class="wb-panel"><h2>价格目录</h2><p class="wb-muted">备用价格、空字段和复杂规则会显示状态；它们不自动成为可计价证据。</p><div class="wb-price-filters"><label>快照日期<input type="date" data-price-date></label><label>供应商<select data-provider><option value="">全部供应商</option></select></label><label>模型<select data-model><option value="">全部模型</option></select></label><label>搜索<input type="search" data-search placeholder="模型或供应商"></label><button class="btn" data-sync>后台同步</button></div><p class="wb-muted" data-price-status></p><div class="control-table-wrap"><table class="control-table"><thead><tr><th>模型 / 供应商</th><th>币种</th><th>输入</th><th>缓存读取</th><th>缓存写入</th><th>输出</th><th>状态 / 来源</th></tr></thead><tbody data-price-rows></tbody></table></div><div class="wb-pager"><button class="btn ghost" data-prev>上一页</button><span data-page></span><button class="btn ghost" data-next>下一页</button></div><p class="wb-inline-error" role="alert"></p></section><section class="wb-panel" style="margin-top:24px"><h2>历史 USD / CNY 汇率</h2><p class="wb-muted">加拿大央行交叉汇率；周末等非公布日最多沿用此前七日，不使用未来汇率。</p><div class="wb-fx-range"><label>开始<input type="date" data-fx-start></label><label>截止<input type="date" data-fx-end></label><label>卡片日期<input type="date" data-fx-date></label><button class="btn ghost" data-fx-load>查看</button></div><div class="wb-fx-cards"><article class="wb-panel wb-fx-card"><p>1 USD 对应人民币</p><strong data-usd-cny>—</strong><small data-fx-proof></small></article><article class="wb-panel wb-fx-card"><p>1 CNY 对应美元</p><strong data-cny-usd>—</strong><small data-fx-proof></small></article></div><div data-fx-chart></div></section>';
+    let offset = 0,
+      ticket = 0,
+      timer,
+      catalog;
+    const today = new Date().toLocaleDateString("en-CA");
+    q("[data-fx-end]", root).value = today;
+    q("[data-fx-date]", root).value = today;
+    q("[data-fx-start]", root).value = new Date(
+      Date.now() - 30 * 86400000,
+    ).toLocaleDateString("en-CA");
+    const option = (select, values, label) => {
+      const chosen = select.value;
+      select.innerHTML =
+        '<option value="">' +
+        label +
+        "</option>" +
+        values
+          .map((v) => '<option value="' + e(v) + '">' + e(v) + "</option>")
+          .join("");
+      select.value = chosen;
+      window.roundedSelects?.scan();
+    };
+    async function load() {
+      const seq = ++ticket,
+        params = new URLSearchParams({
+          date: q("[data-price-date]", root).value,
+          provider: q("[data-provider]", root).value,
+          model: q("[data-model]", root).value,
+          q: q("[data-search]", root).value,
+          offset: String(offset),
+          limit: "50",
+        }),
+        stop = U.busy(root, "正在读取价格缓存…");
+      try {
+        const data = await U.request("GET", "/api/pricing/catalog?" + params);
+        if (seq !== ticket) return;
+        catalog = data;
+        q("[data-price-date]", root).value = data.date;
+        option(q("[data-provider]", root), data.providers, "全部供应商");
+        option(q("[data-model]", root), data.models, "全部模型");
+        if (
+          q("[data-provider]", root).value !== (params.get("provider") || "") ||
+          q("[data-model]", root).value !== (params.get("model") || "")
+        ) {
+          offset = 0;
+          await load();
+          return;
+        }
+        q("[data-price-status]", root).textContent =
+          data.date +
+          " · " +
+          data.total +
+          " 条" +
+          (data.missing
+            ? " · 此日尚无快照，可点击后台同步"
+            : " · 原币 / 每百万 Token");
+        q("[data-price-rows]", root).innerHTML = data.items
+          .map(
+            (row) =>
+              "<tr><td>" +
+              e(row.model) +
+              '<small class="wb-muted" style="display:block">' +
+              e(row.provider) +
+              "</small></td><td>" +
+              e(row.currency || "未知") +
+              "</td>" +
+              ["input", "cached", "write", "output"]
+                .map((k) => "<td>" + e(row.quote[k] ?? "—") + "</td>")
+                .join("") +
+              '<td><span class="wb-pill">' +
+              e(
+                row.sourceType === "provider"
+                  ? row.unsupported
+                    ? "复杂规则"
+                    : "供应商来源"
+                  : "备用 / 未核验",
+              ) +
+              '</span><a href="' +
+              e(row.source) +
+              '" target="_blank" rel="noopener noreferrer"> 原始来源 ↗</a></td></tr>',
+          )
+          .join("");
+        q("[data-page]", root).textContent =
+          "第 " + (Math.floor(offset / 50) + 1) + " 页";
+        q("[data-prev]", root).disabled = offset === 0;
+        q("[data-next]", root).disabled =
+          offset + data.items.length >= data.total;
+      } catch (error) {
+        q("[role=alert]", root).textContent = error.message;
+      } finally {
+        stop();
+      }
+    }
+    async function loadFX() {
+      const params = new URLSearchParams({
+        start: q("[data-fx-start]", root).value,
+        end: q("[data-fx-end]", root).value,
+        date: q("[data-fx-date]", root).value,
+      });
+      try {
+        const data = await U.request("GET", "/api/pricing/fx?" + params),
+          card = data.card;
+        q("[data-usd-cny]", root).textContent = card
+          ? Number(card.usdCny).toFixed(6) + " CNY"
+          : "—";
+        q("[data-cny-usd]", root).textContent = card
+          ? Number(card.cnyUsd).toFixed(6) + " USD"
+          : "—";
+        root
+          .querySelectorAll("[data-fx-proof]")
+          .forEach(
+            (n) =>
+              (n.textContent = card
+                ? "公布日 " +
+                  card.date +
+                  (card.carried ? " · 沿用历史公布值" : "")
+                : "所选日期没有可用汇率"),
+          );
+        const chart = q("[data-fx-chart]", root);
+        window.usageCharts.dispose(chart);
+        chart.innerHTML = window.usageCharts.trend(
+          data.series.map((row) => ({
+            date: row.date,
+            total: Number(row.usdCny),
+            models: [],
+          })),
+          "历史 USD / CNY 汇率",
+          "line",
+        );
+        chart.querySelector(".usage-plot").dataset.format = "rate";
+        chart.querySelector(".usage-plot").dataset.unit = " CNY / USD";
+        window.usageCharts.mount(chart);
+      } catch (error) {
+        q("[role=alert]", root).textContent = error.message;
+      }
+    }
+    root
+      .querySelectorAll("[data-price-date],[data-provider],[data-model]")
+      .forEach(
+        (input) =>
+          (input.onchange = () => {
+            offset = 0;
+            load();
+          }),
+      );
+    q("[data-search]", root).oninput = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        offset = 0;
+        load();
+      }, 180);
+    };
+    q("[data-prev]", root).onclick = () => {
+      offset = Math.max(0, offset - 50);
+      load();
+    };
+    q("[data-next]", root).onclick = () => {
+      offset += 50;
+      load();
+    };
+    q("[data-fx-load]", root).onclick = loadFX;
+    q("[data-sync]", root).onclick = async (event) => {
+      const button = event.target;
+      button.disabled = true;
+      const stop = U.busy(q("[data-price-status]", root), "后台同步中…", 0);
+      try {
+        const task = await U.request("POST", "/api/pricing/sync", {
+          date: q("[data-price-date]", root).value || undefined,
+        });
+        await U.job(task);
+        await load();
+        await loadFX();
+      } catch (error) {
+        q("[role=alert]", root).textContent = error.message;
+      } finally {
+        stop();
+        button.disabled = false;
+      }
+    };
+    await load();
+    await loadFX();
+  }
+  function kit(root) {
+    U.radio(q("[data-kit-theme]"), {
+      label: "组件库主题预览",
+      items: [
+        ["light", "浅色"],
+        ["dark", "深色"],
+      ],
+      value: document.documentElement.dataset.theme,
+      onChange: (value) => {
+        window.workbenchAppearance.previewTheme(value, q("[data-kit-theme]"));
+        kit(root);
+      },
+    });
+    root.innerHTML =
+      '<section class="wb-panel"><h2>设计契约</h2><p class="wb-muted">中性色承载内容，强调色表示操作；固定响应式布局，数据刷新保留节点、焦点和滚动。全部示例为演示数据，不读写业务资料。</p><div class="wb-token-swatches">' +
+      [
+        ["背景", "var(--canvas)"],
+        ["表面", "var(--surface)"],
+        ["细边框", "var(--line)"],
+        ["强调", "var(--accent)"],
+        ["选中", "var(--accent-soft)"],
+      ]
+        .map(
+          ([name, color]) =>
+            '<div><i style="background:' +
+            color +
+            '"></i><span>' +
+            name +
+            "</span></div>",
+        )
+        .join("") +
+      '</div><p class="wb-contract">间距：4 / 8 / 12 / 16 / 24 · 内容卡：16px · 面板：20px · 选择控件：999px<br>字号：12 / 14 / 16 / 18 · 保存失败保留输入 · 旧响应不覆盖新选择</p></section><div class="wb-stories" style="margin-top:24px"><nav class="wb-stories-nav">' +
+      U.registry
+        .map(([id, label]) => '<a href="#story-' + id + '">' + label + "</a>")
+        .join("") +
+      "</nav><div>" +
+      U.registry
+        .map(
+          ([id, label]) =>
+            '<section class="wb-story" id="story-' +
+            id +
+            '"><h2>' +
+            label +
+            '</h2><p data-story-description></p><div class="wb-story-stage"></div></section>',
+        )
+        .join("") +
+      "</div></div>";
+    const stage = (id) => q("#story-" + id + " .wb-story-stage", root),
+      description = (id, value) =>
+        (q("#story-" + id + " [data-story-description]", root).textContent =
+          value);
+    stage("button").innerHTML =
+      '<button class="btn">主要操作</button><button class="btn ghost">次要操作</button><button class="btn danger">危险操作</button><button class="btn" disabled>禁用</button>';
+    description("button", "统一尺寸、焦点和等待反馈；按钮命名描述实际动作。");
+    stage("field").innerHTML =
+      '<label class="control-field">文本<input placeholder="输入内容"></label><label class="control-field">选择<select><option>全部</option><option>仅收藏</option></select></label><label><input type="checkbox"> 复选项</label>';
+    description("field", "使用真实表单控件，提供标签和错误关联。");
+    const choice = U.el("div");
+    stage("choice").append(choice);
+    let value = "week";
+    const choose = () =>
+      U.radio(choice, {
+        label: "日期分组示例",
+        items: [
+          ["day", "每日"],
+          ["week", "每周"],
+          ["month", "每月"],
+          ["year", "全年"],
+        ],
+        value,
+        onChange: (v) => {
+          value = v;
+          choose();
+        },
+      });
+    choose();
+    description(
+      "choice",
+      "实际 JellyRadio 原组件的应用适配；支持箭头、Home、End 和减少动画。",
+    );
+    window.WorkbenchReact.loader(stage("loader"), "正在读取…");
+    description(
+      "loader",
+      "实际 LatticeLoader。业务请求超过约 150ms 时显示，结束后卸载；不添加人为延时。",
+    );
+    window.WorkbenchReact.progress(stage("progress"), 65);
+    description("progress", "实际WakeSlider只读进度，不可拖动。");
+    stage("dialog").innerHTML =
+      '<button class="btn ghost" data-demo-dialog>打开弹窗</button>';
+    q("[data-demo-dialog]", root).onclick = () => {
+      U.dialog("组件弹窗示例", "<p>导航和内容独立滚动；关闭恢复焦点。</p>");
+    };
+    description("dialog", "共用面板边界、标题、关闭和滚动规则。");
+    stage("filter").innerHTML =
+      '<div class="wb-filter-tags"><button aria-pressed="true">全部</button><button aria-pressed="false">写作</button><button aria-pressed="false">代码</button></div><input type="search" placeholder="搜索标题或正文" aria-label="组件筛选示例">';
+    stage("filter")
+      .querySelectorAll("button")
+      .forEach(
+        (b) =>
+          (b.onclick = () =>
+            b.setAttribute(
+              "aria-pressed",
+              String(b.getAttribute("aria-pressed") !== "true"),
+            )),
+      );
+    description("filter", "左侧分组筛选、右侧结果；窄屏转为可展开面板。");
+    stage("table").innerHTML =
+      '<div class="control-table-wrap" style="width:100%"><table class="control-table"><thead><tr><th>名称</th><th>状态</th><th>值</th></tr></thead><tbody><tr><td>演示记录</td><td><span class="wb-pill">已核验</span></td><td>1,000</td></tr><tr><td>缺失数据</td><td><span class="wb-pill">未知</span></td><td>—</td></tr></tbody></table></div>';
+    description("table", "未知和零分开；数值对齐、空状态清晰。");
+    stage("card").innerHTML = U.promptCard(
+      {
+        id: "demo",
+        title: "演示提示词",
+        excerpt: "内容摘要与操作分开，列表保持紧凑。",
+        format: "markdown",
+        favorite: true,
+      },
+      { draggable: false },
+    );
+    description("card", "固定布局；卡片不自由拖拽或缩放。");
+    const rows = [
+      { date: "2026-09-01", total: 1000, models: [] },
+      { date: "2026-09-02", total: 3000, models: [] },
+      { date: "2026-09-03", total: 2000, models: [] },
+    ];
+    stage("chart").innerHTML =
+      '<div style="width:100%">' +
+      window.usageCharts.trend(rows) +
+      "</div>" +
+      window.usageCharts.donut([
+        { provider: "演示", model: "模型 A", total: 4000 },
+        { provider: "演示", model: "模型 B", total: 2000 },
+      ]);
+    window.usageCharts.mount(stage("chart"));
+    description(
+      "chart",
+      "演示数据。趋势独占一行，模型饼图和同色横条共用数据；鼠标聚焦无黑框。",
+    );
+    const area = U.el("textarea", {
+      class: "wb-editor-source",
+      "aria-label": "Markdown 预览示例",
+    });
+    area.value = "# 示例\n\n**清晰的目标**与可核验的输出。";
+    const preview = U.el("div", { class: "wb-editor-preview" });
+    stage("editor").append(area, preview);
+    U.preview(preview, area.value, "markdown");
+    area.oninput = () => U.preview(preview, area.value, "markdown");
+    description(
+      "editor",
+      "实际安全 Markdown 预览；HTML、脚本和远程图片不执行。",
+    );
+    stage("account").innerHTML =
+      '<button class="profile-trigger"><span class="account-avatar">LX</span><span class="account-name">账户与设置</span></button>';
+    description("account", "单一账户入口。头像本地处理，不依赖外部头像服务。");
+    stage("menu").innerHTML =
+      '<button class="btn ghost" data-menu-demo>打开页面菜单</button><span class="wb-pill" data-menu-status>等待操作</span><span class="wb-inline-error">失败：草稿保留，可重试</span>';
+    q("[data-menu-demo]", root).onclick = (event) => {
+      const d = U.actionMenu([
+        { label: "复制示例内容" },
+        { label: "查看来源" },
+        { label: "不可用操作", disabled: true },
+      ]);
+      document.body.append(d);
+      d.show();
+      const r = event.target.getBoundingClientRect();
+      d.style.left = r.left + "px";
+      d.style.top = Math.min(r.bottom + 8, innerHeight - 180) + "px";
+      d.querySelectorAll("button").forEach(
+        (b) =>
+          (b.onclick = () => {
+            q("[data-menu-status]", root).textContent =
+              "已选择：" + b.textContent;
+            d.close();
+            d.remove();
+          }),
+      );
+      d.onkeydown = (ev) => {
+        if (ev.key === "Escape") {
+          d.close();
+          d.remove();
+          event.target.focus();
+        }
+      };
+      d.querySelector("button").focus();
+    };
+    description("menu", "右键与快捷键动作有按钮等价入口；错误贴近操作。");
+    let enabled = false;
+    const commit = U.el("div"),
+      commitStatus = U.el("span", { text: "未开启（演示）" });
+    stage("commit").append(commit, commitStatus);
+    const renderCommit = () =>
+      window.WorkbenchReact.slideCommit(commit, {
+        enabled,
+        onConfirm: async () => {
+          enabled = !enabled;
+          commitStatus.textContent = enabled
+            ? "已开启（演示）"
+            : "未开启（演示）";
+          setTimeout(renderCommit, 500);
+        },
+      });
+    renderCommit();
+    description(
+      "commit",
+      "真实 SlideCommit 滑动确认；键盘和触控等价操作，当前状态独立显示。",
+    );
+    let checked = false;
+    const switchHost = U.el("span");
+    stage("switch").append(switchHost);
+    const renderSwitch = () =>
+      window.WorkbenchReact.squishSwitch(switchHost, {
+        checked,
+        ariaLabel: "演示布尔开关",
+        onChange: (v) => {
+          checked = v;
+          renderSwitch();
+        },
+      });
+    renderSwitch();
+    description(
+      "switch",
+      "真实受控 SquishSwitch；仅用于布尔设置，不替换主题单选或列表选择。",
+    );
+    let font = 14;
+    const sliderHost = U.el("span", { class: "wb-slider-host" });
+    stage("slider").append(sliderHost);
+    const renderSlider = () =>
+      window.WorkbenchReact.wakeSlider(sliderHost, {
+        value: font,
+        min: 12,
+        max: 18,
+        step: 2,
+        ariaLabel: "演示字号",
+        formatValue: (v) => v + " px",
+        onChange: (v) => {
+          font = v;
+          renderSlider();
+        },
+      });
+    renderSlider();
+    description(
+      "slider",
+      "真实 WakeSlider；保留范围、步长、键盘及数值反馈，设置草稿可保存或放弃。",
+    );
+    const experience = U.el("section", {
+      class: "wb-panel",
+      id: "story-lingxi-onboarding",
+    });
+    experience.innerHTML =
+      '<h2>灵犀启动体验 · DSH 参考</h2><p class="wb-muted">留白、轻标题、圆角选择卡；原创双弧连接标识。导航灰底选中，图标使用强调色，主题从操作处圆形展开。</p><div class="onboarding-brand"><img src="assets/lingxi-logo.svg" alt="原创灵犀标识"><span>灵犀工作坊</span></div><div class="onboarding-cards"><article class="onboarding-card" data-selected="true"><h2>选择 Profile</h2><p>默认使用安装位置下的 profile，可选择已有资料或新建。</p></article><article class="onboarding-card"><h2>连接 Agent</h2><p>独立开启 Codex、ZCode、Harness 用量监测。</p></article><article class="onboarding-card"><h2>供应商 Key</h2><p>添加用量查询凭据，也可以稍后设置。</p></article></div><div class="kit-nav-preview" style="max-width:240px"><a class="nav-item active" href="#story-lingxi-onboarding"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 9h8m-8 4h5"/></svg></span>账户与安全</a></div><p class="wb-contract">导航：44px 行高 / 20px 图标 / 默认 15px 字号 · 下拉：20px 箭头区域 / 距右侧 12px · 主题：400ms 圆形展开 · 开屏：800ms</p>';
+    root.append(experience);
+    root.append(
+      U.el("p", {
+        class: "wb-muted",
+        text: "内部维护规范：新增界面优先复用本页组件；改动同步更新版本、业务引用、许可说明与视觉基线。React Bits 组件按应用内使用许可接入，不作为独立组件包再分发。",
+      }),
+    );
+    window.roundedSelects?.scan();
+  }
+  init();
+})();

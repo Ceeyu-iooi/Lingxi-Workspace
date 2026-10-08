@@ -1,12 +1,13 @@
 /* Lingxi application adapters. DSH layout references are documented in docs/UI_DESIGN.md. */
 :root{--shell-edge:#ececee;--sidebar-width:240px}
+:root[data-theme=light]{--shell-edge:#eef5f8}
 :root[data-theme=dark]{--shell-edge:#000;--color-background-win-alt:#000}
 .layout{background:var(--shell-edge)}
 .desktop-shell .layout{padding-top:0}
 .desktop-shell .shell-bar{background:var(--shell-edge);min-height:48px;-webkit-app-region:drag;padding-right:150px;border:0;border-radius:0}
 .desktop-shell .shell-bar :is(button,a,details,input){-webkit-app-region:no-drag}
-.desktop-shell .shell-bar .workbench-menubar{margin-left:auto}
-.desktop-shell .main-shell{border-top-left-radius:0;border-top-right-radius:0}
+.desktop-shell .shell-bar .workbench-menubar{margin-left:0}
+.desktop-shell .main-shell{border-radius:18px}
 :is(.side,.kit-nav-preview) .nav-item{min-height:44px;font-size:calc(var(--ui-font-size,14px) + 1px);padding:10px 12px;gap:10px;margin-bottom:4px;border-radius:12px}
 :is(.side,.kit-nav-preview) .nav-item .ico{width:20px;height:20px;flex:0 0 20px}
 :is(.side,.kit-nav-preview) .nav-item :is(.ico svg,svg){width:20px;height:20px}
@@ -39,3 +40,42 @@
 ::view-transition-old(root){z-index:1}
 @media(max-width:600px){.storage-chart{grid-template-columns:1fr;gap:20px}.storage-pie{max-width:190px;justify-self:center}.desktop-shell .shell-bar{padding-right:138px}.desktop-shell .workbench-menubar{gap:4px}.desktop-shell .shell-crumb{display:none}}
 @media(prefers-reduced-motion:reduce){.storage-pie path{transition:none}}
+
+/* One application frame and one neutral navigation selection contract. */
+.layout{display:grid;grid-template-columns:var(--sidebar-width,240px) minmax(0,1fr);grid-template-rows:48px minmax(0,1fr);height:100dvh;min-height:0;padding:8px;gap:0;border-radius:18px;overflow:hidden}
+.layout>.shell-bar{grid-column:1/-1;grid-row:1;height:48px;padding:0 10px;justify-content:flex-start;background:var(--shell-edge);border:0;gap:12px;min-width:0}
+.layout>.side{grid-column:1;grid-row:2;min-height:0;width:auto;overflow-y:auto}
+.layout>.main-shell{grid-column:2;grid-row:2;min-height:0;border:1px solid var(--line);border-radius:18px;background:var(--canvas);overflow:hidden}
+.layout>.shell-bar .shell-heading{display:flex;align-items:center;gap:8px;flex:none}
+.layout>.shell-bar .shell-label{display:none}
+.layout>.shell-bar #sidebar-toggle,.shell-history{display:grid;place-items:center;width:32px;height:32px;padding:6px;border:0;border-radius:8px;background:transparent;color:var(--ink-2);cursor:pointer}
+.shell-history svg,#sidebar-toggle svg{width:20px;height:20px}
+.shell-history:disabled{opacity:.35;cursor:default}
+.shell-history:not(:disabled):hover,#sidebar-toggle:hover{background:var(--color-hover)}
+.shell-history:focus-visible,#sidebar-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.layout>.shell-bar .workbench-menubar{margin:0;gap:6px}
+.layout>.shell-bar .theme-toggle{border:0;background:transparent;padding:6px 8px;min-height:32px}
+.desktop-shell .layout>.shell-bar{padding-right:150px}
+.sidebar-collapsed .layout{grid-template-columns:64px minmax(0,1fr)}
+.side .nav-item:is(.on,.active)::before{display:none}
+.side .nav-item:is(.on,.active) .ico{color:var(--accent)}
+.module-surface.wb-redesign .overview-board{border:0;border-radius:0;background:transparent;padding:0}
+.settings-center-modal{border-radius:20px;box-shadow:0 16px 60px rgb(0 0 0 / .14);border:1px solid var(--line)}
+.profile-start .login-card{resize:none}
+.wb-avatar-placeholder{display:grid;place-items:center;background:var(--color-selected);color:var(--ink-2);font-size:24px;font-weight:500;border:1px solid var(--line)}
+.wb-avatar-placeholder[hidden],.wb-avatar-preview[hidden]{display:none}
+.wb-avatar-upload{display:inline-flex;margin:14px 8px 10px 0;cursor:pointer}
+.wb-slider-host~[data-brightness]{display:none}
+@media(max-width:600px){.layout{grid-template-columns:minmax(0,1fr);padding:6px;grid-template-rows:48px minmax(0,1fr)}.layout>.main-shell{grid-column:1;margin-bottom:62px;border-radius:16px}.layout>.side{display:none}.layout>.shell-bar{gap:4px;padding-left:2px}.layout>.shell-bar .workbench-menubar{gap:0}.layout>.shell-bar .workbench-menubar summary{padding:6px}.layout>.shell-bar .theme-toggle #theme-label{display:none}.desktop-shell .layout>.shell-bar{padding-right:138px}}
+.wb-runtime-note{position:fixed;bottom:6px;right:12px;z-index:20;max-width:min(420px,calc(100vw - 24px));padding:4px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink-2);font-size:11px;pointer-events:none}
+.wb-instance-token{width:100%;font:12px/1.5 ui-monospace,monospace;margin:12px 0}
+@media(max-width:600px){.wb-runtime-note{bottom:64px}.shell-heading{min-width:0}.layout>.shell-bar .shell-history,.layout>.shell-bar #sidebar-toggle{width:28px;padding:4px}.layout>.shell-bar .workbench-menubar summary{padding:6px 4px}.layout>.shell-bar{gap:2px}.sidebar-collapsed .layout{grid-template-columns:minmax(0,1fr)}}
+.wb-standalone .wb-select{position:relative;display:inline-flex;min-width:140px;max-width:100%}
+.wb-standalone .wb-select>select{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.wb-standalone .wb-select>button{display:flex;align-items:center;gap:10px;width:100%;min-height:38px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);padding:8px 42px 8px 12px}
+.wb-standalone .wb-select-label{white-space:nowrap;min-width:80px}
+.dsh-setting-row>div:has(#appearance-brightness){display:flex;align-items:center;min-width:220px;width:260px;max-width:55%}
+.dsh-setting-row>div:has(#appearance-brightness)>.wb-slider-host{display:inline-flex;min-width:0;width:100%}
+@media(max-width:600px){.dsh-setting-row>div:has(#appearance-brightness){min-width:120px;width:150px;max-width:55%}}
+/* Module cards keep the shared fixed responsive layout. */
+.card,.sum-card{resize:none!important}

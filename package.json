@@ -1,9 +1,37 @@
 {
   "name": "lingxi-workbench-web",
-  "version": "0.0.31",
+  "version": "0.0.32",
   "private": true,
+  "license": "CC-BY-NC-4.0",
   "scripts": {
-    "build": "python scripts/build_web.py",
-    "start": "python run_web.py"
+    "build:app": "node scripts/build_app.cjs",
+    "build:server": "node scripts/build_server.cjs",
+    "build:web": "npm run build:app && npm run build:server",
+    "start": "node scripts/web_launcher.mjs",
+    "check:types": "tsc --project tsconfig.server.json && tsc --project tsconfig.app.json"
+  },
+  "dependencies": {
+    "better-sqlite3": "12.11.1",
+    "decimal.js": "10.6.0",
+    "fastify": "5.12.5",
+    "sharp": "0.35.5",
+    "yaml": "2.9.1",
+    "yauzl": "3.4.0",
+    "yazl": "3.3.1"
+  },
+  "devDependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/node": "24.19.1",
+    "@types/better-sqlite3": "9.6.0",
+    "@types/yauzl": "3.4.0",
+    "@types/yazl": "3.3.1",
+    "typescript": "7.0.2",
+    "tsx": "4.23.15",
+    "esbuild": "0.28.2",
+    "vite": "8.3.2",
+    "@vitejs/plugin-react": "6.1.2"
   }
 }

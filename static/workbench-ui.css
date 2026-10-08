@@ -20,7 +20,7 @@
 :root[data-theme="dark"] .brand-knot .brand-knot-dark { display:block; }
 button.workbench-brand { cursor:pointer; border-radius:8px; }
 button.workbench-brand:hover { background:var(--color-hover); }
-.side .hello,#sidebar-toggle,.footer-status { display:none; }
+.side .hello,.footer-status { display:none; }
 #nav { flex-shrink:0; }
 .side .side-foot {
   display:grid; grid-template-columns:minmax(0,1fr) 30px; align-items:center;

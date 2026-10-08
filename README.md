@@ -1,143 +1,180 @@
 <div align="center">
-
-# 灵犀工作坊
-
-**把日常工作、AI 用量、提示词与本机技能放进一个个人工作台。**
-
-[快速启动](#快速启动) · [功能](#功能) · [目录](#目录) · [技术架构](#技术架构) · [桌面版](#桌面版)
-
-Python · SQLite · 本地资料 · 多账户隔离
-
+  <img src="static/assets/lingxi-logo.svg" alt="灵犀工作坊" width="100">
+  <h1>灵犀工作坊</h1>
+  <p><em>把日常工作、AI 用量、提示词与本机技能放进一个个人工作台。</em></p>
+  <a href="https://github.com/Ceeyu-iooi/lingxi-workbench-web/releases"><img src="https://img.shields.io/github/v/release/Ceeyu-iooi/lingxi-workbench-web?style=flat-square&amp;color=2962ed" alt="最新发布"></a>
+  <img src="https://img.shields.io/badge/Windows-x64-2962ed?style=flat-square" alt="Windows x64">
+  <img src="https://img.shields.io/badge/TypeScript-React%20%2B%20Node-2962ed?style=flat-square" alt="TypeScript">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-CC--BY--NC--4.0-64748b?style=flat-square" alt="许可证"></a>
 </div>
 
-## 功能
+[安装](#安装) · [功能特性](#功能特性) · [App 数据](#app-数据) · [从源码构建](#从源码构建) · [工作原理](#工作原理) · [设置](#设置)
 
-| 模块 | 能做什么 |
+## 灵犀工作坊是什么？
+
+一个以本机 Profile 为资料边界的个人工作台。网页版与 Windows 桌面版共享页面和业务服务；项目、待办、账单、提示词与用量证据集中管理。一个 Profile 就是一个实例账户，无需应用登录或注册，用户名与头像可以修改。
+
+## 支持的工具与来源
+
+| 来源 | 本机用量证据 | 余额、额度与账单 | 说明 |
+|---|---|---|---|
+| Codex | sessions / archived_sessions 的 token_count | 本机已授权账户的官方活动与额度 | 官方汇总与本机明细分开 |
+| ZCode | CLI SQLite 与响应日志 | GLM 供应商接口能力 | 数据库证据优先，无法证明重叠时不相加 |
+| DeepSeek Harness | JSONL / 多帧 Zstandard 会话日志 | DeepSeek 供应商接口能力 | 只保留最小用量证据 |
+| API 供应商 | 真实 API 响应、授权历史接口或导入 | DeepSeek、GLM、OpenRouter、New API、Sub2API、硅基流动、Moonshot、MiniMax、LMU、自定义查询 | 各平台与 Key 的能力不同，不按余额反推 Token |
+
+来源未返回、模型缺失、价格未知和查询失败不会被填成零。安装了某个 Agent，不代表获得它的全部历史。
+
+## 界面展示
+
+![总览界面](docs/images/overview.png)
+
+截图使用独立 Profile 的合成示例资料，不展示个人数据。v0.0.32已复查网页交互与包内资源；本次原生EXE界面及安装、升级、卸载验收已按维护者要求取消，未标为通过。
+
+应用保持白、蓝、浅灰及深色主题，侧栏采用灰色圆角选中与蓝色图标；主页面使用统一圆角外框，保留原有白色模块卡片。设置包含个人资料、外观、AI 服务、用量与实验、数据与备份、快捷键；桌面另有“关于与更新”。
+
+[界面与组件设计说明](docs/UI_DESIGN.md) · [应用内部 UI 组件库](static/ui-kit.html)
+
+## 为什么用灵犀工作坊？
+
+- 工作记录与 AI 使用证据放在同一个个人工作台，减少来回整理。
+- 资料留在自己选择的位置，网页和桌面保持独立，不自动合并。
+- Token、供应商实际账单与参考等价值分开，缺口有证据说明。
+- 不同模块沿用统一主题、圆角、编辑与保存交互。
+
+## 功能特性
+
+| 模块 | 功能 |
 |---|---|
-| 总览与项目 | 项目、待办、进度、活动及月度总结 |
+| 总览与项目 | 项目、待办、进度、活动、趋势与月度总结 |
 | 热点与记账 | 热点聚合、交易记录、账单导入和统计 |
-| 用量监测 | Codex、ZCode、DeepSeek Harness本机证据；API供应商余额、账单和响应用量；多Key及日期/模型筛选 |
-| 参考计价 | ModelRadar历史价格与历史汇率；USD/CNY、缓存、缺价及证据说明 |
-| 提示词 | 分类、编辑、版本、导入导出、模板市场及按需AI评估/优化 |
-| 技能 | 登记本机目录、只读扫描、搜索、来源及原文查看 |
-| 账户与资料 | 登录隔离、主题、字号、快捷键、账户备份与本机资料迁移 |
+| 用量监测 | 日志证据、供应商余额与账单、多 Key、日期与任意多模型筛选 |
+| 历史参考计价 | ModelRadar 历史价格、加拿大央行历史汇率、USD/CNY、缺价与分项证据 |
+| 提示词 | 分类、编辑、版本、导入导出、模板市场、按需 AI 评估与优化 |
+| 本机技能 | 登记目录、只读扫描、搜索、来源和原文查看，不执行技能脚本 |
+| Profile 与资料 | 可改用户名及头像、加密完整备份、受控迁移、资料空间统计 |
 
-Token、账户余额和实际账单分别统计；参考等价值不是实际扣费。来源未返回、缺失模型、未知价格和网络失败不补成零。独立AI对话、旧自动化执行入口已停用。
+Agent 参考计价按工具独立选择，默认关闭。滑动确认后先准备已有记录的历史价格、汇率及双币种结果，再开启；失败和取消不误开启。普通筛选读取本地已采集资料和缓存，首次准备与热缓存查询是不同阶段。参考等价值不代表实际扣费、订阅实付或节省金额。独立 AI 对话与旧自动化执行入口已停用，保留提示词 AI 优化、评估与通知待办识别。
 
-## 快速启动
+## 安装
 
-需要 **Python 3.12或更高版本**及首次安装依赖时的网络。普通使用无需Node.js、Electron、私有仓库或APIKey。
+在 [Releases](https://github.com/Ceeyu-iooi/lingxi-workbench-web/releases/latest) 选择 Windows x64 安装版或便携版。每次发布同时提供两种可执行文件、更新元数据和 SHA-256 摘要；版本标题仅为 `v版本号`。
 
-下载并解压[网页版源码](https://github.com/Ceeyu-iooi/lingxi-workbench-web)，在解压后的目录打开终端：
+| 包 | 使用方式 |
+|---|---|
+| `Lingxi-Workbench-版本-x64-Setup.exe` | 安装与升级；默认 Profile 跟随安装目录，可选择其他可写位置 |
+| `Lingxi-Workbench-版本-x64-Portable.exe` | 免安装运行；Profile 和定位文件留在便携程序旁 |
+
+桌面附带 Node 运行时，无需另外安装 Node 或 Python。卸载保留 Profile。当前未配置发布者代码签名，摘要校验与签名验证是两件事。
+
+### 首次启动
+
+选择或创建 Profile 资料位置，填写用户名，然后按需连接 Codex、ZCode、Harness 和供应商用量 Key；监测与 Key 都可稍后设置。引导中断后可继续，也可从“数据与备份”重新打开。新 Profile 默认浅色，后续尊重已保存主题。
+
+“关于与更新”默认不自动检查、下载或安装。安装版按用户确认下载完整包并重启安装；便携版下载经摘要核验的新便携程序，退出后替换原文件，保留 Profile。已使用安装包在新后台和页面就绪后清理，尚待安装的新版本保留。0.0.28 及以前需先手动升级到支持检查更新的版本。
+
+## 多设备与局域网访问
+
+当前支持可选局域网访问同一个网页实例，不提供自动多设备 Profile 同步。默认仅监听本机。可在本机“数据与备份 → 局域网访问”保存范围并正常退出、重启后台，或设置 `WORKBENCH_HOST=0.0.0.0`。局域网设备使用本机设置页显示的实例凭证连接；凭证每次后台启动更新。
+
+也可在 Profile 的 `config/web-server.json` 写入 `{"host":"0.0.0.0"}`。环境变量优先，`WORKBENCH_PORT` 默认 8765。已有服务不会被启动入口擅自重启；如果无法连接，先核验实际监听与本机网络配置。
+
+## App 数据
+
+| 位置 | 内容 |
+|---|---|
+| `.profile.json` | 不可变 profileId、用户名与创建信息 |
+| `data/storage/workbench.sqlite` | 业务、提示词、用量、价格证据及派生缓存 |
+| `data/credentials/` | 服务端凭据，禁止公开分发 |
+| `backups/` | 完整加密 `.lxprofile` 备份 |
+| `config/`、`workspace/` | 设置、维护配置和工作区 |
+| `browser/`、`logs/`、`runtime/`、`updates/` | 桌面浏览器资料、日志、生命周期状态与临时更新包 |
+
+网页版默认使用源码目录的 `profile`；桌面默认使用程序目录的 `profile`，两者独立。桌面 Cookie、草稿及缓存在 Profile 的 `browser`，崩溃记录在 `runtime/crashes`，新安装不额外建立 AppData/Roaming 资料目录。旧账户结构不会自动迁成新版 Profile；在资料目录中发现旧结构时明确提示。
+
+“数据与备份”包含业务、工作区、设置、用户名、头像与凭据的完整 Profile 口令加密备份；口令不保存在浏览器、日志或 URL 中，丢失后无法解密。恢复前生成加密预备份、核验并事务应用。备份排除更新包、浏览器临时缓存、日志及备份自身。不要直接复制正在写入的 SQLite；受控迁移会先停写、校验及原子切换，原副本保留至明确清理。任何系统恢复资料均不得作为公开附件上传。
+
+## 从源码构建
+
+需要 **Node.js 24 LTS** 与首次安装依赖时的网络。网页版无需 Electron、Python、私有仓库或 API Key。
 
 ```shell
-python scripts/install_web.py
-python scripts/build_web.py
-python -B run_web.py
+npm ci
+npm run build:web
+npm start
 ```
 
-浏览器打开 **http://127.0.0.1:8765/**，首次使用创建自己的账户。Windows也可运行 `start.bat`。从其他目录启动时可传入 `run_web.py` 完整路径，资料仍写入源码所在目录的 `profile`。
-
-`start.bat` 会显示启动状态和访问地址，后台就绪后打开浏览器。请保留运行后台的窗口；缺少 Python 或启动失败时会留下错误提示，详细日志位于 `profile/logs/web-runtime.log`。
-
-`build_web.py`检查源码和组件资源摘要，生成 `.runtime/web-build` 中的可运行副本；副本第一次启动建立自己的空profile，不导入原目录账户。
-
-默认只监听本机。需要在可信局域网访问时，明确设置 `WORKBENCH_HOST=0.0.0.0`；端口可通过 `WORKBENCH_PORT`指定，默认8765。
-
-也可在自身 `profile/config/web-server.json` 写入 `{"host":"0.0.0.0"}`，正常关闭原后台后再运行 `start.bat`。环境变量优先于此本机配置；启动入口发现已有服务时只提示“已运行”，不会替你重启。局域网设备通过运行电脑的当前 IP 访问，若仍无法连接再检查 Windows 防火墙。
-
-## 目录
-
-公开网页版的目录如下：
+打开 **http://127.0.0.1:8765/**。Windows 可运行 `start.bat`，它显示启动状态，后台身份与版本核验后打开浏览器。保留运行窗口，按 Ctrl+C 正常退出。即使从其他目录调用启动脚本，资料仍按该副本定位。
 
 ```text
 lingxi-workbench-web/
-├── run_web.py                 # 唯一根目录Python入口
-├── start.bat                  # Windows快捷启动
-├── src/workbench/             # HTTP服务、业务模块、存储及用量处理
-├── static/                    # 页面、样式、字体、图表与应用组件资源
-├── frontend/application-assets.json  # 集成组件成品的摘要与许可定位
-├── scripts/                   # 网页依赖安装、构建与证据采集辅助
-├── docs/                      # 当前架构与使用说明
-├── profile/                   # 启动后产生的私有资料，不进Git
-├── .runtime/                  # 依赖、可重建构建结果与私有定位，不进Git
-└── README、LICENSE、VERSION等说明
+├── start.bat                       # Windows 快捷启动
+├── src/server/                     # Node TypeScript 服务与业务
+├── src/shared/                     # 共享接口和默认值
+├── frontend/app/                   # React 页面入口
+├── frontend/compat/                # 原有交互的兼容适配
+├── frontend/application-assets.json# 第三方集成成品摘要
+├── static/                         # 样式、字体、图表及组件成品
+├── scripts/                        # 构建、启动与维护入口
+├── docs/                           # 架构、资料边界与使用说明
+├── profile/                        # 启动后产生的私有资料
+└── .runtime/                       # 可重建构建与私有定位
 ```
 
-profile统一包含账户数据库、`data`业务库与凭据、`backups`账户备份、`config`维护配置、`logs`日志和`runtime`生命周期状态。桌面profile另外包含浏览器资料、工作目录及`updates`更新缓存。
+Vite 构建到 `.runtime/web-ui`，Node 后端构建到 `.runtime/server`。开发前端热更新可运行 `npx vite --config vite.app.config.mts`，其 API 代理需要单独启动后端。正式网页与桌面均不启用开发 HMR；服务端修改需要重启，前端发布更新需要刷新或重启。
 
-公开源码不包含个人账户、日志原文、密钥、真实用量截图、内部验收报告或桌面构建工具。
+## 工作原理
 
-## 技术架构
+![TypeScript 技术架构](docs/images/architecture.svg)
 
-```mermaid
-flowchart TD
-    Browser[浏览器：页面与图表] --> HTTP[Python HTTP服务与账户认证]
-    HTTP --> Services[业务服务：项目 / 账单 / 提示词 / 技能]
-    Services --> Store[SQLite与JSON资料]
-    Store --> Profile[本机独立profile]
-    Logs[明确授权的Agent日志] --> Evidence[采集 / 核验 / 去重 / 归属]
-    Providers[供应商账单与API响应] --> Evidence
-    Evidence --> Usage[用量库与按条件汇总]
-    Radar[ModelRadar历史价格] --> Prices[价格证据与历史汇率]
-    Prices --> Value[Decimal参考计价与双币种缓存]
-    Usage --> Value
-    Usage --> HTTP
-    Value --> HTTP
-```
+React 管理应用壳、路由与页面入口，现有编辑器和图表通过兼容适配保留交互；新入口、共享契约和后端采用严格 TypeScript，兼容控制器尚未全面严格类型化。Fastify 提供本机 HTTP，SQLite 保存资料，Decimal 处理金额，Sharp 处理头像，YAML 与 Node Zstandard 支持技能结构和日志解码。
 
-后端使用Python标准库HTTP服务和SQLite；Zstandard、PyYAML、Pillow分别支持日志解码、结构化文件与头像处理。前端主体为HTML/CSS/JavaScript，局部交互采用React组件，图表直接在页面绘制。
+用量采集核验原始证据、去重与归属；累计值、缓存子集和推理子集不会重复相加。价格按 UTC 消费日期、汇率按上海日期取历史证据，最多沿用此前七日，不使用未来汇率。更多见[架构与资料流](docs/ARCHITECTURE.md)、[用量来源及限制](docs/USAGE.md)及[TOKEN_ACCOUNTING](TOKEN_ACCOUNTING.md)。图的表达参考 [C4 容器图](https://c4model.com/diagrams/container)，采用本项目自绘 SVG。
 
-普通筛选读取本地已采集资料和缓存，不为每次切换币种或模型重新请求价格网络。首次采集、首次计价准备和热缓存查询是不同阶段，不承诺首次计算瞬间完成。
+## 会话数据保留期
 
-更多说明见[架构与资料流](docs/ARCHITECTURE.md)和[用量来源及限制](docs/USAGE.md)。
+仅保留核验所需的最小用量证据、元数据与读取进度，不保留 Agent 聊天正文或附件。本机业务与历史证据不会按固定天数自动删除；清理派生计价缓存不会删除真实消费、价格与汇率证据。日志原文在用户登记的外部目录，不随 Profile 迁移或清理。
 
-## 配置与资料
+## 设置
 
-- “设置 → AI服务”配置自己使用的服务；只有使用可选AI功能时才需要APIKey，凭据仅保存在服务端profile。
-- “用量与实验”登记实际日志位置。安装Agent不等于获得完整历史；日志不可读时保留已核验资料并标记缺口。
-- 供应商Key的能力取决于接口；余额不能反推出Token，普通推理Key不一定能查完整历史账单。
-- Agent参考计价默认关闭。滑动确认后准备历史价格、汇率和双币种结果，失败不误开启。
-- “数据与备份”中的导出和恢复仅作用于当前账户，不含凭据及他人资料。
-- 全账户profile迁移属于本机维护：运行 `python -B run_web.py --manage` 打开短期授权入口，普通登录不能迁移其他人的资料。
+- 个人资料：用户名、头像上传与移除。
+- 外观：浅色、深色、系统主题，强调色、字号、亮度、减少动画、菜单语言与办公/编程模式；预览、保存和放弃各自明确。
+- AI 服务：服务商、模型、API 地址与 Key；仅可选 AI 操作需要凭据。
+- 用量与实验：登记真实日志位置、采集开关、提示词自动保存及 AI 功能。
+- 数据与备份：加密完整 Profile、恢复、空间统计、受控迁移与可选局域网。
+- 快捷键：搜索、侧边栏与设置，支持不重复的 Ctrl/Meta 组合。
 
-复制正在写入的数据库可能遗漏WAL事务；请使用账户备份或受控profile迁移。系统恢复基线含恢复所需私有资料，禁止作为公开附件上传。
+## 隐私
 
-## 前端组件与许可
+凭据仅留在服务端 Profile，不进入前端、普通提示词导出、日志或公开 Git；只在用户口令加密的完整 Profile 备份中携带。AI 内容仅在用户点击评估、优化或识别时发送到已配置服务，供应商查询仅访问所配置的平台，默认不跟随重定向。技能扫描仅限登记目录，不执行 SKILL.md 或脚本。
 
-本仓库携带**应用内集成的组件JS/CSS成品**和网页业务源码。第三方组件原始文件不在公开源码中，默认网页构建不重新编译这些组件，也不依赖已失效的下载地址。
-
-成品摘要见 `frontend/application-assets.json`，对应许可见 `static/vendor/`；它们作为本应用的一部分提供，不是可独立销售或分发的组件库。修改成品后需重新核验摘要，不能冒充可完整重建的第三方组件源码。
-
-项目许可见[LICENSE](LICENSE)，字体、图标及第三方许可见[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)。
-
-## 桌面版
-
-[下载Windows桌面版](https://github.com/Ceeyu-iooi/lingxi-workbench-web/releases/latest)。桌面使用Electron窗口与自有随机本机端口后台，与8765网页资料保持独立。
-
-安装时默认资料位置为安装目录的 `profile`，可另选可写目录；升级继续使用已有资料，卸载保留profile。0.0.28及以前需要手动安装一次0.0.29，之后在“设置 → 关于与更新”中手动检查、确认下载并重启安装。
-
-资料定位文件在安装目录。浏览器 Cookie、草稿及缓存位于选定 profile 的 `browser`，日志在 `logs`，崩溃记录在 `runtime/crashes`，更新包在 `updates`；新安装不另行创建 `AppData/Roaming/lingxi-workbench`。旧版在那里保存的账户资料仍被升级识别，可通过资料迁移移动，不能直接删除。
-
-优先差量下载，条件不满足时回退完整包；差量节省下载量，安装仍由完整安装器完成。更新缓存只保留当前基准和必要待安装文件。当前未配置发布者代码签名，摘要校验不等于发布者签名验证。
-
-安装更新需要重启应用。开发时的热模块替换（HMR）是代码改变后替换运行中的前端模块，尽可能保留界面状态；当前正式网页和桌面版均未启用开发 HMR。Python 后端改动需重启后台，静态页面改动需刷新页面。
+公开源码不包含个人路径、账户、密钥、真实用量截图、Agent 日志原文、内部验收回执或私有桌面构建工具。
 
 ## 常见问题
 
 | 情况 | 处理方式 |
 |---|---|
-| 8765已被占用 | 检查现有服务身份或明确设置其他端口，不仅凭端口存在连接未知程序 |
-| Python依赖缺失 | 在该副本运行 `python scripts/install_web.py` |
-| 组件摘要失败 | 获取对应版本的应用资源，不从失效registry猜测替代组件 |
-| 没有Agent用量 | 登记实际日志目录，检查来源状态，不生成不存在的历史 |
-| 金额未知 | 检查模型归属、原始分项、历史价格和汇率缺口 |
-| 更新下载失败 | 保留当前版本，检查网络和磁盘后重试，不手工覆盖运行中的程序 |
+| 8765 被占用 | 核验已有服务身份，或明确指定其他端口，不连接未知程序 |
+| Node / 依赖缺失 | 安装 Node.js 24 LTS，在该副本运行 `npm ci` |
+| 组件摘要失败 | 获取对应版本成品，不从失效下载地址猜测替代组件 |
+| 没有 Agent 用量 | 核验实际日志目录与来源状态，不生成不存在的历史 |
+| 金额未知 | 检查模型归属、原始分项、历史价格与汇率缺口 |
+| 更新失败 | 保留当前版本，检查网络、磁盘和摘要后重试，不覆盖运行中的程序 |
+
+## Star 历史
+
+[查看项目关注与贡献情况](https://github.com/Ceeyu-iooi/lingxi-workbench-web/stargazers)。
+
+## 参与贡献
+
+欢迎通过公开仓库 Issue 提交可复现的问题与界面建议，请使用合成资料和脱敏截图。修改应保留现有功能与统一交互，依照 TOKEN_ACCOUNTING 验证数值，不将网页通过或构建通过冒充原生验收。
+
+## 致谢
+
+感谢 React、Vite、Node.js、Fastify、SQLite 与相关开源依赖。安装器留白与设置布局参考 DeepSeek Harness；组件、字体、图标和来源见 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)。README 与中文 Release 章节参考 [Token Monitor](https://github.com/Javis603/token-monitor/blob/main/README.zh-CN.md)，功能说明均按本项目实际范围编写。
+
+## 许可证
+
+项目采用 [CC BY-NC 4.0](LICENSE)。仓库携带应用内集成的组件 JS/CSS 成品及业务源码，付费第三方原文件不公开，默认构建不重新编译这些组件，也不依赖失效下载地址。成品摘要见 `frontend/application-assets.json`，对应许可见 `static/vendor/`；它们随应用提供，不是可独立销售或分发的组件库。
 
 
-
-### 安装与首次启动体验
-
-新安装的资料位置默认跟随安装目录：`<安装路径>\profile`。首次启动先显示原创灵犀标识，再选择已有 Profile 或在空文件夹新建；确认资料位置后启动后台，登录或注册后可以开启 Codex、ZCode、Harness 用量监测、添加供应商用量 Key，也可以稍后设置。设置中的“数据与备份”可重新打开引导。升级保留已核验的资料位置，卸载保留 Profile。
-
-界面默认浅色；导航灰色选中并点亮图标，下拉箭头位于最右侧，主题通过圆形展开切换。资料位置与空间显示互斥分类饼图，数据库载荷和内存缓存单独列示。设计与来源说明见 `docs/UI_DESIGN.md`，内部示例见 UI 组件库。

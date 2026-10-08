@@ -1,5 +1,5 @@
 # 发布记录
 
-## v0.0.31：网页版源码
+## v0.0.32
 
-独立构建、资料隔离；第三方UI使用应用集成成品。桌面安装包通过Releases分发；安装资料默认在安装目录profile，可指定其他位置。
+React、TypeScript、Vite 与 Node、SQLite；Profile 实例资料、完整加密备份。桌面双包由 Releases 提供。

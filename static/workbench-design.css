@@ -151,8 +151,8 @@
 @media(max-width:900px){.wb-redesign .settings-panel .bento{grid-template-columns:minmax(0,1fr)!important}.wb-redesign .settings-panel .bento>.card{grid-column:auto!important;grid-row:auto!important}.wb-redesign .agent-layout{height:auto}.wb-redesign .settings-nav-item{min-height:36px}}
 @media(max-width:600px){.wb-redesign .ledger-row{flex-wrap:wrap}.wb-redesign .ledger-row .ledger-title{min-width:100px}.wb-redesign .ledger-row .ledger-cat{display:none}.wb-redesign .finance-stats{grid-template-columns:minmax(0,1fr)}.wb-redesign .agent-chat-toolbar label{flex:1 1 45%}.wb-redesign .agent-chat-toolbar .wb-select{min-width:0;max-width:100%}}
 
-body:has(.module-surface.wb-redesign,.login-wrap) .shell-bar{height:44px}
+body:has(.module-surface.wb-redesign,.login-wrap) .shell-bar{height:48px}
 body:has(.module-surface.wb-redesign,.login-wrap) .shell-label{font-size:max(12px,var(--text-ui-sm))}
-body:has(.module-surface.wb-redesign,.login-wrap) .nav-item.on{color:var(--accent);background:var(--accent-soft)}
+body:has(.module-surface.wb-redesign,.login-wrap) .nav-item.on{color:var(--ink);background:var(--color-selected);font-weight:400}
 body:has(.module-surface.wb-redesign,.login-wrap) .workbench-menubar summary{border-radius:8px;padding:7px 9px}
-body:has(.module-surface.wb-redesign,.login-wrap) .side .nav-item{border-radius:10px;min-height:38px}
+body:has(.module-surface.wb-redesign,.login-wrap) .side .nav-item{border-radius:12px;min-height:44px}
