@@ -219,7 +219,7 @@
     if (selected[0] === "modelProvider") return providers(panel);
     if (selected[0] === "usage") return usageSettings(panel);
     if (selected[0] === "shortcuts") return shortcuts(panel);
-    if (selected[0] === "updates") return window.desktopUpdates.mount(panel);
+
   }
   function usageSettings(root) {
     const scopes = [
@@ -334,7 +334,7 @@
       "备份整个 Profile，包含工作内容、个人资料、设置与凭据。",
     );
     body.innerHTML =
-      '<section class="control-section"><div class="control-actions"><button class="btn" data-backup>创建加密备份</button><button class="btn ghost" data-export-profile>导出加密 Profile</button><label class="btn ghost">导入 Profile<input type="file" data-import-profile accept=".lxprofile,.json" hidden></label><a class="btn ghost" href="preview.html">设计预览 ↗</a></div><p class="meta">请妥善保存备份口令，恢复时需要使用。</p><p class="control-form-error" role="alert"></p><div data-backup-list></div></section>';
+      '<section class="control-section"><div class="control-actions"><button class="btn" data-backup>创建加密备份</button><button class="btn ghost" data-export-profile>导出加密 Profile</button></div><p class="meta">请妥善保存备份口令，恢复时需要使用。</p><p class="control-form-error" role="alert"></p><div data-backup-list></div></section>';
     const identity = user.username,
       active = () => root.isConnected && user?.username === identity;
     const passwordDialog = (title, confirmPassword, submit) =>
@@ -392,9 +392,7 @@
         qa("[data-restore-profile]", body).forEach(
           (b) =>
             (b.onclick = () => {
-              if (
-                !confirm("恢复此 Profile 备份？当前资料会先生成加密恢复副本。")
-              )
+              if (!confirm("恢复此 Profile 备份？当前资料会先生成加密恢复副本。"))
                 return;
               passwordDialog("恢复 Profile", false, async (password) => {
                 await call("POST", "/api/restore", {
@@ -423,31 +421,6 @@
         await list();
         toast("加密 Profile 已导出");
       });
-    q("[data-import-profile]", body).onchange = async (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
-      try {
-        const envelope = JSON.parse(await file.text());
-        if (envelope.format !== "lingxi-profile-encrypted")
-          throw new Error("请选择加密的 .lxprofile 备份");
-        passwordDialog("导入 Profile", false, async (password) => {
-          if (
-            !confirm(
-              "用这个备份恢复当前 Profile？现有资料会先生成加密恢复副本。",
-            )
-          )
-            return;
-          await call("POST", "/api/import", { envelope, password });
-          await reloadProfile();
-          toast("Profile 已导入");
-        });
-      } catch (error) {
-        q("[role=alert]", body).textContent = error.message;
-      } finally {
-        event.target.value = "";
-        delete event.target.dataset.wbDirty;
-      }
-    };
     if (!window.workbenchDesktop) {
       const access = document.createElement("section");
       access.className = "control-section";
@@ -477,13 +450,12 @@
         }
       };
       q("[data-copy-token]", access).onclick = () =>
-        navigator.clipboard
-          .writeText(q(".wb-instance-token", access).value)
-          .then(
-            () => toast("实例凭证已复制"),
-            () => toast("请选中凭证手动复制"),
-          );
+        navigator.clipboard.writeText(q(".wb-instance-token", access).value).then(
+          () => toast("实例凭证已复制"),
+          () => toast("请选中凭证手动复制"),
+        );
     }
+    const profiles=document.createElement("section");profiles.className="control-section";body.prepend(profiles);window.LingxiDesign.profileCards(profiles).catch(error=>profiles.textContent=error.message);
     list();
     window.profileManagement?.mount(body);
     const restart = document.createElement("button");
@@ -493,7 +465,7 @@
       window.lingxiOnboarding?.open().catch((error) => toast(error.message));
     body.append(restart);
   }
-
+  
   function appearance(root) {
     const body = viewHeader(root, "外观", "主题、字号、强调色与界面亮度。");
     const icons = {
@@ -1452,6 +1424,7 @@
     profileMenuOwner=user.username;
     const name=state.settings.display_name||user.display_name||"个人资料",avatar=trigger.querySelector("img")?.src||"";
     profilePopover.innerHTML=window.LingxiDesign.profileMenuMarkup(name,avatar);
+    profilePopover.querySelector("[data-profile-switch]").onclick=()=>{hideProfileMenu(true);window.LingxiDesign.selectProfile();};
     profilePopover.querySelector("[data-profile-identity]").onclick=()=>{hideProfileMenu(true);location.hash="#/settings/general";};
     profilePopover.querySelectorAll("a").forEach(a=>a.addEventListener("click",()=>hideProfileMenu(true)));
     trigger.setAttribute("aria-haspopup","menu");trigger.setAttribute("aria-controls",profilePopover.id);trigger.setAttribute("aria-expanded","true");

@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { Transform, Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
-const repo="https://api.github.com/repos/Ceeyu-iooi/lingxi-workbench-web";
+const repo="https://api.github.com/repos/Ceeyu-iooi/Lingxi-Workspace";
 const valid=(tag:string)=>/^v?(\d+)\.(\d+)\.(\d+)$/.exec(tag);
 const compare=(a:string,b:string)=>{const x=valid(a),y=valid(b);if(!x||!y)return 0;for(let i=1;i<4;i++){const n=Number(x[i])-Number(y[i]);if(n)return n;}return 0;};
 async function fetchAsset(url:string,signal:AbortSignal){
@@ -51,5 +51,6 @@ export class WebUpdates {
   catch(error){await unlink(part).catch(()=>{});throw error;}
  }
  file(){if(this.current.status!=="downloaded"||!this.current.file)throw new Error("请先下载并校验安装包");const path=join(this.profileRoot,"updates","web",this.current.file);if(!existsSync(path))throw new Error("安装包已移除，请重新下载");return {name:this.current.file,stream:createReadStream(path)};}
+ async delivered(name:string){if(this.current.file!==name)return;await unlink(join(this.profileRoot,"updates","web",name)).catch(()=>{});this.current={...this.current,status:"available",progress:0,file:undefined};}
  close(){this.controller?.abort();}
 }

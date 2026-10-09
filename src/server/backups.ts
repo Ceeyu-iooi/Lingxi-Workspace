@@ -16,7 +16,7 @@ import {
   createDecipheriv,
 } from "node:crypto";
 import { gzipSync, gunzipSync } from "node:zlib";
-import Database from "better-sqlite3";
+import Database from "./sqlite.ts";
 import {
   ProfileStore,
   safePath,

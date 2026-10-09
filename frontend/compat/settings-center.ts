@@ -28,6 +28,7 @@
   }
   const contentFor = (d) => d.querySelector(".settings-center-content");
   function open(renderer, returnHash) {
+    if(location.hash === "#/settings/updates")history.replaceState(null,"","#/settings/about");
     if (typeof user === "undefined" || !user) return Promise.resolve();
     if (dialog && identity !== user.username) close(false, true);
     if (

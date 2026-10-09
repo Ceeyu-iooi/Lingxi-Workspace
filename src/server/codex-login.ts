@@ -1,60 +1,31 @@
-import { mkdirSync } from "node:fs";
-import { join } from "node:path";
-import { CodexRPC, readCodexAccount } from "./codex-account.ts";
-import type { ProfileStore, JsonObject } from "./profile.ts";
-
-/** This process owns only the account RPC lifecycle; no inference turns. */
+import { existsSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
+import { readCodexAccount, cachedChatGPTAuth } from './codex-account.ts';
+import { hash, type ProfileStore, type JsonObject } from './profile.ts';
+/** Shared credentials are read only after explicit Profile-scoped consent. */
 export class CodexLogin {
-  private rpc?: CodexRPC;
-  private timer?: ReturnType<typeof setTimeout>;
-  private generation = 0;
-  private value: JsonObject = { status: "idle" };
-  constructor(private profile: ProfileStore) {}
-  get home() { return join(this.profile.root, "data", "credentials", this.profile.owner, "codex"); }
-  state() { return { ...this.value }; }
-  async start(mode: string) {
-    if (!["browser", "device"].includes(mode)) throw new Error("登录方式不正确");
-    await this.cancel();
-    const ticket = ++this.generation;
-    mkdirSync(this.home, { recursive: true });
-    const rpc = this.rpc = new CodexRPC(this.home);
-    this.value = { status: "starting" };
-    rpc.notify = (method, params) => {
-      if (ticket !== this.generation) return;
-      if (method === "account/login/completed") {
-        this.value = { status: params.success ? "success" : "error", error: params.success ? "" : "授权未完成，请重试" };
-        clearTimeout(this.timer);
-        rpc.close(); this.rpc = undefined;
-      }
-    };
-    try {
-      await rpc.call("initialize", { clientInfo: { name: "lingxi_account", version: "0.0.34" } });
-      rpc.initialized();
-      const result = await rpc.call("account/login/start", { type: mode === "device" ? "chatgptDeviceCode" : "chatgpt" });
-      if (ticket !== this.generation || this.value.status === "success") return this.state();
-      const url = result.authUrl || result.verificationUrl;
-      const parsed = new URL(url);
-      if (parsed.protocol !== "https:" || !["auth.openai.com", "chatgpt.com"].includes(parsed.hostname)) throw new Error("授权地址不正确");
-      this.value = { status: "waiting", loginId: result.loginId, authUrl: url, userCode: result.userCode || "" };
-      this.timer = setTimeout(() => { if (ticket === this.generation) { this.value = { status: "expired", error: "登录已超时，请重新开始" }; rpc.close(); this.rpc = undefined; } }, 10 * 60 * 1000);
-      this.timer.unref();
-    } catch (error) {
-      if (ticket === this.generation) this.value = { status: "error", error: error instanceof Error ? error.message : "登录启动失败" };
-      rpc.close(); this.rpc = undefined;
-    }
-    return this.state();
-  }
-  async cancel(expected?: string) {
-    if(expected && expected !== this.value.loginId) return this.state();
-    this.generation++; clearTimeout(this.timer);
-    const rpc = this.rpc; this.rpc = undefined;
-    if (rpc && this.value.loginId) await rpc.call("account/login/cancel", { loginId: this.value.loginId }).catch(() => {});
-    rpc?.close(); this.value = { status: "cancelled" }; return this.state();
-  }
-  close() { this.generation++; clearTimeout(this.timer); this.rpc?.close(); this.rpc = undefined; }
-  async account() {
-    const observedAt = new Date().toISOString();
-    const result = await readCodexAccount(this.home,{includeActivity:false});
-    return { ...result, authorization: "chatgpt", observedAt };
+  private cached?: JsonObject;
+  private requested=0;
+  private fingerprint='';
+  private generation=0;
+  private job?:Promise<JsonObject>;
+  constructor(private profile:ProfileStore) {}
+  get home(){return join(this.profile.root,'data','credentials',this.profile.owner,'codex');}
+  state(){return {authorized:this.profile.read<JsonObject>('codex-local-authorization',{}).authorized===true,credentialSource:existsSync(join(this.home,'auth.json'))?'profile':'local-codex-cache'};}
+  async authorize(authorized:boolean){this.close();this.profile.write('codex-local-authorization',{authorized,updatedAt:new Date().toISOString()});return authorized?this.account():this.state();}
+  close(){this.generation++;this.cached=undefined;this.job=undefined;this.fingerprint='';}
+  async account(){
+    const own=existsSync(join(this.home,'auth.json')),consent=this.state().authorized;
+    const unavailable=(authorization:string,message:string)=>({authorization,observedAt:new Date().toISOString(),unavailable:{quota:message},quota:null});
+    if(this.profile.read<JsonObject>("codex-local-authorization",{}).authorized===false||!own&&!consent)return unavailable('missing','请授权读取本机 Codex 登录凭据');
+    let fingerprint:string,accountIdentity:string;
+    try{const home=own?this.home:process.env.CODEX_HOME||join(homedir(),'.codex');const tokens=cachedChatGPTAuth(home);accountIdentity=hash(tokens.chatgptAccountId);fingerprint=hash(tokens.chatgptAccountId+'\0'+tokens.accessToken+statSync(join(home,'auth.json')).mtimeMs);}catch{return unavailable('missing','未找到本机 Codex ChatGPT 登录，请先在 Codex 中登录');}
+    if(this.fingerprint!==fingerprint){this.close();this.fingerprint=fingerprint;}
+    if(this.cached&&Date.now()-this.requested<30000)return this.cached;
+    if(!this.job){const ticket=this.generation;this.requested=Date.now();this.job=readCodexAccount(this.home,{includeActivity:false,allowLocal:consent}).then(result=>{
+      const value={...result,accountIdentity:accountIdentity!,authorization:'chatgpt',observedAt:new Date().toISOString()};if(ticket===this.generation)this.cached=value;return ticket===this.generation?value:unavailable('missing','账户已切换，请重新读取');
+    }).catch(()=>this.cached?{...this.cached,stale:true,unavailable:{...this.cached.unavailable,refresh:'账户刷新失败，请检查本机登录和网络'}}:unavailable('expired','账户查询失败，请在 Codex 中检查登录后重试')).finally(()=>{if(ticket===this.generation)this.job=undefined;});}
+    return this.cached?{...this.cached,refreshing:true}:this.job;
   }
 }

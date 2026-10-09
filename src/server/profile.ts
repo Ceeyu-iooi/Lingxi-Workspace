@@ -16,8 +16,8 @@ import {
   createHash,
   timingSafeEqual,
 } from "node:crypto";
-import Database from "better-sqlite3";
-type DatabaseSync = Database.Database;
+import Database from "./sqlite.ts";
+type DatabaseSync = Database;
 const DatabaseSync = Database;
 
 export type JsonObject = Record<string, any>;

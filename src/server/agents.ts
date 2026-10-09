@@ -7,7 +7,7 @@ import {
   rmSync,
 } from "node:fs";
 import { join, basename, extname } from "node:path";
-import Database from "better-sqlite3";
+import Database from "./sqlite.ts";
 import {
   Monitor,
   normalizeTokens,

@@ -1,7 +1,7 @@
 import { Decimal } from "decimal.js";
 import { decodeHTML, parseCSV, unzip } from "./files.ts";
 import { categoryFor } from "./business.ts";
-import type { JsonObject } from "./profile.ts";
+import { hash, type JsonObject } from "./profile.ts";
 
 const DATE =
   "(大后天|后天|明天|今天|今晚|明晚|[本这]?下+周[一二三四五六日天]|[本这]?周[一二三四五六日天]|[本这]?星期[一二三四五六日天]|(?:(\\d{4})年)?(\\d{1,2})月(\\d{1,2})[日号]?|\\d{4}-\\d{1,2}-\\d{1,2}|\\d{1,2}\\.\\d{1,2}[日号]?)";
@@ -256,11 +256,14 @@ const HEADERS: Record<string, string[]> = {
     "交易金额(元)",
     "订单金额(元)",
   ],
-  direction: ["收/支", "收支类型", "交易类型", "收支", "资金方向"],
+  income: ["记账金额(收入)","交易金额(收入)","收入金额","贷方发生额","贷方金额","存入金额","收入"],
+  expense: ["记账金额(支出)","交易金额(支出)","支出金额","借方发生额","借方金额","支取金额","支出"],
+  currency: ["记账币种","币种","货币","交易币种"],
+  direction: ["借贷标志","交易方向","收/支", "收支类型", "交易类型", "收支", "资金方向"],
   name: [
-    "商品说明",
+    "交易详情","交易场所","对方户名","商户名称","摘要",
+    "商品说明","商品名称","商品",
     "交易对方",
-    "商品名称",
     "交易名称",
     "交易摘要",
     "备注",
@@ -294,13 +297,8 @@ export async function parseBill(filename: string, raw: Buffer) {
         break;
       } catch {}
     if (!decoded) throw new Error("账单编码无法识别，请导出 UTF-8 CSV");
-    const sample = decoded.slice(0, 4096);
-    rows = parseCSV(
-      decoded,
-      (sample.match(/\t/g) || []).length > (sample.match(/,/g) || []).length
-        ? "\t"
-        : ",",
-    );
+    let delimiter=/\.tsv$/i.test(filename)?'\t':',',best=0;for(const line of decoded.split(/\r?\n/).slice(0,130))for(const candidate of [',','\t',';']){try{const cells=parseCSV(line,candidate)[0]||[],labels=cells.map(value=>value.replace(/\s+/g,'').replaceAll('（','(').replaceAll('）',')'));const valid=HEADERS.date.some(name=>labels.includes(name))&&[...HEADERS.amount,...HEADERS.income,...HEADERS.expense].some(name=>labels.includes(name));if(valid&&labels.length>best){best=labels.length;delimiter=candidate;}}catch{}}
+    rows=parseCSV(decoded,delimiter);
   } else if (/\.xlsx$/i.test(filename)) {
     const files = await unzip(raw, 50 * 1024 * 1024),
       strings = files.has("xl/sharedStrings.xml")
@@ -358,7 +356,7 @@ export async function parseBill(filename: string, raw: Buffer) {
           choices.map((n) => normalized.indexOf(n)).find((n) => n >= 0) ?? -1,
         ]),
       );
-    if (found.date >= 0 && found.amount >= 0) {
+    if (found.date >= 0 && (found.amount >= 0 || found.income >= 0 || found.expense >= 0)) {
       headerAt = i;
       columns = found;
       break;
@@ -366,15 +364,18 @@ export async function parseBill(filename: string, raw: Buffer) {
   }
   if (headerAt < 0)
     throw new Error("未找到日期和金额列，请使用银行、支付宝或微信的明细账单");
+  const labels=rows[headerAt].map(value=>value.replace(/\s+/g,"").replaceAll("（","(").replaceAll("）",")")),nameIndexes=HEADERS.name.map(name=>labels.indexOf(name)).filter(index=>index>=0),accountScope=rows.slice(0,headerAt).flat().filter(value=>/卡号|微信号|支付宝账户|账号/.test(value)).join("|");
   const result: JsonObject[] = [];
   let skipped = 0;
+  const warnings:Record<string,number>={},occurrences=new Map<string,number>();
   for (const row of rows.slice(headerAt + 1)) {
     if (!row.some((s) => s.trim())) continue;
-    const get = (key: string) => String(row[columns[key]] || "").trim();
+    const get=(key:string)=>{if(key!=="name")return String(row[columns[key]]||"").trim();return nameIndexes.map(index=>String(row[index]||"").trim()).find(Boolean)||"";};
     try {
       const dateRaw = get("date");
       let day: string;
-      if (/^\d+(?:\.\d+)?$/.test(dateRaw)) {
+      if(/^20\d{6}$/.test(dateRaw)){day=localISO(dateOf(Number(dateRaw.slice(0,4)),Number(dateRaw.slice(4,6)),Number(dateRaw.slice(6,8)))).slice(0,10);}
+      else if (/^\d+(?:\.\d+)?$/.test(dateRaw)) {
         const d = new Date(Date.UTC(1899, 11, 30) + Number(dateRaw) * 86400000);
         day = d.toISOString().slice(0, 10);
       } else {
@@ -385,35 +386,25 @@ export async function parseBill(filename: string, raw: Buffer) {
           10,
         );
       }
-      const amountRaw = get("amount")
-          .replaceAll(",", "")
-          .replace(/[¥￥]/g, "")
-          .trim(),
-        value = new Decimal(amountRaw).abs();
-      if (!value.isFinite() || value.gt(1000000000)) throw new Error();
-      const amount = value.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
-      if (!amount) throw new Error();
-      if (
-        /失败|关闭|退款中|撤销/.test(get("status")) ||
-        get("direction").includes("不计收支")
-      ) {
-        skipped++;
-        continue;
-      }
-      const kind =
-          /收入|入账|退款/.test(get("direction")) ||
-          amountRaw.startsWith("+") ||
-          get("name").includes("退款")
-            ? "income"
-            : "expense",
-        title = get("name") || "未命名交易";
+      const cleanAmount=(text:string)=>text.replace(/[¥￥,，\s]/g,'').replace(/^\((.*)\)$/,'-$1');
+      const incoming=cleanAmount(get('income')),outgoing=cleanAmount(get('expense')),present=(value:string)=>value!==''&&!/^(?:-|--|—|–|\/)$/.test(value)&&new Decimal(value).isFinite()&&!new Decimal(value).isZero();
+      let amountRaw=cleanAmount(get('amount')),kind:string;
+      const hasIncome=present(incoming),hasExpense=present(outgoing);if(hasIncome&&hasExpense)throw Error('ambiguous_direction');
+      if(hasIncome){amountRaw=incoming;kind='income';}else if(hasExpense){amountRaw=outgoing;kind='expense';}else{const direction=get('direction');kind=/收入|入账|退款|贷方|存入/.test(direction)||/^(?:贷|C|CR)$/i.test(direction)||amountRaw.startsWith('+')?'income':'expense';if(!direction&&!/^[+-]/.test(amountRaw))warnings['部分交易未提供收支方向，请核对预览']=(warnings['部分交易未提供收支方向，请核对预览']||0)+1;}
+      const currency=get('currency');if(currency&&!/^(?:人民币|CNY|RMB|人民币元|元|156)$/i.test(currency)){warnings['非人民币交易未合并']=(warnings['非人民币交易未合并']||0)+1;skipped++;continue;}
+      const value=new Decimal(amountRaw).abs();if(!value.isFinite()||value.gt(1000000000))throw Error();const amount=value.toDecimalPlaces(2,Decimal.ROUND_HALF_UP).toNumber();if(!amount)throw Error();
+      if(/失败|关闭|退款中|撤销|取消/.test(get('status'))||/不计收支|不计入收支/.test(get('direction'))){skipped++;continue;}
+      let title=get('name')||'未命名交易';if(columns.income>=0||columns.expense>=0){const summaryIndex=rows[headerAt].findIndex(value=>value.trim()==='摘要'),summary=String(row[summaryIndex]||'').trim();if(summary&&summary!==title)title=summary+' · '+title;}
+      let sourceId=get('id').replace(/\s+$/,'').slice(0,100);if(!sourceId){const signature=JSON.stringify([accountScope,rows[headerAt].map(value=>value.trim()),day,dateRaw,amountRaw,kind,title,row.map(value=>value.trim())]);const digest=hash(signature),occurrence=(occurrences.get(digest)||0)+1;occurrences.set(digest,occurrence);sourceId='bill:'+digest+':'+occurrence;}
+      if(result.length>=5000){skipped++;continue;}
       result.push({
         date: day,
         occurredAt: dateRaw.slice(0, 40),
         amount,
         kind,
-        sourceId: get("id").slice(0, 100),
+        sourceId,
         title: title.slice(0, 120),
+        legacyTitle:["商品说明","交易对方","商品名称","交易名称","交易摘要","备注","说明"].map(name=>rows[headerAt].map(value=>value.replace(/\s+/g,"")).indexOf(name)).filter(index=>index>=0).map(index=>String(row[index]||"").trim())[0]||"未命名交易",
         category: kind === "income" ? "收入" : categoryFor(title),
       });
     } catch {
@@ -424,5 +415,7 @@ export async function parseBill(filename: string, raw: Buffer) {
   return {
     rows: result.slice(0, 5000),
     skipped: skipped + Math.max(0, result.length - 5000),
+    warnings,
+    format:columns.income>=0||columns.expense>=0?"bank":"payment-platform",
   };
 }

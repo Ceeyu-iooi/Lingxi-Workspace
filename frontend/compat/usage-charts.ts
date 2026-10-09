@@ -14,7 +14,7 @@
         })[c],
     );
   const integerFormat = new Intl.NumberFormat("zh-CN");
-  const full = (n) => integerFormat.format(Number(n || 0));
+  const full = (n) => integerFormat.format(typeof n==="bigint"?n:typeof n==="string"&&/^\d+$/.test(n)?BigInt(n):Number(n||0));
   const moneyFormats = new Map();
   const num = (n) =>
     Number(n || 0) >= 100000000

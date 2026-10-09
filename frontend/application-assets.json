@@ -4,11 +4,11 @@
   "files": [
     {
       "file": "static/reactbits/workbench.js",
-      "sha256": "de26cb78ccc49a8ed16c2f665d6aa4db52922b5900a5d8a6078b64ed188476a3"
+      "sha256": "584301ab73df7bb15eb07f69dc0186997690544fc8f72c89d7e16a7c870363d3"
     },
     {
       "file": "static/reactbits/workbench-react.css",
-      "sha256": "e0053773681e8c742b998a73ed0dd1bb7714f98d779431922c99c0e325eaa247"
+      "sha256": "a0fd09bbd2cd838bfb80d89e791bacbdb35e107cd1ae2382be2faf44503ca6c4"
     }
   ]
 }

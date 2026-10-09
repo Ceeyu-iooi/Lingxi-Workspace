@@ -6,3 +6,15 @@
 *.md text eol=lf
 *.png binary
 *.woff2 binary
+
+*.js text eol=lf
+*.css text eol=lf
+*.json text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.mts text eol=lf
+*.cjs text eol=lf
+*.mjs text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+*.svg text eol=lf

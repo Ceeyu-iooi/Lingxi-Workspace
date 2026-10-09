@@ -109,6 +109,15 @@ function Menus() {
   };
   return (
     <div className="workbench-menubar">
+      <details className="workbench-menu-compact">
+        <summary aria-label="应用菜单">菜单</summary>
+        <div className="workbench-menu">
+          <strong>文件</strong><a href="#/prompts">提示词库</a><a href="#/settings/data">数据与备份</a>
+          <strong>编辑</strong><button onClick={(e)=>action('search',e)}>搜索与跳转</button>
+          <strong>视图</strong><button onClick={(e)=>action('sidebar',e)}>收起 / 展开侧边栏</button><button onClick={(e)=>action('theme',e)}>切换主题</button><button onClick={(e)=>action('zoom-reset',e)}>实际大小</button>
+          <strong>帮助</strong><a href="#/settings/shortcuts">快捷键</a><a href="preview.html">设计预览</a>
+        </div>
+      </details>
       <details>
         <summary>文件</summary>
         <div className="workbench-menu">

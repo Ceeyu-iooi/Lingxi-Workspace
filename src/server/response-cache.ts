@@ -1,6 +1,6 @@
 import { encode, parseExact } from "./profile.ts";
 export class ResponseCache {
-  readonly budget = 32 * 1024 * 1024;
+  readonly budget = 8 * 1024 * 1024;
   bytes = 0;
   private items = new Map<string, { value: string; size: number }>();
   get(key: string) {

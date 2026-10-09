@@ -17,6 +17,7 @@
     typeof n === "number" && Number.isFinite(n)
       ? n.toLocaleString("zh-CN")
       : "—";
+  const quotaTimeFormatter=new Intl.DateTimeFormat("zh-CN",{timeZone:"Asia/Shanghai",hour12:false,year:"numeric",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit"});
   const time = (t) =>
     t !== null && t !== undefined && t !== ""
       ? new Date(t).toLocaleString("zh-CN", {
@@ -31,6 +32,7 @@
     return result;
   };
   const accountStates = new WeakMap();
+  const enteredAccounts=new Set(),enteredCredits=new Set();
   const ringStates = new WeakMap();
   const renderTickets = new WeakMap();
   const activeButtons = (root, disabled) =>
@@ -93,6 +95,7 @@
     if (node.getAttribute(key) !== String(value)) node.setAttribute(key, value);
   };
   function tickQuota(row) {
+    if(row.dataset.quotaKnown === "false"){row.querySelector("[data-quota-ring=remaining]").setAttribute("aria-label",row.dataset.quotaLabel+"额度未返回");row.querySelector("[data-quota-ring=time]").setAttribute("aria-label",row.dataset.quotaLabel+"重置时间未返回");row.querySelectorAll(".quota-remaining,.quota-time").forEach(r=>r.setAttribute("visibility","hidden"));return;}
     const reset =
         row.dataset.resetAt === "" ? null : Number(row.dataset.resetAt),
       minutes = Number(row.dataset.quotaWindow),
@@ -251,6 +254,8 @@
       refresh,
       days,
     });
+    root.hidden=scope!=="codex";const manager=root.closest(".usage-stable")?.querySelector("#usage-account-add");if(manager)manager.onclick=()=>manage(root);
+    if(root.hidden){state.stopClock?.();state.stopClock=null;return connections;}
     if (!root.querySelector("[data-global-codex-quotas]")) {
       state.stopClock?.();
       state.structure = null;
@@ -274,43 +279,34 @@
       .querySelector("#usage-account-add");
     setAttribute(button, "data-account-status", "ready");
     setAttribute(button, "title", "管理API供应商");
+    const entryAccount=state.liveAccount||selected?.snapshot||{},entryKey=(user?.profileId||user?.username||"profile")+":"+(entryAccount.accountIdentity||entryAccount.credentialSource||"missing");state.animateEntry=!enteredAccounts.has(entryKey);
     const windows = quotaWindows(state.liveAccount?.quota || selected?.snapshot?.quota),
       grid = state.root.querySelector("[data-global-codex-quotas]");
-    const structure = JSON.stringify([
-      selected?.id,
-      windows.map((w) => [w.slot, w.minutes]),
-    ]);
-    if (state.structure !== structure) {
-      grid.innerHTML = '<div class="lingxi-codex-account"><div class="lingxi-quota-stack">' + (['primary','secondary'].map((slot,i)=>{const window=windows.find(w=>w.slot===slot);return window ? quotaRow(window) : '<div class="lingxi-quota-placeholder">'+(i?'每周额度':'5 小时额度')+' <strong>—</strong><p class="meta">'+(state.liveAccount||selected?.snapshot ? '官方未返回该额度窗口' : '连接账户后查询')+'</p></div>';}).join('')) + '</div><div class="lingxi-account-details" data-codex-details></div><div class="lingxi-account-actions" hidden><button type="button" data-codex-refresh>刷新账户</button></div></div>';
-      state.root.querySelector('[data-codex-login]').onclick = () => { const d=document.createElement('dialog');d.className='control-dialog';document.body.append(d);window.LingxiDesign.login(d,()=>{d.close();grid.querySelector('[data-codex-refresh]').click();});d.addEventListener('close',()=>d.remove(),{once:true});d.showModal(); };
-      grid.querySelector('[data-codex-refresh]').onclick = async () => {
-        const b=grid.querySelector('[data-codex-refresh]');b.disabled=true;
-        try { state.liveAccount = await call('GET','/api/codex/account'); state.structure=null; patchInline(state); }
-        catch(error){state.root.querySelector('[data-codex-error]').textContent=error.message;}
-        finally{if(b.isConnected)b.disabled=false;}
+    if (!grid.querySelector('.lingxi-codex-account')) {
+      const unknown=(slot,label,minutes)=>quotaRow({slot,label,minutes,remaining:0,reset:null}).replace('data-quota-slot=', 'data-quota-known="false" data-quota-slot=').replace('0.0% 剩余','--').replace('平台未返回重置时间','重置 --');
+      grid.innerHTML='<div class="lingxi-codex-account"><div class="lingxi-quota-stack">'+unknown('primary','5 小时额度',300)+unknown('secondary','每周额度',10080)+'</div><div class="lingxi-account-details"><section class="lingxi-value-card"><div data-codex-value><section class="agent-value-panel"><header><h3>API等效参考价值</h3><div class="agent-value-commit"><span data-enabled></span><div data-slide></div></div></header><div class="agent-value-line"><div class="agent-value-amounts"><span class="agent-value-usd">USD <strong>--</strong></span><span class="agent-value-cny">CNY <strong>--</strong></span></div><a href="prices.html" target="_blank" rel="noopener" class="agent-value-source">查看价格与汇率 ↗</a></div></section></div></section><section class="lingxi-credit-single"><h4>剩余 Credit</h4><strong data-credit>--</strong></section><section class="lingxi-reset-card" data-reset-card-host></section></div><div class="lingxi-account-actions" hidden><button type="button" data-codex-refresh>刷新账户</button></div></div>';
+      state.root.querySelector('[data-codex-login]').onclick=()=>{const d=document.createElement('dialog');d.className='control-dialog';document.body.append(d);window.LingxiDesign.login(d,()=>{grid.querySelector('[data-codex-refresh]')?.click();});d.addEventListener('close',()=>d.remove(),{once:true});const close=document.createElement('button');close.className='btn ghost';close.textContent='完成';close.onclick=()=>d.close();d.append(close);d.showModal();};
+      grid.querySelector('[data-codex-refresh]').onclick=async()=>{
+        if(state.accountPending)return;state.accountPending=true;
+        try{state.liveAccount=await call('GET','/api/codex/account');if(grid.isConnected)patchInline(state);}catch(error){if(state.root.isConnected)state.root.querySelector('[data-codex-error]').textContent=error.message;}finally{state.accountPending=false;}
       };
-      state.structure = structure;
-      grid.querySelectorAll("[data-quota-slot]").forEach(bindQuota);
-    } else
-      windows.forEach((w) =>
-        patchQuota(grid.querySelector(`[data-quota-slot="${w.slot}"]`), w),
-      );
-    grid.hidden = false;
-    if (!state.accountAttempted || Date.now()-(state.accountRequestedAt||0)>30000) { state.accountAttempted=true;state.accountRequestedAt=Date.now(); queueMicrotask(()=>grid.querySelector('[data-codex-refresh]')?.click()); }
-
-    const account = state.liveAccount || selected?.snapshot || {}, quota = account.quota || {}, bucket = quota.rateLimitsByLimitId?.codex || quota.rateLimits || {}, credits = bucket.credits || quota.credits, resets = quota.rateLimitResetCredits;
-    const details=grid.querySelector('[data-codex-details]'), wasOpen=details?.querySelector('details')?.open;
-    if(details){
-      const valuePanel=details.querySelector('.agent-value-panel');valuePanel?.remove();
-      const balance=credits?.balance;
-      const text=credits?.unlimited?'不限额':balance!==null&&balance!==undefined&&balance!==''&&Number.isFinite(Number(balance))?Number(balance).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
-      details.innerHTML='<section class="lingxi-value-card"><div data-codex-value>API等效参考价值 · 未开启</div></section><section class="lingxi-credit-single"><h4>剩余 Credit</h4><strong>'+escape(text)+'</strong></section><section class="lingxi-reset-card" data-reset-card-host></section>';
-      if(valuePanel)details.querySelector('[data-codex-value]').replaceChildren(valuePanel);
-      state.paintReset=window.LingxiDesign.resetBatteries(details.querySelector('[data-reset-card-host]'),resets);
-      if(account.credentialSource==='local-codex-cache')state.root.querySelector('[data-codex-error]').textContent='已自动读取本机 Codex 登录';
+      grid.querySelectorAll('[data-quota-slot]').forEach(bindQuota);
+      window.WorkbenchReact.slideCommit(grid.querySelector('[data-slide]'),{enabled:false,compact:true,onConfirm:async()=>{const features=await call('GET','/api/features');return window.AgentValuation.toggle('codex',features.codexValuationEnabled===true);}});
     }
+    if(state.liveAccount&&!state.liveAccount.stale){grid.querySelectorAll("[data-quota-slot]").forEach(row=>{if(windows.some(w=>w.slot===row.dataset.quotaSlot))return;row.dataset.quotaKnown="false";row.querySelector("[data-quota-percent]").textContent="--";row.querySelector("[data-quota-reset]").textContent="重置 --";row.querySelector("progress").value=0;tickQuota(row);});}
+    windows.forEach(w=>patchQuota(grid.querySelector('[data-quota-slot="'+w.slot+'"]'),w,state.animateEntry));if(windows.length){enteredAccounts.add(entryKey);while(enteredAccounts.size>32)enteredAccounts.delete(enteredAccounts.values().next().value);}
+    grid.hidden=false;
+    if(!state.accountAttempted||Date.now()-(state.accountRequestedAt||0)>30000){state.accountAttempted=true;state.accountRequestedAt=Date.now();queueMicrotask(()=>grid.querySelector('[data-codex-refresh]')?.click());}
+    const account=state.liveAccount||selected?.snapshot||{},quota=account.quota||{},bucket=quota.rateLimitsByLimitId?.codex||quota.rateLimits||{},credits=bucket.credits||quota.credits,resets=quota.rateLimitResetCredits;
+    const balance=credits?.balance,text=credits?.unlimited?'不限额':balance!=null&&balance!==''&&Number.isFinite(Number(balance))?Number(balance).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}):'--';
+    const credit=grid.querySelector('[data-credit]');if(credit.textContent!==text){const first=credit.textContent==='--'&&text!=='--';credit.textContent=text;if(first&&!enteredCredits.has(entryKey)){enteredCredits.add(entryKey);credit.classList.add('lingxi-credit-enter');}}
+    const resetSignature=JSON.stringify(resets||null);if(state.resetSignature!==resetSignature){state.resetSignature=resetSignature;state.paintReset=window.LingxiDesign.resetBatteries(grid.querySelector('[data-reset-card-host]'),resets);}
+    state.root.querySelector('[data-codex-error]').textContent=account.unavailable?.quota || (account.stale?'账户刷新失败，显示上次读取结果':account.credentialSource==='local-codex-cache'?'已读取本机 Codex 登录':'');
   }
-  function patchQuota(row, w) {
+  function patchQuota(row, w, animate = true) {
+    setAttribute(row,"data-quota-window",w.minutes);setAttribute(row,"data-quota-label",w.label);setText(row.querySelector(".quota-bar-area>span"),w.label);
+    const first=row.dataset.quotaKnown === "false";row.dataset.quotaKnown="true";
+    if(first&&animate&&document.documentElement.dataset.motion!=="reduced"&&!matchMedia("(prefers-reduced-motion: reduce)").matches){row.classList.add("lingxi-quota-enter");const begin=performance.now();const animate=now=>{if(!row.isConnected)return;const elapsed=Math.min(1,(now-begin)/800),value=100+(w.remaining-100)*(1-Math.pow(1-elapsed,3));row.querySelector("progress").value=value;row.querySelector(".quota-remaining").setAttribute("stroke-dasharray",value+" 100");if(elapsed<1)requestAnimationFrame(animate);};requestAnimationFrame(animate);}
     setAttribute(row, "data-remaining", w.remaining);
     setAttribute(row, "data-reset-at", w.reset ?? "");
     setAttribute(row, "data-quota-tone", quotaTone(w.remaining));

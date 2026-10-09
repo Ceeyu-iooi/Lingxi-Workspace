@@ -1,0 +1,34 @@
+import { ExactSum } from './exact-sum.ts';
+import { type ProfileStore, type JsonObject, encode, parseExact } from './profile.ts';
+import { FIELDS, addDays } from './usage-summary.ts';
+/** Incremental daily summaries; raw events and their evidence remain authoritative. */
+export class UsageCube {
+ constructor(private profile:ProfileStore){
+  const db=profile.db;db.exec(`CREATE TABLE IF NOT EXISTS usage_cube(owner TEXT,source TEXT,day TEXT,dims TEXT,payload TEXT,PRIMARY KEY(owner,source,day,dims));CREATE TABLE IF NOT EXISTS usage_dirty(owner TEXT,source TEXT,day TEXT,PRIMARY KEY(owner,source,day));CREATE TABLE IF NOT EXISTS usage_cube_meta(owner TEXT PRIMARY KEY);`);
+  for(const op of ['INSERT','UPDATE','DELETE']){const row=op==='DELETE'?'OLD':'NEW';db.exec(`CREATE TRIGGER IF NOT EXISTS cube_${op.toLowerCase()} AFTER ${op} ON events BEGIN INSERT OR IGNORE INTO usage_dirty VALUES(${row}.owner,${row}.source,date(${row}.at,'+8 hours'));${op==='UPDATE'?"INSERT OR IGNORE INTO usage_dirty VALUES(OLD.owner,OLD.source,date(OLD.at,'+8 hours'));":''} END;`);}
+  if(db.prepare('INSERT OR IGNORE INTO usage_cube_meta VALUES(?)').run(profile.owner).changes)this.invalidate();
+  let sequence=0;const sums=new Map<number,ExactSum>();db.aggregate('lingxi_exact_sum',{useBigIntArguments:true,start:()=>{const id=++sequence;sums.set(id,new ExactSum());return id;},step:(id:number|bigint,value:any)=>{const key=Number(id);if(value!=null)sums.get(key)!.add(value);return key;},result:(id:number|bigint)=>{const key=Number(id),result=sums.get(key)!.result();sums.delete(key);return result;}});
+ }
+ invalidate(){const p=this.profile;p.db.prepare("INSERT OR IGNORE INTO usage_dirty SELECT owner,source,date(at,'+8 hours') FROM events WHERE owner=? GROUP BY owner,source,date(at,'+8 hours')").run(p.owner);}
+ flush(){
+  const p=this.profile,db=p.db,dirty=db.prepare('SELECT source,day FROM usage_dirty WHERE owner=?').all(p.owner) as JsonObject[];
+  if(!dirty.length)return;
+  const fields=FIELDS.map(key=>`COALESCE(SUM(e.${key}),0) AS ${key},SUM(e.${key} IS NULL) AS missing_${key}`).join(',');
+  const amounts=['USD','CNY'].map(currency=>{const name=currency.toLowerCase();return `lingxi_exact_sum(json_extract(${name}.result,'$.cost')) AS ${name}_cost,SUM(json_extract(${name}.result,'$.cost') IS NULL) AS ${name}_unknown,json_extract(${name}.result,'$.valueReason') AS ${name}_reason,`+['input','cached','write','output'].map(part=>`lingxi_exact_sum(json_extract(${name}.result,'$.valueParts.${part}')) AS ${name}_${part}`).join(',');}).join(',');
+  const sql=`SELECT e.source,e.agent,e.provider,e.model,e.project,e.connection_id,COALESCE(e.currency,'CNY') AS actual_currency,MAX(e.at) AS at,COUNT(*) AS observations,${fields},SUM(e.status IN ('error','failed','cancelled')) AS failures,lingxi_exact_sum(e.cost) AS actual_cost,SUM(e.cost IS NULL) AS actual_unknown,${amounts} FROM events e LEFT JOIN radar_values usd ON usd.owner=e.owner AND usd.id=e.id AND usd.currency='USD' LEFT JOIN radar_values cny ON cny.owner=e.owner AND cny.id=e.id AND cny.currency='CNY' WHERE e.owner=? AND e.source=? AND e.at>=? AND e.at<? AND e.source NOT IN ('codex-cumulative','unverified') AND NOT(e.source='codex' AND e.id LIKE 'codex:%' AND e.id NOT LIKE 'codex:v4:%') GROUP BY e.source,e.agent,e.provider,e.model,e.project,e.connection_id,actual_currency,usd_reason,cny_reason`;const query=db.prepare(sql),fallback=db.prepare(sql.replace(/COALESCE\(SUM\(e\.(input|output|cached|reasoning|total)\),0\)/g,'lingxi_exact_sum(e.$1)'));const read=(...args:any[])=>{try{return query.all(...args);}catch(error:any){if(!/integer overflow/i.test(error.message))throw error;return fallback.all(...args);}};
+  p.transaction(()=>{const remove=db.prepare('DELETE FROM usage_cube WHERE owner=? AND source=? AND day=?'),save=db.prepare('INSERT INTO usage_cube VALUES(?,?,?,?,?)'),clean=db.prepare('DELETE FROM usage_dirty WHERE owner=? AND source=? AND day=?');for(const item of dirty){remove.run(p.owner,item.source,item.day);for(const row of read(p.owner,item.source,addDays(item.day,-1)+'T16:00:00',item.day+'T16:00:00') as JsonObject[]){save.run(p.owner,item.source,item.day,encode([row.agent,row.provider,row.model,row.project,row.connection_id,row.actual_currency,row.usd_reason,row.cny_reason]),encode(row));}clean.run(p.owner,item.source,item.day);}});
+ }
+ rows(scope='',currency?:string):JsonObject[]{
+  this.flush();const p=this.profile,where=['owner=?'],args:any[]=[p.owner];if(['codex','zcode','dsh'].includes(scope)){where.push('source=?');args.push(scope);}else if(scope==='api')where.push("source NOT IN ('codex','zcode','dsh')");
+  return p.db.prepare('SELECT day,payload FROM usage_cube WHERE '+where.join(' AND ')+' ORDER BY day DESC').all(...args).map((saved:any)=>{const r=parseExact(saved.payload),base:any={...r,local_date:saved.day,granularity:'summary',status:'observed',_aggregate:{observations:r.observations,failures:r.failures,unknownFields:Object.fromEntries(FIELDS.map(key=>[key,r['missing_'+key]])),unknown:r.missing_total}};
+   for(const key of FIELDS){const n=BigInt(r[key]);base[key]=n<=BigInt(Number.MAX_SAFE_INTEGER)?Number(n):n;}
+   const name=(currency||'').toLowerCase(),reason=r[name+'_reason'];base.currency=currency||r.actual_currency;base.cost=currency?r[name+'_cost']:r.actual_cost;base.valueParts=currency?Object.fromEntries(['input','cached','write','output'].map(key=>[key,r[name+'_'+key]])):{};base._aggregate.costUnknown=currency?r[name+'_unknown']:r.actual_unknown;base._aggregate.pricedRequests=r.observations-base._aggregate.costUnknown;base._aggregate.valueIssues=currency&&reason&&reason!=='priced'?{[reason]:base._aggregate.costUnknown}:{};
+   return base;
+  });
+ }
+ recent(params:JsonObject,range:{start:string;end:string}):JsonObject[]{
+  const where=['owner=?','at>=?','at<?',"source NOT IN ('codex-cumulative','unverified')","NOT(source='codex' AND id LIKE 'codex:%' AND id NOT LIKE 'codex:v4:%')"],args:any[]=[this.profile.owner,addDays(range.start,-1)+'T16:00:00',range.end+'T16:00:00'];
+  if(['codex','zcode','dsh'].includes(params.scope)){where.push('source=?');args.push(params.scope);}else if(params.scope==='api')where.push("source NOT IN ('codex','zcode','dsh')");for(const key of ['source','provider','project','connection_id'])if(params[key]){where.push(key+'=?');args.push(params[key]);}const models=params.models|| (params.model?[params.model]:[]);if(models.length){where.push('model IN ('+models.map(()=>'?').join(',')+')');args.push(...models);}
+  return this.profile.db.prepare('SELECT * FROM events WHERE '+where.join(' AND ')+' ORDER BY at DESC'+(params.include_all?'':' LIMIT 100')).safeIntegers().all(...args).map((row:JsonObject)=>Object.fromEntries(Object.entries(row).filter(([key])=>key!=='owner').map(([key,value])=>[key,typeof value==='bigint'&&value<=BigInt(Number.MAX_SAFE_INTEGER)?Number(value):value])));
+ }
+}

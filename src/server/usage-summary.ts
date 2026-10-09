@@ -1,8 +1,9 @@
 import { Decimal } from "decimal.js";
+import { ExactSum } from "./exact-sum.ts";
 import { stamp, type JsonObject } from "./profile.ts";
 export const FIELDS = ["input", "output", "cached", "reasoning", "total"];
-export const shanghaiDay = (at: string | number | Date) =>
-  new Date(at).toLocaleDateString("en-CA", { timeZone: "Asia/Shanghai" });
+const shanghaiFormatter=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Shanghai",year:"numeric",month:"2-digit",day:"2-digit"});
+export const shanghaiDay = (at: string | number | Date) => shanghaiFormatter.format(new Date(at));
 const dayTime = (day: string) => Date.parse(day + "T00:00:00Z");
 export const addDays = (day: string, n: number) =>
   new Date(dayTime(day) + n * 86400000).toISOString().slice(0, 10);
@@ -63,22 +64,24 @@ Decimal.set({ precision: 100 });
 export function summarize(rows: JsonObject[], currency = "CNY"): JsonObject {
   const result: JsonObject = Object.fromEntries(FIELDS.map((k) => [k, 0])),
     missing: JsonObject = Object.fromEntries(FIELDS.map((k) => [k, 0])),
-    totals: Record<string, Decimal> = Object.fromEntries(
-      FIELDS.map((k) => [k, new Decimal(0)]),
+    totals: Record<string, bigint> = Object.fromEntries(
+      FIELDS.map((k) => [k, 0n]),
     ),
-    costs: Record<string, Decimal> = {},
-    parts: Record<string, Decimal> = {},
+    costs: Record<string, ExactSum> = {},
+    parts: Record<string, ExactSum> = {},
     issues: JsonObject = {};
   let failures = 0,
     unknown = 0,
     priced = 0,
     costUnknown = 0,
     requests = 0,
-    requestsKnown = true;
+    requestsKnown = true,observations=0;
   for (const row of rows) {
+    const aggregated=row._aggregate;const count=aggregated?.observations??1;observations+=count;
+    if(aggregated){for(const key of FIELDS){totals[key]+=BigInt(row[key]??0);missing[key]+=aggregated.unknownFields[key]||0;}failures+=aggregated.failures;unknown+=aggregated.unknown;priced+=aggregated.pricedRequests;costUnknown+=aggregated.costUnknown;requests+=count;for(const [key,value] of Object.entries(aggregated.valueIssues||{}))issues[key]=(issues[key]||0)+Number(value);if(aggregated.pricedRequests)(costs[row.currency]||(costs[row.currency]=new ExactSum())).add(row.cost);for(const [key,value] of Object.entries(row.valueParts||{}))(parts[key]||(parts[key]=new ExactSum())).add(value);continue;}
     for (const key of FIELDS) {
       if (row[key] == null) missing[key]++;
-      else totals[key] = totals[key].plus(String(row[key]));
+      else totals[key] += BigInt(row[key]);
     }
     if (["error", "failed", "cancelled"].includes(row.status)) failures++;
     if (row.total == null) unknown++;
@@ -88,37 +91,37 @@ export function summarize(rows: JsonObject[], currency = "CNY"): JsonObject {
       issues[row.valueReason] = (issues[row.valueReason] || 0) + 1;
     if (row.cost != null) {
       const c = row.currency || "CNY";
-      costs[c] = (costs[c] || new Decimal(0)).plus(String(row.cost));
+      (costs[c]||(costs[c]=new ExactSum())).add(row.cost);
     }
     for (const [k, v] of Object.entries(row.valueParts || {}))
-      parts[k] = (parts[k] || new Decimal(0)).plus(String(v));
+      (parts[k]||(parts[k]=new ExactSum())).add(v);
     let n = row.platform_requests;
     if (n == null && (row.granularity || "request") === "request") n = 1;
     if (n == null) requestsKnown = false;
     else requests += Number(n);
   }
   for (const key of FIELDS)
-    result[key] = totals[key].lte(Number.MAX_SAFE_INTEGER)
-      ? totals[key].toNumber()
-      : BigInt(totals[key].toFixed(0));
+    result[key] = totals[key] <= BigInt(Number.MAX_SAFE_INTEGER)
+      ? Number(totals[key])
+      : totals[key];
   return {
     ...result,
-    requests: rows.length,
-    observations: rows.length,
+    requests: observations,
+    observations,
     requestCount: requestsKnown ? requests : null,
     unknown,
     failures,
     unknownFields: missing,
     costExact: Object.fromEntries(
-      Object.entries(costs).map(([c, v]) => [c, v.toString()]),
+      Object.entries(costs).map(([c, v]) => [c, v.result()]),
     ),
     costs: Object.fromEntries(
-      Object.entries(costs).map(([c, v]) => [c, v.toNumber()]),
+      Object.entries(costs).map(([c, v]) => [c, Number(v.result())]),
     ),
     valueParts: Object.fromEntries(
       ["input", "cached", "write", "output"].map((k) => [
         k,
-        (parts[k] || new Decimal(0)).toString(),
+        parts[k]?.result()||"0",
       ]),
     ),
     costUnknown,
@@ -211,7 +214,8 @@ export class Dataset {
         requests: older.requests,
         unknown: older.unknown,
       };
-    let money = new Decimal(older.costExact[this.currency] || 0),
+    const money=new ExactSum();money.add(older.costExact[this.currency]||0);
+    let
       unknownCost = older.costUnknown;
     for (let i = 0; i < 366; i++) {
       const day = addDays(end, i - 365),
@@ -221,7 +225,7 @@ export class Dataset {
           typeof running[key] === "bigint" || typeof s[key] === "bigint"
             ? BigInt(running[key]) + BigInt(s[key])
             : running[key] + s[key];
-      money = money.plus(s.costExact[this.currency] || 0);
+      money.add(s.costExact[this.currency] || 0);
       unknownCost += s.costUnknown;
       activity.push({
         date: day,
@@ -229,8 +233,8 @@ export class Dataset {
         cumulativeTotal: running.total,
         cumulativeRequests: running.requests,
         cumulativeUnknown: running.unknown,
-        cumulativeCost: money.toNumber(),
-        cumulativeCostExact: money.toString(),
+        cumulativeCost: Number(money.result()),
+        cumulativeCostExact: money.result(),
         cumulativeCostUnknown: unknownCost,
       });
     }

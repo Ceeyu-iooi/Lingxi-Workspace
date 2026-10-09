@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
-import sharp from "sharp";
+import { normalizeAvatar } from "./avatar.ts";
 import {
   ProfileStore,
   uid,
@@ -354,19 +354,7 @@ export class Control {
     if (raw.length > 3 * 1024 * 1024) throw new Error("头像图片最多 3 MB");
     let png: Buffer;
     try {
-      const image = sharp(raw, { limitInputPixels: 16000000 }),
-        meta = await image.metadata();
-      if (
-        !["png", "jpeg", "webp"].includes(meta.format || "") ||
-        (meta.pages || 1) > 1
-      )
-        throw new Error();
-      png = await image
-        .rotate()
-        .resize(256, 256, { fit: "cover" })
-        .flatten({ background: "#ffffff" })
-        .png()
-        .toBuffer();
+      png=await normalizeAvatar(raw);
     } catch {
       throw new Error("请选择静态 PNG、JPEG 或 WebP 图片");
     }

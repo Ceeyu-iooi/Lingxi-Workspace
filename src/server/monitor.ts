@@ -9,6 +9,7 @@ import {
   type JsonObject,
 } from "./profile.ts";
 import { Dataset, FIELDS, shanghaiDay } from "./usage-summary.ts";
+import { UsageCube } from "./usage-cube.ts";
 import { ResponseCache } from "./response-cache.ts";
 
 export function canonical(value: any): string {
@@ -144,6 +145,9 @@ export class Monitor {
   priceVersion?: () => number;
   readonly responseCache = new ResponseCache();
   private datasets = new Map<string, Dataset>();
+  private cube?:UsageCube;
+  invalidateDerived(){this.cube?.invalidate();this.datasets.clear();this.responseCache.clear();}
+  private get usageCube(){return this.cube||(this.cube=new UsageCube(this.profile));}
   constructor(profile: ProfileStore) {
     this.profile = profile;
     profile.db
@@ -232,22 +236,12 @@ export class Monitor {
         .run(...Object.values(row));
     return result.changes;
   }
-  events() {
-    return (
-      this.profile.db
-        .prepare("SELECT * FROM events WHERE owner=? ORDER BY at DESC")
-        .safeIntegers()
-        .all(this.profile.owner) as JsonObject[]
-    ).map((r) =>
-      Object.fromEntries(
-        Object.entries(r).map(([k, v]) => [
-          k,
-          typeof v === "bigint" && v <= BigInt(Number.MAX_SAFE_INTEGER)
-            ? Number(v)
-            : v,
-        ]),
-      ),
-    );
+  *iterateEvents(scope?:string):Generator<JsonObject>{
+    const sql=scope?"SELECT * FROM events WHERE owner=? AND source=? ORDER BY at DESC":"SELECT * FROM events WHERE owner=? ORDER BY at DESC";
+    const stmt=this.profile.db.prepare(sql).safeIntegers();for(const row of stmt.iterate(...(scope?[this.profile.owner,scope]:[this.profile.owner])) as Iterable<JsonObject>){yield Object.fromEntries(Object.entries(row).map(([k,v])=>[k,typeof v==="bigint"&&v<=BigInt(Number.MAX_SAFE_INTEGER)?Number(v):v]));}
+  }
+  events(scope?:string) {
+    return [...this.iterateEvents(scope)];
   }
   version() {
     return (
@@ -270,7 +264,7 @@ export class Monitor {
       ]),
       cached = this.responseCache.get(key);
     if (cached) return cached as JsonObject;
-    let rows = rowsOverride || this.events();
+    let rows = rowsOverride || this.usageCube.rows(params.scope);
     rows = rows.filter(
       (r) =>
         !["codex-cumulative", "unverified"].includes(r.source) &&
@@ -302,7 +296,7 @@ export class Monitor {
       );
       if (!rowsOverride) {
         this.datasets.set(datasetKey, dataset);
-        while (this.datasets.size > 8)
+        while (this.datasets.size > 1)
           this.datasets.delete(this.datasets.keys().next().value!);
       }
     }
@@ -310,12 +304,13 @@ export class Monitor {
       params,
       Number(params.days) || 30,
     ) as JsonObject;
+    if(!rowsOverride)data.events=this.usageCube.recent(params,data.range);
     data.dataVersion = String(version);
     const accounting = this.accounting?.(scope);
     if (accounting) data.accounting = accounting;
     if (enabled && this.valuation) {
       const currency = params.value_currency || "USD",
-        valued = this.valuation(rows, currency);
+        valued = rowsOverride?this.valuation(rows,currency):this.usageCube.rows(scope,currency);
       data.valuation = {
         ...new Dataset(valued, currency, params.range_earliest).snapshot(
           params,
@@ -325,8 +320,9 @@ export class Monitor {
         experimental: true,
       };
     }
+    if(data.valuation&&!rowsOverride)data.valuation.events=this.valuation!(data.events,data.valuation.costCurrency);
     data.pricing = { enabled };
-    this.responseCache.put(key, data);
+    if(!params.include_all)this.responseCache.put(key, data);
     return data;
   }
   importRecords(records: any[], preview = false) {

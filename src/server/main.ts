@@ -123,7 +123,7 @@ export async function startServer(
     relay = new Relay(accounts);
     pricing = new Pricing(monitor);
     valuation = new ValuationTasks(pricing, control, syncAgent);
-    monitor.valuation = (rows, currency) => pricing.rows(rows, currency);
+    monitor.valuation = (rows, currency) => pricing.rows(rows, currency, true, true);
     monitor.priceVersion = () => pricing.version();
     monitor.accounting = (scope) =>
       scope === "codex"
@@ -840,13 +840,9 @@ export async function startServer(
   app.get("/api/updates/state", () => webUpdates.state());
   app.post("/api/updates/check", (request,reply) => local(request)?webUpdates.check():reply.code(403).send({error:"更新操作仅允许本机访问"}));
   app.post("/api/updates/download", (request,reply) => local(request)?webUpdates.download():reply.code(403).send({error:"更新操作仅允许本机访问"}));
-  app.get("/api/updates/file", (request,reply) => {if(!local(request))return reply.code(403).send({error:"安装包仅允许本机获取"});const file=webUpdates.file();return reply.header("Content-Disposition",'attachment; filename="'+file.name+'"').type("application/octet-stream").send(file.stream);});
-  app.post("/api/codex/login/start", async request => {
-    const result = await codexLogin.start(String(body(request).mode || "browser"));
-    return result;
-  });
-  app.get("/api/codex/login/status", () => codexLogin.state());
-  app.post("/api/codex/login/cancel", request => codexLogin.cancel(body(request).loginId));
+  app.get("/api/updates/file", (request,reply) => {if(!local(request))return reply.code(403).send({error:"安装包仅允许本机获取"});const file=webUpdates.file();reply.raw.once('finish',()=>{void webUpdates.delivered(file.name);});return reply.header("Content-Disposition",'attachment; filename="'+file.name+'"').type("application/octet-stream").send(file.stream);});
+  app.get('/api/codex/local-authorization',()=>codexLogin.state());
+  app.post('/api/codex/local-authorization',(request,reply)=>local(request)?codexLogin.authorize(body(request).authorized===true):reply.code(403).send({error:'本地凭据授权仅允许本机操作'}));
   app.get("/api/codex/account", () => codexLogin.account());
   app.get("/api/usage/connections", () => accounts.list());
   app.post("/api/usage/connection", (request) => accounts.save(body(request)));
@@ -970,6 +966,12 @@ export async function startServer(
         { force: true },
       ),
     );
+  });
+  app.get('/api/valuation/summary',async(request)=>{
+    const params=qs(request),scope=params.scope||'codex';if(!['codex','zcode','dsh'].includes(scope))throw new Error('计价工具不正确');
+    const enabled=control.state().config[scope+'ValuationEnabled']===true;
+    const values:JsonObject={};if(enabled){if(valuation.status(scope).status!=="running")await pricing.prepareRows(scope);for(const currency of ['USD','CNY']){const value=monitor.snapshot({...params,scope,source:scope,valuation_enabled:true,value_currency:currency}).valuation;values[currency]={summary:value.summary,costCurrency:currency,issues:value.summary.valueIssues};}}
+    return {enabled,values,task:valuation.status(scope),usageVersion:monitor.version(),priceVersion:pricing.version()};
   });
   app.get("/api/valuation/status", (request) =>
     valuation.status(qs(request).scope || "codex"),
@@ -1114,6 +1116,7 @@ export async function startServer(
       .type(mime[extname(file)] || "application/octet-stream")
       .send(readFileSync(file));
   };
+  app.get('/licenses/chromium',(_request,reply)=>{const file=join(assets,'chromium-licenses.html.gz');if(!existsSync(file))return reply.code(404).send({error:'此版本未打包 Chromium 运行时'});return reply.header('Content-Encoding','gzip').type('text/html; charset=utf-8').send(readFileSync(file));});
   app.get("/", staticFile);
   app.get("/*", staticFile);
   const background = setInterval(async () => {
@@ -1134,7 +1137,7 @@ export async function startServer(
           config[scope + "Enabled"] &&
           (scope !== "codex" || accounts.bound())
         )
-          await syncAgent(scope).catch(() => {});
+          {await syncAgent(scope).catch(() => {});if(config[scope+"ValuationEnabled"]&&valuation.status(scope).status!=="running")valuation.start(scope,true); }
       accounts.tick();
     } finally {
       backgroundBusy = false;

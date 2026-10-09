@@ -855,7 +855,7 @@ export class UsageAccounts {
         let snapshot: JsonObject;
         if (row.kind === "codex") {
           this.claim("codex", this.control.public().defaultCodexPath);
-          snapshot = await readCodexAccount(join(this.monitor.profile.root, "data", "credentials", this.monitor.profile.owner, "codex"));
+          snapshot = await readCodexAccount(join(this.monitor.profile.root, "data", "credentials", this.monitor.profile.owner, "codex"), {allowLocal:this.monitor.profile.read<JsonObject>("codex-local-authorization",{}).authorized===true});
         } else {
           const keys = this.control.profile.credentials(),
             key = keys["usage:" + id];

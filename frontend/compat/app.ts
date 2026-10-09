@@ -106,11 +106,8 @@ function esc(s) {
 }
 let toastTimer;
 function toast(msg) {
-  const t = $("#toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+  const host=$("#toast");if(window.WorkbenchReact?.toast){window.WorkbenchReact.toast(host,msg);return;}
+  host.textContent=msg;host.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>host.classList.remove('show'),2600);
 }
 window.workbenchNotify = toast;
 function fmtTime(iso) {
@@ -221,10 +218,12 @@ function renderControl(view, root) {
 let renderSequence = 0,
   renderedHash = "";
 function render() {
+  if(!location.hash.startsWith("#/settings"))try{sessionStorage.setItem("lingxi-last-work-route",location.hash||"#/overview");}catch{}
   if (!user) {
     showProfile();
     return;
   }
+  delete document.documentElement.dataset.profileRequired;
   if (location.hash.startsWith("#/settings") && window.settingsCenter) {
     if (!$("#main").querySelector(".module-surface")) {
       const requested = location.hash;
@@ -372,6 +371,7 @@ function showProfile() {
   state = { projects: [], tasks: [], activities: [], summaries: [], transactions: [], settings: {} };
   document.documentElement.style.removeProperty("zoom");
   document.documentElement.style.setProperty("--ui-scale", "1");
+  document.documentElement.dataset.profileRequired="true";
   $("#main").innerHTML = '<div class="login-wrap profile-start"><section class="login-card"><div class="onboarding-brand"><img src="assets/lingxi-logo.svg" alt="灵犀"><span>灵犀工作坊</span></div><h1 class="onboarding-heading">建立你的个人资料</h1><p class="onboarding-subtitle">资料保存在所选 Profile，用户名与头像可随时修改。</p><div data-profile-editor></div></section></div>';
   window.LingxiDesign.identity($("[data-profile-editor]"), { create: true, save: async (name, avatar) => {
     if (!user) {
@@ -380,6 +380,7 @@ function showProfile() {
     if (avatar) await api("POST", "/api/profile/avatar", { data: avatar });
     window.lingxiFreshProfile = true;
     await api("POST", "/api/control/config", { onboardingStep: "agents" });
+    delete document.documentElement.dataset.profileRequired;
     await refresh(); render();
   }});
   $("#profile-username")?.focus();
@@ -953,7 +954,7 @@ function renderFinance(root) {
       if (!billDialog.isConnected || user?.username !== identity) return;
       billPreview = parsed;
       $("#bill-count").textContent =
-        `识别 ${billPreview.rows.length} 笔，跳过 ${billPreview.skipped} 行。可修改下方收支和分类。`;
+        `识别 ${billPreview.rows.length} 笔，跳过 ${billPreview.skipped} 行。${Object.keys(billPreview.warnings||{}).join("；")} 可修改下方收支和分类。`;
       let offset = 0;
       const drawPreview = () => {
         $("#bill-rows").innerHTML = billPreview.rows

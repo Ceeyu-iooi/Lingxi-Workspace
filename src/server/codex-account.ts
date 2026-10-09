@@ -1,118 +1,11 @@
-import {
-  spawn,
-  spawnSync,
-  type ChildProcessWithoutNullStreams,
-} from "node:child_process";
-import { createRequire } from "node:module";
-import { existsSync, readFileSync, mkdirSync, statSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { homedir } from "node:os";
 import { fetchJSON } from "./control.ts";
-import { Dataset, FIELDS } from "./usage-summary.ts";
 import { iso } from "./monitor.ts";
+import { Dataset, FIELDS } from "./usage-summary.ts";
 import type { JsonObject } from "./profile.ts";
 
-export class CodexRPC {
-  notify: (method: string, params: JsonObject) => void = () => {};
-  process: ChildProcessWithoutNullStreams;
-  private sequence = 0;
-  private buffer = "";
-  private waiting = new Map<
-    number,
-    {
-      resolve: (value: any) => void;
-      reject: (error: Error) => void;
-      timer: ReturnType<typeof setTimeout>;
-    }
-  >();
-  handleServerRequest: ((method: string, params: JsonObject) => Promise<JsonObject>) | null = null;
-  constructor(home?: string, ephemeral = false) {
-    if (!home) throw new Error("请先在当前 Profile 连接 Codex 账户");
-    const req = createRequire(import.meta.url);
-    const target = process.platform === "win32" ? `${process.arch === "arm64" ? "aarch64" : "x86_64"}-pc-windows-msvc` : process.platform === "darwin" ? `${process.arch === "arm64" ? "aarch64" : "x86_64"}-apple-darwin` : `${process.arch === "arm64" ? "aarch64" : "x86_64"}-unknown-linux-musl`;
-    const pkg = req.resolve(`@openai/codex-${process.platform}-${process.arch}/package.json`);
-    const command = join(dirname(pkg), "vendor", target, "bin", process.platform === "win32" ? "codex.exe" : "codex");
-    if (!existsSync(command)) throw new Error("Codex 账户查询运行依赖缺失，请恢复运行依赖");
-    const args = ["-c", ephemeral ? 'cli_auth_credentials_store="ephemeral"' : 'cli_auth_credentials_store="file"', "app-server"];
-    this.process = spawn(command, args, {
-      env: {
-        ...process.env,
-        CODEX_HOME: home,
-      },
-      windowsHide: true,
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-    this.process.stderr.resume();
-    this.process.stdout.setEncoding("utf8");
-    this.process.stdout.on("data", (chunk) => {
-      this.buffer += chunk;
-      if (this.buffer.length > 8 * 1024 * 1024) {
-        this.close();
-        return;
-      }
-      let split: number;
-      while ((split = this.buffer.indexOf("\n")) >= 0) {
-        const line = this.buffer.slice(0, split);
-        this.buffer = this.buffer.slice(split + 1);
-        try {
-          const message = JSON.parse(line),
-            request = this.waiting.get(message.id);
-          if (message.method && message.id != null) {
-            const reply = (payload: JsonObject) => { if (!this.process.stdin.destroyed) this.process.stdin.write(JSON.stringify({id:message.id,...payload})+"\n"); };
-            Promise.resolve(this.handleServerRequest?.(message.method,message.params || {})).then(result=>reply(result?{result}:{error:{code:-32601,message:"Unsupported account request"}})).catch(()=>reply({error:{code:-32000,message:"登录凭据未刷新，请在 Codex 中重新登录"}}));
-            continue;
-          }
-          if (message.method && message.id == null) this.notify(message.method, message.params || {});
-          if (!request) continue;
-          clearTimeout(request.timer);
-          this.waiting.delete(message.id);
-          if (message.error)
-            request.reject(
-              new Error(
-                message.error.code === -32601
-                  ? "当前 Codex 版本不支持此接口，请更新官方 CLI"
-                  : "Codex 暂未返回此项数据，请检查 ChatGPT 登录状态后重试",
-              ),
-            );
-          else request.resolve(message.result || {});
-        } catch {}
-      }
-    });
-    this.process.stderr.on("data", () => {});
-    const fail = () => {
-      for (const item of this.waiting.values()) {
-        clearTimeout(item.timer);
-        item.reject(new Error("Codex 查询进程已退出"));
-      }
-      this.waiting.clear();
-    };
-    this.process.once("exit", fail);
-    this.process.once("error", fail);
-    this.process.stdin.on("error", fail);
-  }
-  call(method: string, params: JsonObject = {}) {
-    const id = ++this.sequence;
-    return new Promise<any>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.waiting.delete(id);
-        reject(new Error("Codex 查询超时，请稍后重试"));
-      }, 12000);
-      this.waiting.set(id, { resolve, reject, timer });
-      this.process.stdin.write(JSON.stringify({ id, method, params }) + "\n");
-    });
-  }
-  initialized() {
-    this.process.stdin.write(JSON.stringify({ method: "initialized" }) + "\n");
-  }
-  close() {
-    for (const value of this.waiting.values()) {
-      clearTimeout(value.timer);
-      value.reject(new Error("Codex 查询进程已退出"));
-    }
-    this.waiting.clear();
-    if (this.process.exitCode === null) this.process.kill();
-  }
-}
 export function cachedChatGPTAuth(home: string) {
   try {
     const file=join(home,"auth.json");
@@ -120,7 +13,7 @@ export function cachedChatGPTAuth(home: string) {
     const data=JSON.parse(readFileSync(file,"utf8")),tokens=data.tokens;
     if(typeof tokens?.access_token!=="string"||typeof tokens?.account_id!=="string"||!tokens.access_token||!tokens.account_id)throw new Error();
     return {accessToken:tokens.access_token,chatgptAccountId:tokens.account_id};
-  } catch { throw new Error("未找到可复用的 Codex ChatGPT 登录，请在 Codex 中登录或使用连接Codex"); }
+  } catch { throw new Error("未找到可复用的 Codex ChatGPT 登录，请在 Codex 中登录后重新授权读取"); }
 }
 function auth(home?: string) {
   if(!home)throw new Error("请连接 Codex 账户");
@@ -178,7 +71,7 @@ export function normalizeActivity(value: any) {
   }
   return result;
 }
-async function quotaHTTP(home?: string) {
+export async function quotaHTTP(home?: string) {
   const data = await fetchJSON(
       "https://chatgpt.com/backend-api/wham/usage",
       { headers: auth(home) },
@@ -189,7 +82,7 @@ async function quotaHTTP(home?: string) {
     window = (w: JsonObject) => {
       if (
         !w ||
-        ["used_percent", "limit_window_seconds", "reset_at"].some(
+        ["used_percent", "limit_window_seconds"].some(
           (k) => typeof w[k] !== "number" || !Number.isFinite(w[k]),
         ) ||
         w.used_percent < 0 ||
@@ -200,11 +93,12 @@ async function quotaHTTP(home?: string) {
       return {
         usedPercent: w.used_percent,
         windowDurationMins: w.limit_window_seconds / 60,
-        resetsAt: w.reset_at,
+        resetsAt: Number.isFinite(w.reset_at)?w.reset_at:null,
       };
     },
     bucket = {
       limitId: "codex",
+      credits:data.credits?{balance:data.credits.balance??null,unlimited:data.credits.unlimited===true,hasCredits:data.credits.has_credits===true}:null,
       primary: window(limits.primary_window),
       secondary: window(limits.secondary_window),
     };
@@ -212,7 +106,7 @@ async function quotaHTTP(home?: string) {
     throw new Error("官方未返回有效额度窗口");
   return {
     planType: data.plan_type,
-    quota: { rateLimitsByLimitId: { codex: bucket } },
+    quota: { rateLimitsByLimitId: { codex: bucket }, credits: bucket.credits, rateLimitResetCredits: normalizeResetCredits(data.rate_limit_reset_credits ?? data.rateLimitResetCredits) },
     quotaSource: "codex-backend-readonly",
     coverage: "官方实时配额；Token 与按模型明细见下方本机采集",
     unavailable: {
@@ -254,73 +148,20 @@ async function activityHTTP(home?: string) {
           })),
   });
 }
-export async function readCodexAccount(home?: string, options: {includeActivity?: boolean} = {}) {
-  if(!home)throw new Error("请先选择 Profile");
-  const sharedHome=process.env.CODEX_HOME || join(homedir(),".codex");
-  const own=existsSync(join(home,"auth.json")),authHome=own?home:sharedHome;
-  const cached=cachedChatGPTAuth(authHome);
-  mkdirSync(home,{recursive:true});
-  let rpc: CodexRPC | undefined,
-    result: JsonObject = {
-      unavailable: {},
-      coverage: "官方账户活动与实时配额；本机日志单独查看",
-    };
-  try {
-    rpc = new CodexRPC(home,!own);
-    rpc.handleServerRequest=async(method,params)=>{
-      if(method!=="account/chatgptAuthTokens/refresh")throw new Error("Unsupported account request");
-      const refreshed=cachedChatGPTAuth(authHome);
-      if(params.previousAccountId && params.previousAccountId!==refreshed.chatgptAccountId)throw new Error("Codex账户已切换");
-      return refreshed;
-    };
-    await rpc.call("initialize", {
-      clientInfo: { name: "workbench_usage", version: "0.0.34" },
-      capabilities: { experimentalApi: true },
-    });
-    rpc.initialized();
-    if(!own)await rpc.call("account/login/start",{type:"chatgptAuthTokens",...cached});
-    result.credentialSource=own?"profile":"local-codex-cache";
-    const account =
-      (await rpc.call("account/read", { refreshToken: false })).account || {};
-    if (account.type !== "chatgpt")
-      throw new Error(
-        "请在 Codex 中使用 ChatGPT 账户登录；API Key 登录无法查询 Plus 用量",
-      );
-    result.planType = account.planType;
-    for (const [method, field] of [
-      ["account/rateLimits/read", "quota"],
-      ...(options.includeActivity === false ? [] : [["account/usage/read", "tokenActivity"]]),
-    ])
-      try {
-        result[field] = await rpc.call(method);
-      } catch (error: any) {
-        result.unavailable[field] = error.message;
-      }
-  } catch (error: any) {
-    result.unavailable.quota = error.message;
-    result.unavailable.tokenActivity = error.message;
-  } finally {
-    rpc?.close();
-  }
-  if (options.includeActivity !== false && !result.tokenActivity)
-    try {
-      result.tokenActivity = await activityHTTP(authHome);
-      result.activitySource = "codex-backend-readonly";
-      delete result.unavailable.tokenActivity;
-    } catch (error: any) {
-      result.unavailable.tokenActivity = error.message;
-    }
-  if (!result.quota)
-    try {
-      const fallback = await quotaHTTP(authHome);
-      for (const key of ["planType", "quota", "quotaSource"])
-        result[key] = (fallback as JsonObject)[key];
-      delete result.unavailable.quota;
-    } catch (error: any) {
-      result.unavailable.quota = error.message;
-    }
-  if (!result.tokenActivity && !result.quota)
-    throw new Error("官方账户活动与额度暂不可用，请检查 Codex 登录状态和网络");
+export function normalizeResetCredits(value: any) {
+  if (!value || typeof value !== 'object') return null;
+  const count=value.available_count ?? value.availableCount;
+  const time=(value:any)=>typeof value==="number"&&Number.isFinite(value)?(value>1e12?value/1000:value):typeof value==="string"&&Number.isFinite(Date.parse(value))?Date.parse(value)/1000:null;
+  return {availableCount:Number.isSafeInteger(count)&&count>=0&&count<=1000?count:null,credits:Array.isArray(value.credits)?value.credits.map((card:any)=>({id:typeof card.id==='string'?card.id:'',grantedAt:time(card.granted_at ?? card.grantedAt),expiresAt:time(card.expires_at ?? card.expiresAt)})):null};
+}
+export async function readCodexAccount(home?: string, options: {includeActivity?: boolean; allowLocal?: boolean} = {}) {
+  if(!home)throw new Error('请先选择 Profile');
+  const own=existsSync(join(home,'auth.json'));
+  if(!own && !options.allowLocal)throw new Error('请先授权读取本机 Codex 登录凭据');
+  const authHome=own?home:process.env.CODEX_HOME || join(homedir(),'.codex');
+  const result:JsonObject=await quotaHTTP(authHome);
+  result.credentialSource=own?'profile':'local-codex-cache';
+  if(options.includeActivity!==false)try{result.tokenActivity=await activityHTTP(authHome);delete result.unavailable.tokenActivity;}catch{result.unavailable.tokenActivity='官方账户活动暂不可用，本机统计不受影响';}
   return result;
 }
 export function activitySnapshot(

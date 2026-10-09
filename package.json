@@ -1,6 +1,6 @@
 {
   "name": "lingxi-workbench-web",
-  "version": "0.0.34",
+  "version": "0.0.35",
   "private": true,
   "license": "CC-BY-NC-4.0",
   "scripts": {
@@ -11,11 +11,11 @@
     "check:types": "tsc --project tsconfig.server.json && tsc --project tsconfig.app.json"
   },
   "dependencies": {
-    "@openai/codex": "0.161.0",
-    "better-sqlite3": "12.11.1",
+    "@jsquash/webp": "1.5.0",
     "decimal.js": "10.6.0",
     "fastify": "5.12.5",
-    "sharp": "0.35.5",
+    "jpeg-js": "0.4.4",
+    "pngjs": "7.0.0",
     "yaml": "2.9.1",
     "yauzl": "3.4.0",
     "yazl": "3.3.1"
@@ -26,9 +26,9 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@types/node": "24.19.1",
-    "@types/better-sqlite3": "9.6.0",
     "@types/yauzl": "3.4.0",
     "@types/yazl": "3.3.1",
+    "@types/pngjs": "6.0.5",
     "typescript": "7.0.2",
     "tsx": "4.23.15",
     "esbuild": "0.28.2",
@@ -36,5 +36,8 @@
     "@vitejs/plugin-react": "6.1.2",
     "marked": "18.1.0",
     "dompurify": "3.4.16"
+  },
+  "engines": {
+    "node": ">=24.0.0"
   }
 }

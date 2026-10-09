@@ -182,6 +182,8 @@ export class Business {
             .trim()
             .slice(0, 20) ||
           (raw.kind === "income" ? "收入" : categoryFor(title)),
+        sourceFingerprint:raw.sourceId?hash(String(raw.sourceId).slice(0,100)+"|"+amount.toFixed(2)+"|"+raw.kind):undefined,
+        legacyFingerprint:raw.legacyTitle?hash(`${String(raw.sourceId || "").slice(0,100)||String(raw.occurredAt||"").slice(0,40)||day}|${amount.toFixed(2)}|${raw.kind}|${String(raw.legacyTitle).slice(0,120)}`):undefined,
         fingerprint: hash(
           `${String(raw.sourceId || "").slice(0, 100) || String(raw.occurredAt || "").slice(0, 40) || day}|${amount.toFixed(2)}|${raw.kind}|${title}`,
         ),
@@ -190,9 +192,12 @@ export class Business {
     });
     const rows = this.profile.read<Transaction[]>("transactions", []),
       known = new Set(rows.map((r) => r.fingerprint)),
+      sources=new Set(rows.map((r:any)=>r.sourceFingerprint).filter(Boolean)),
       inserted = clean.filter((r: Transaction) => {
         if (body.allowDuplicate === true) return true;
-        if (known.has(r.fingerprint)) return false;
+        if (known.has(r.fingerprint)||known.has((r as any).legacyFingerprint)||sources.has((r as any).sourceFingerprint)) return false;
+        if((r as any).sourceFingerprint)sources.add((r as any).sourceFingerprint);
+        delete (r as any).legacyFingerprint;
         known.add(r.fingerprint);
         return true;
       });

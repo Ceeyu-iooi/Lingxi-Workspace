@@ -74,3 +74,10 @@ Fastify 5.12.5, better-sqlite3 12.11.1, decimal.js 10.6.0, yaml 2.9.1, yauzl 3.4
 - marked 与 DOMPurify：原有锁定依赖，用于安全渲染更新 Markdown；脚本、远程图片和任意协议不进入更新内容。
 
 - SloshGauge-JS-CSS 与 ScrubField-JS-CSS：通过配置的 React Bits 公共 registry 安装原始 JSX/CSS，摘要纳入来源回执；使用同一 MIT + Commons Clause 应用集成许可，原源码不进入公开导出。
+
+## Current runtime additions (0.0.35)
+
+- Electron 42.11.12 (MIT) and its embedded Node / Chromium runtime. Complete Chromium notices are retained losslessly compressed and available from the desktop about page; compression does not remove license content.
+- node:sqlite / SQLite: runtime builtin, with SQLite public-domain source; no better-sqlite3 addon is shipped.
+- pngjs 7.0.0 (MIT), jpeg-js 0.4.4 (BSD-3-Clause), @jsquash/webp 1.5.0 (Apache-2.0), and the bundled WebP codec notices: static avatar decoding / re-encoding in a bounded worker. Sharp / libvips and Codex CLI are no longer bundled runtime dependencies.
+- React Bits SwipeToast-JS-CSS: source from https://reactbits.dev/r/SwipeToast-JS-CSS.json, MIT + Commons Clause; application-integrated output only. Source digests are maintained with the existing component receipt.

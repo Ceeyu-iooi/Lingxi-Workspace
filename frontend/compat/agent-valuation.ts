@@ -158,6 +158,7 @@
       return;
     }
     const task = await U.request("POST", "/api/valuation/prepare", { scope });
+    if(task.status === "complete"){signalFeatures(await U.request("GET","/api/features"));return true;}
     return preparation(scope, task);
   }
   function update(root, snapshot) {
@@ -239,7 +240,7 @@
           enabled && summary?.pricedRequests > 0
             ? Number(summary.costs[currency]).toLocaleString("zh-CN", {
                 minimumFractionDigits: 2,
-                maximumFractionDigits: 4,
+                maximumFractionDigits: Math.abs(Number(summary.costs[currency]))>0&&Math.abs(Number(summary.costs[currency]))<.0001?12:4,
               })
             : "--";
       }
@@ -253,30 +254,10 @@
             " 条；价格缺口保持未知，金额仅包含已核验部分。"
           : "";
     };
-    const values = {};
-    if (snapshot.valuation)
-      values[snapshot.valuation.costCurrency] = snapshot.valuation;
-    paint(values);
-    if (enabled) {
-      const currency =
-          snapshot.valuation?.costCurrency === "USD" ? "CNY" : "USD",
-        params = new URLSearchParams();
-      Object.entries(snapshot.query || {}).forEach(([k, v]) => {
-        if (Array.isArray(v)) v.forEach((x) => params.append(k, x));
-        else if (v !== undefined) params.set(k, v);
-      });
-      params.set("scope", scope);
-      params.set("value_currency", currency);
-      U.request("GET", "/api/usage?" + params, undefined, {
-        signal: state.abort.signal,
-      })
-        .then((r) => {
-          if (r.warming) return;
-          values[currency] = r.valuation;
-          paint(values);
-        })
-        .catch(() => {});
-    }
+    if(enabled){
+      const params=new URLSearchParams();Object.entries(snapshot.query||{}).forEach(([k,v])=>{if(Array.isArray(v))v.forEach(x=>params.append(k,x));else if(v!==undefined)params.set(k,v);});params.set('scope',scope);
+      U.request('GET','/api/valuation/summary?'+params,undefined,{signal:state.abort.signal}).then(result=>paint(result.values||{})).catch(()=>{});
+    }else paint({});
     if (compatible && !state.resumed) {
       state.resumed = true;
       Promise.all(

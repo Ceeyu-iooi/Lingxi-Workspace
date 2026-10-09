@@ -2,7 +2,7 @@
   <img src="static/assets/lingxi-logo.svg" alt="灵犀工作坊" width="100">
   <h1>灵犀工作坊</h1>
   <p><em>把日常工作、AI 用量、提示词与本机技能放进一个个人工作台。</em></p>
-  <a href="https://github.com/Ceeyu-iooi/lingxi-workbench-web/releases"><img src="https://img.shields.io/github/v/release/Ceeyu-iooi/lingxi-workbench-web?include_prereleases&amp;style=flat-square&amp;color=2962ed" alt="最新发布"></a>
+  <a href="https://github.com/Ceeyu-iooi/Lingxi-Workspace/releases"><img src="https://img.shields.io/github/v/release/Ceeyu-iooi/Lingxi-Workspace?include_prereleases&amp;style=flat-square&amp;color=2962ed" alt="最新发布"></a>
   <img src="https://img.shields.io/badge/Windows-x64-2962ed?style=flat-square" alt="Windows x64">
   <img src="https://img.shields.io/badge/TypeScript-React%20%2B%20Node-2962ed?style=flat-square" alt="TypeScript">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-CC--BY--NC--4.0-64748b?style=flat-square" alt="许可证"></a>
@@ -25,13 +25,22 @@
 
 来源未返回、模型缺失、价格未知和查询失败不会被填成零。安装了某个 Agent，不代表获得它的全部历史。
 
+## 0.0.35 的主要变化
+
+- 本机 Codex 凭据显式授权，只读查询额度；不内置官方登录或 Codex CLI。额度未知时完整灰色占位，参考价值开关和双币种区域独立保留。
+- 按新增消费及相关历史价格 / 汇率修订增量计算；按日期和筛选维度维护数据库汇总。普通筛选不重读全部历史证据，响应缓存上限 8 MiB。
+- 桌面后台复用 Electron 自带 Node；SQLite 使用 node:sqlite；头像使用受限工作线程处理 PNG / JPEG / WebP，保留静态图、裁切、元数据清理。
+- 银行收入 / 支出分列，微信、支付宝以及常见 CSV / TSV / XLSX 表头适配；识别后先预览、再确认，不自动写入真实账目。
+- 完整 [设计规范](design.md) 含 YAML 令牌和 32 章；[浅色预览](frontend/app/preview.html) / [深色预览](frontend/app/preview-dark.html) 展示全部模块、设置、状态与实际组件。启动后访问 /preview.html 或 /preview-dark.html。
+- 安装与卸载完成流程、路径联动、单托盘和约 2 秒 Logo 开屏已修复源码并构建。原生 EXE 按维护者要求未运行；不能把网页回归写成安装、升级、卸载或桌面总内存通过。
+
 ## 界面展示
 
 ![总览界面](docs/images/overview.png)
 
 截图使用独立 Profile 的合成示例资料，不展示个人数据。v0.0.32已复查网页交互；v0.0.33修复桌面后台依赖漏包，并核对实际后台及原生驱动加载。本次原生EXE界面及安装、升级、卸载验收已按维护者要求取消，未标为通过。
 
-应用保持白、蓝、浅灰及深色主题，侧栏采用灰色圆角选中与蓝色图标；主页面使用统一圆角外框，保留原有白色模块卡片。设置包含个人资料、外观、AI 服务、用量与实验、数据与备份、快捷键；桌面另有“关于与更新”。
+应用采用浅青顶栏与侧栏、清晰白色主体及对应深色主题。侧栏收起保留 64px 图标栏并横向过渡，主体保持滚动位置。设置统一包含个人资料、外观、AI 服务、用量与实验、数据与备份、快捷键、关于；没有重复的“关于与更新”。保存反馈使用 SwipeToast。
 
 [设计规范](design.md) · [浅色预览](frontend/app/preview.html) · [深色预览](frontend/app/preview-dark.html)
 
@@ -58,7 +67,7 @@ Agent 参考计价按工具独立选择，默认关闭。滑动确认后先准�
 
 ## 安装
 
-在 [Releases](https://github.com/Ceeyu-iooi/lingxi-workbench-web/releases/latest) 选择 Windows x64 安装版或便携版。每次发布同时提供两种可执行文件、更新元数据和 SHA-256 摘要；版本标题仅为 `v版本号`。
+在 [Releases](https://github.com/Ceeyu-iooi/Lingxi-Workspace/releases/latest) 选择 Windows x64 安装版或便携版。每次发布同时提供两种可执行文件、更新元数据和 SHA-256 摘要；版本标题仅为 `v版本号`。
 
 | 包 | 使用方式 |
 |---|---|
@@ -109,7 +118,7 @@ npm start
 局域网监听可在资料设置中启用。当前 Profile 的 `config/web-server.json` 设置 `requireAccessToken: false` 时，局域网设备可直接访问；未设置时仍需要实例凭证。本机维护、更新安装与凭据配置接口继续仅允许本机使用。
 
 ```text
-lingxi-workbench-web/
+Lingxi-Workspace/
 ├── start.bat                       # Windows 快捷启动
 ├── src/server/                     # Node TypeScript 服务与业务
 ├── src/shared/                     # 共享接口和默认值
@@ -165,7 +174,7 @@ React 管理应用壳、路由与页面入口，现有编辑器和图表通过�
 
 ## Star 历史
 
-[查看项目关注与贡献情况](https://github.com/Ceeyu-iooi/lingxi-workbench-web/stargazers)。
+[查看项目关注与贡献情况](https://github.com/Ceeyu-iooi/Lingxi-Workspace/stargazers)。
 
 ## 参与贡献
 

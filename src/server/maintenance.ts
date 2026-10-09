@@ -13,7 +13,7 @@ import {
   rmdirSync,
 } from "node:fs";
 import { resolve, join, relative, dirname, isAbsolute, sep } from "node:path";
-import Database from "better-sqlite3";
+import Database from "./sqlite.ts";
 import {
   ProfileStore,
   readJson,
@@ -176,7 +176,9 @@ export function clearDerived(
   profile.db
     .prepare("DELETE FROM radar_values WHERE owner=?")
     .run(profile.owner);
-  monitor.responseCache.clear();
+  profile.db.prepare("INSERT OR IGNORE INTO valuation_dirty SELECT owner,id FROM events WHERE owner=? AND source IN ('codex','zcode','dsh')").run(profile.owner);
+  for(const scope of ["codex","zcode","dsh"])profile.write("valuation-"+scope,{status:"idle",scope,invalidatedAt:Date.now()});
+  monitor.invalidateDerived();
   return { ok: true, evidenceRetained: true };
 }
 /* Called only after the launcher has stopped its owned service process. */
