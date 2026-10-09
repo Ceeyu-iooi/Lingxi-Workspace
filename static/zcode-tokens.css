@@ -14,7 +14,7 @@
   --text-ui-sm:calc(var(--ui-font-size) + -2px);
   --text-ui-xs:calc(var(--ui-font-size) + -4px);
 }
-.theme-zai-light {
+.theme-zai-light, :root[data-theme="light"] {
   --animated-gradient-text-strong: rgba(13, 13, 13, 1);
   --animated-gradient-text-soft: rgba(13, 13, 13, 0.22);
   --color-background: #f8f8f8;

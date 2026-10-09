@@ -223,7 +223,7 @@
     },
     {
       "file": "frontend/app/preview.ts",
-      "sha256": "7dcb0121c9ecc5d70f2846456820ab584eab05dc05ae56928a0e6043d7325808"
+      "sha256": "216e3999e808cb3bdd2d963fac64fed8fa28fae2a691f3cfc9878f48c0338b55"
     },
     {
       "file": "frontend/app/prices.html",
@@ -543,7 +543,7 @@
     },
     {
       "file": "static/zcode-tokens.css",
-      "sha256": "352dfdd8ccdfb3ddadf1f34f3dd8d8b1a72ab7b54551f49d3626f7a9b4574583"
+      "sha256": "865d627ee97475a3a971e4852a5af8f5260312966dd5d556398e77f52f9d7aae"
     },
     {
       "file": "static/zcode.css",
