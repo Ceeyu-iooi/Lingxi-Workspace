@@ -33,7 +33,7 @@ The collector boundary research references [token-monitor](https://github.com/Ja
 
 ## Desktop preview and React preparation (0.0.21)
 
-Electron 44.5.1 and electron-builder 26.15.3 use their upstream licenses. The portable application includes Electron/Chromium notices and the project's CC BY-NC 4.0 license. The current backend bundles Node.js 24 and SQLite through better-sqlite3. Python/PyInstaller are no longer part of the current runtime. React 19.3.0 and the Vite/TypeScript/shadcn preparation dependencies are build-time tools; their original licenses remain in the installed packages.
+Electron 42.11.12 and electron-builder 26.15.3 use their upstream licenses. The portable application includes Electron/Chromium notices and the project's CC BY-NC 4.0 license. The desktop backend uses Electron's embedded Node.js 24 and node:sqlite; no extra Node executable or Codex CLI is bundled. Python/PyInstaller are no longer part of the current runtime. React 19.3.0 and the Vite/TypeScript/shadcn preparation dependencies are build-time tools; their original licenses remain in the installed packages.
 
 React Bits Pro is a separate paid license, not CC BY-NC or MIT. The three requested blocks have not been obtained or integrated in this preview. The repository contains only public registry configuration and independently written host adapters. Any later licensed original files belong under ignored frontend/private; do not commit them to a public repository or expose them via workspace APIs. Refer to https://pro.reactbits.dev/license.
 
@@ -65,7 +65,7 @@ DeepSeek Harness, Copyright (c) 2026 DeepSeek, MIT License. Native GDI+ rounded-
 
 ## TypeScript runtime (0.0.32)
 
-Fastify 5.12.5, better-sqlite3 12.11.1, decimal.js 10.6.0, yaml 2.9.1, yauzl 3.4.0 and yazl 3.3.1 retain their package licenses. Sharp 0.35.5 and libvips retain their upstream licenses. electron-updater 6.8.9 supports manual full-package updates. React 19.3.0, Vite 8.3.2 and TypeScript 7.0.2 build the application shell and page entries; original interaction controllers remain compatibility adapters. README layout and Chinese release-note sections reference Token Monitor; the architecture SVG is original and follows C4 container-diagram principles. Node.js 24.16.0 and its bundled dependency notices are retained verbatim in static/vendor/node/LICENSE.rtf, extracted from the locally cached matching Windows installer license record without a network download. Desktop packages include the identical LICENSE.node.rtf.
+Fastify 5.12.5, decimal.js 10.6.0, yaml 2.9.1, yauzl 3.4.0 and yazl 3.3.1 retain their package licenses. Sharp 0.35.5 and libvips are private installer artwork build tools, excluded from the runtime. electron-updater 6.8.9 supports manual full-package updates. React 19.3.0, Vite 8.3.2 and TypeScript 7.0.2 build the application shell and page entries; original interaction controllers remain compatibility adapters. README layout and Chinese release-note sections reference Token Monitor; the architecture SVG is original and follows C4 container-diagram principles. Node.js 24.16.0 and its bundled dependency notices are retained verbatim in static/vendor/node/LICENSE.rtf, extracted from the locally cached matching Windows installer license record without a network download. Desktop packages include the identical LICENSE.node.rtf.
 
 ## 本次集成与设计参考
 

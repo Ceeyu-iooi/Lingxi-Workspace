@@ -3,7 +3,7 @@
   "files": [
     {
       "file": "README.md",
-      "sha256": "a11d79916767fd6a710b462a614bfcdd741b9161cead4340286734b75b12339c"
+      "sha256": "698854f0ec81e6ff8c90cfccc8effc1ab47b255310ec6301fc1324ff031d5f69"
     },
     {
       "file": "LICENSE",
@@ -11,7 +11,7 @@
     },
     {
       "file": "THIRD_PARTY_NOTICES.md",
-      "sha256": "52d9389be77c1a519fd639625d52ec213d86e6ed6b5f6dcee0961d66f52aa9f6"
+      "sha256": "3e0ce1794b326249be9ee19f977a1d8c287677a4e8dfae454752aeec55c8c44c"
     },
     {
       "file": "TOKEN_ACCOUNTING.md",
