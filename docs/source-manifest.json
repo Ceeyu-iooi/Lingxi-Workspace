@@ -3,7 +3,7 @@
   "files": [
     {
       "file": "README.md",
-      "sha256": "446df1da1db813a0d7f80769773f2e8d8252c4e0a41e8f30d696c94c3f8a2e42"
+      "sha256": "faf9524a43e910b74724108cb379995613b4157f00d5521695bcd976048db18b"
     },
     {
       "file": "LICENSE",
@@ -87,7 +87,7 @@
     },
     {
       "file": "src/server/main.ts",
-      "sha256": "6c2ee62d37ad3d877a8789c2d3532e9abd73dafa9a6a6bbe135ba1f92d5ba3e8"
+      "sha256": "7a6f6c75ae43ec308dd6e30a263185a269cbad3790b92a1587ec33c4ae554073"
     },
     {
       "file": "src/server/maintain.ts",
@@ -583,7 +583,7 @@
     },
     {
       "file": "scripts/web_launcher.mjs",
-      "sha256": "c0e83a71b8f36008c177b2e74a962fdf338b766871fe493914a26f7990a5a013"
+      "sha256": "091944bf4f811f6d6f78ddcaaa5e9685e6c0775290c64a2a2b09a73acd7bbd1f"
     },
     {
       "file": "scripts/collect_codex_logs.mjs",

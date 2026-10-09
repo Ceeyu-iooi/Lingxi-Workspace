@@ -184,6 +184,9 @@ export async function startServer(
   );
   const local = (request: any) =>
     ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(request.ip);
+  const requiresAccessToken = () => desktop || readJson<JsonObject>(
+    join(profile.root, "config/web-server.json"), {},
+  ).requireAccessToken !== false;
   const token = (request: any) =>
     String(
       request.headers["x-workbench-instance"] ||
@@ -220,6 +223,7 @@ export async function startServer(
     if (route === "/api/instance/connect") return;
     if (
       !local(request) &&
+      requiresAccessToken() &&
       !route.startsWith("/api/usage/relay/") &&
       !profile.authenticate(token(request))
     )
@@ -335,6 +339,7 @@ export async function startServer(
     return {
       desktop,
       host: process.env.WORKBENCH_HOST || config.host || "127.0.0.1",
+      requireAccessToken: requiresAccessToken(),
       token: profile.instanceToken,
       restartRequired: true,
     };
@@ -345,6 +350,7 @@ export async function startServer(
     const value = body(request);
     if (typeof value.enabled !== "boolean") throw new Error("请选择访问范围");
     atomicJson(join(profile.root, "config/web-server.json"), {
+      ...readJson<JsonObject>(join(profile.root, "config/web-server.json"), {}),
       host: value.enabled ? "0.0.0.0" : "127.0.0.1",
     });
     return { ok: true, restartRequired: true };

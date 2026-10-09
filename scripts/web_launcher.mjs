@@ -157,7 +157,8 @@ async function start() {
               address.address +
               ":" +
               ready.port +
-              "/ （凭证见设置）",
+              (read(path.join(selected, "config/web-server.json"), {}).requireAccessToken === false
+                ? "/ （直接访问）" : "/ （凭证见设置）"),
           );
   if (process.argv.includes("--open-browser"))
     spawn(
