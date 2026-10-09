@@ -159,7 +159,7 @@
   --color-plugin-paid-plan-badge-foreground: #4b280f;
 }
 
-.theme-zai-dark {
+.theme-zai-dark, :root[data-theme="dark"] {
   --animated-gradient-text-strong: rgba(255, 255, 255, 1);
   --animated-gradient-text-soft: rgba(255, 255, 255, 0.22);
   --color-background: #161616;
