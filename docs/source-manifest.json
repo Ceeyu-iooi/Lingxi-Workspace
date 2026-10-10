@@ -263,7 +263,7 @@
     },
     {
       "file": "frontend/compat/app.ts",
-      "sha256": "82af8cb5449a6f55824ae4cc24b8c5328024c93b233bae22aba8abfb1af1d1f4"
+      "sha256": "70b93704c7aac9ecc1624459947fa43608128b86de6394a1d1b040a81322cf64"
     },
     {
       "file": "frontend/compat/commands.ts",
@@ -319,7 +319,7 @@
     },
     {
       "file": "frontend/compat/settings-center.ts",
-      "sha256": "986db6a3bc7b66ce1ec00a54f5e41263187cd18201589c34fc010901a8898a0a"
+      "sha256": "7d9e62d44d434e0a28a90f7b91df7c2fd86dd9a5c2b7f10e1d443931f1625ce8"
     },
     {
       "file": "frontend/compat/shell-navigation.ts",

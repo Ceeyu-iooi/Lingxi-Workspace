@@ -5,7 +5,7 @@
   let dialog = null,
     baseHash = "#/overview",
     focus = null,
-    identity = null;
+    identity = null,restorePending=false;
   const content = () => dialog?.querySelector(".settings-center-content");
   const dirty = () =>
     !!content()?.querySelector("#settings-panel")?._wbUnsaved?.();
@@ -20,7 +20,7 @@
     d._settingsAbort?.abort();
     d.close();
     if (restore && location.hash.startsWith("#/settings"))
-      { history.replaceState(null, "", baseHash); window.dispatchEvent(new HashChangeEvent("hashchange")); }
+      { restorePending=true;history.replaceState(null, "", baseHash); window.dispatchEvent(new HashChangeEvent("hashchange")); }
     if (focus?.isConnected) focus.focus({ preventScroll: true });
     identity = null;
     return true;
@@ -99,5 +99,6 @@
     dirty,
     isOpen: () => !!dialog,
     baseHash: () => baseHash,
+    consumeRestore:()=>{const pending=restorePending;restorePending=false;return pending;},
   };
 })();

@@ -219,6 +219,8 @@ let renderSequence = 0,
   renderedHash = "";
 function render() {
   if(window.WorkbenchSurfaces?.isOpen())return;
+  const restoreUnderlying=()=>{const surface=$("#main").querySelector(".module-surface");if(surface)window.workbenchDesign?.reveal(surface,true);if(location.hash.startsWith("#/usage"))window.dispatchEvent(new CustomEvent("workbench:usage-enter"));};
+  if(window.settingsCenter?.consumeRestore?.()&&renderedHash===location.hash&&$("#main").querySelector(".module-surface")){restoreUnderlying();return;}
   if(!location.hash.startsWith("#/settings"))try{sessionStorage.setItem("lingxi-last-work-route",location.hash||"#/overview");}catch{}
   if (!user) {
     showProfile();
@@ -236,9 +238,10 @@ function render() {
       .open(renderSettings, renderedHash)
       .catch((e) => toast(e.message, {kind:"error"}));
   }
-  if (window.settingsCenter?.isOpen() && !window.settingsCenter.close(false)) {
-    history.replaceState(null, "", "#/settings");
-    return;
+  if (window.settingsCenter?.isOpen()) {
+    const restoring=window.settingsCenter.baseHash()===location.hash&&renderedHash===location.hash;
+    if(!window.settingsCenter.close(false)){history.replaceState(null,"","#/settings");return;}
+    if(restoring&&$("#main").querySelector(".module-surface")){restoreUnderlying();return;}
   }
   if (
     renderedHash &&
