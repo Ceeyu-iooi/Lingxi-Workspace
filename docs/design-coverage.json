@@ -1,43 +1,20 @@
 {
-  "version": "0.0.35",
+  "version": "0.0.37",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
     "dark": "/preview-dark.html",
     "sections": [
-      "framework",
-      "colors",
-      "typography",
-      "spacing",
-      "controls",
-      "states",
-      "onboarding",
-      "profile",
-      "account",
-      "usage",
-      "charts",
       "overview",
-      "projects",
-      "summary",
-      "news",
-      "finance",
-      "bill-import",
-      "prompts",
-      "skills",
-      "settings",
-      "appearance",
-      "suppliers",
-      "usage-settings",
-      "backup",
-      "prices",
-      "updates",
-      "shortcuts",
-      "toast",
-      "motion",
-      "native",
-      "responsive",
-      "accessibility",
-      "about"
+      "palette",
+      "typography",
+      "buttons",
+      "cards",
+      "forms",
+      "spacing",
+      "radius",
+      "depth",
+      "responsive"
     ]
   },
   "businessModules": [
@@ -72,5 +49,21 @@
     "disabled"
   ],
   "native": "source-and-payload-only",
-  "data": "synthetic-only"
+  "data": "synthetic-only",
+  "contracts037": {
+    "titlebar": 48,
+    "sidebar": [
+      240,
+      64
+    ],
+    "windowControls": "DOM + bounded desktop bridge",
+    "auxiliaryPages": [
+      "preview",
+      "prices",
+      "design"
+    ],
+    "motion": "row entrance; existing number replay; origin expansion; once-per-opening viewport reveal",
+    "nativeAcceptance": "cancelled-by-user",
+    "layoutReview": "All A/B/C rejected by user; original 1280px container and whitespace retained, with code preview"
+  }
 }

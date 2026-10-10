@@ -212,9 +212,11 @@
       link.appendChild(label);
     });
     document.getElementById("sidebar-toggle").onclick = () => {
-      document.documentElement.dataset.sidebarAnimating="true";
-      const main=document.getElementById("main"),rect=main.getBoundingClientRect();const candidates=[...main.querySelectorAll(".control-section,.card,h2,h3")].filter(node=>node.getBoundingClientRect().bottom>rect.top+8);const anchor=candidates.find(node=>node.getBoundingClientRect().top>=rect.top)||candidates[0];const locks=[...main.querySelectorAll(".usage-summary,.usage-lifetime,.usage-toolbar,.account-quota-grid,.control-section")].map(node=>({node,height:node.getBoundingClientRect().height,min:node.style.minHeight,max:node.style.maxHeight,overflow:node.style.overflow}));locks.forEach(({node,height})=>{node.style.minHeight=height+"px";node.style.maxHeight=height+"px";node.style.overflow="hidden";});const top=anchor?.getBoundingClientRect().top;
-      const start=performance.now();main.style.overflowAnchor="none";const stabilize=now=>{if(anchor?.isConnected)main.scrollTop+=anchor.getBoundingClientRect().top-top;if(now-start<350)requestAnimationFrame(stabilize);else{delete document.documentElement.dataset.sidebarAnimating;locks.forEach(({node,min,max,overflow})=>{node.style.minHeight=min;node.style.maxHeight=max;node.style.overflow=overflow;});if(anchor?.isConnected)main.scrollTop+=anchor.getBoundingClientRect().top-top;main.style.removeProperty("overflow-anchor");window.dispatchEvent(new Event("resize"));}};requestAnimationFrame(stabilize);
+      const main=document.getElementById("main"), viewport=main.getBoundingClientRect();
+      const visible=[...main.querySelectorAll(".control-section,.card,h2,h3")].find(node=>node.getBoundingClientRect().top>=viewport.top);
+      const offset=visible?.getBoundingClientRect().top;
+      clearTimeout(main._sidebarSettle);
+      main._sidebarSettle=setTimeout(()=>{if(visible?.isConnected)main.scrollTop+=visible.getBoundingClientRect().top-offset;window.dispatchEvent(new Event("resize"));},320);
       sidebarCollapsed = !sidebarCollapsed;
       applySidebar();
       try {

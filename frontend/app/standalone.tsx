@@ -1,3 +1,5 @@
+import "./motion";
+import "./surfaces";
 import { installStandalone } from "virtual:lingxi-standalone";
 import React, { useLayoutEffect } from "react";
 import { createRoot } from "react-dom/client";

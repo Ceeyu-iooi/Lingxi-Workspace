@@ -50,8 +50,8 @@
 .dsh-setting-row .wb-select select{width:100%!important;max-width:none}
 .dsh-setting-row .wb-select-trigger{background:var(--dsh-module);border:0!important;min-height:36px}
 .dsh-font-control{position:relative;display:flex;align-items:center;gap:8px;flex:none}
-.dsh-font-control input{width:72px;height:36px;padding:0 20px 0 10px;text-align:center;border:0;border-radius:12px;background:var(--dsh-module);appearance:textfield;font-size:14px}
-.dsh-font-control input::-webkit-inner-spin-button,.dsh-font-control input::-webkit-outer-spin-button{appearance:none}
+.dsh-font-control>input{width:72px;height:36px;padding:0 20px 0 10px;text-align:center;border:0;border-radius:12px;background:var(--dsh-module);appearance:textfield;font-size:14px}
+.dsh-font-control>input::-webkit-inner-spin-button,.dsh-font-control>input::-webkit-outer-spin-button{appearance:none}
 .dsh-font-arrows{position:absolute;top:4px;left:50px;display:flex;flex-direction:column;gap:1px}
 .dsh-font-arrows button{width:17px;height:13px;padding:0;border:0;border-radius:3px;background:var(--dsh-panel);color:var(--ink);font-size:13px;line-height:12px;cursor:pointer}
 .dsh-font-arrows button:disabled{opacity:.35;cursor:default}

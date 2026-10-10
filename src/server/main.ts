@@ -1110,6 +1110,7 @@ export async function startServer(
       return reply.code(404).send({ error: "not found" });
     const mime: JsonObject = {
       ".html": "text/html; charset=utf-8",
+      ".md": "text/markdown; charset=utf-8",
       ".js": "application/javascript; charset=utf-8",
       ".css": "text/css; charset=utf-8",
       ".svg": "image/svg+xml",

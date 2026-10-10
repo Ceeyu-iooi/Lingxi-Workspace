@@ -32,7 +32,7 @@
     return result;
   };
   const accountStates = new WeakMap();
-  const enteredAccounts=new Set(),enteredCredits=new Set();
+
   const ringStates = new WeakMap();
   const renderTickets = new WeakMap();
   const activeButtons = (root, disabled) =>
@@ -279,13 +279,13 @@
       .querySelector("#usage-account-add");
     setAttribute(button, "data-account-status", "ready");
     setAttribute(button, "title", "管理API供应商");
-    const entryAccount=state.liveAccount||selected?.snapshot||{},entryKey=(user?.profileId||user?.username||"profile")+":"+(entryAccount.accountIdentity||entryAccount.credentialSource||"missing");state.animateEntry=!enteredAccounts.has(entryKey);
+    const entryAccount=state.liveAccount||selected?.snapshot||{},entryKey=(user?.profileId||user?.username||"profile")+":"+(entryAccount.accountIdentity||entryAccount.credentialSource||"missing");const entryVersion=state.root.closest(".usage-stable")?.dataset.usageEntry||entryKey;state.animateEntry=state.entryVersion!==entryVersion;state.entryVersion=entryVersion;
     const windows = quotaWindows(state.liveAccount?.quota || selected?.snapshot?.quota),
       grid = state.root.querySelector("[data-global-codex-quotas]");
     if (!grid.querySelector('.lingxi-codex-account')) {
       const unknown=(slot,label,minutes)=>quotaRow({slot,label,minutes,remaining:0,reset:null}).replace('data-quota-slot=', 'data-quota-known="false" data-quota-slot=').replace('0.0% 剩余','--').replace('平台未返回重置时间','重置 --');
       grid.innerHTML='<div class="lingxi-codex-account"><div class="lingxi-quota-stack">'+unknown('primary','5 小时额度',300)+unknown('secondary','每周额度',10080)+'</div><div class="lingxi-account-details"><section class="lingxi-value-card"><div data-codex-value><section class="agent-value-panel"><header><h3>API等效参考价值</h3><div class="agent-value-commit"><span data-enabled></span><div data-slide></div></div></header><div class="agent-value-line"><div class="agent-value-amounts"><span class="agent-value-usd">USD <strong>--</strong></span><span class="agent-value-cny">CNY <strong>--</strong></span></div><a href="prices.html" target="_blank" rel="noopener" class="agent-value-source">查看价格与汇率 ↗</a></div></section></div></section><section class="lingxi-credit-single"><h4>剩余 Credit</h4><strong data-credit>--</strong></section><section class="lingxi-reset-card" data-reset-card-host></section></div><div class="lingxi-account-actions" hidden><button type="button" data-codex-refresh>刷新账户</button></div></div>';
-      state.root.querySelector('[data-codex-login]').onclick=()=>{const windowShell=window.WorkbenchDialogs.open({title:'连接 Codex',size:'medium',body:'<div data-codex-authorization></div>',actions:[{id:'done',label:'完成',kind:'primary'}]});window.LingxiDesign.login(windowShell.body.querySelector('[data-codex-authorization]'),()=>{grid.querySelector('[data-codex-refresh]')?.click();});};
+      state.root.querySelector('[data-codex-login]').onclick=()=>{const windowShell=window.WorkbenchDialogs.open({title:'连接 Codex',size:'medium',body:'<div data-codex-authorization></div>',actions:[{id:'done',label:'关闭'}]});window.LingxiDesign.login(windowShell.body.querySelector('[data-codex-authorization]'),()=>{grid.querySelector('[data-codex-refresh]')?.click();});};
       grid.querySelector('[data-codex-refresh]').onclick=async()=>{
         if(state.accountPending)return;state.accountPending=true;
         try{state.liveAccount=await call('GET','/api/codex/account');if(grid.isConnected)patchInline(state);}catch(error){if(state.root.isConnected)state.root.querySelector('[data-codex-error]').textContent=error.message;}finally{state.accountPending=false;}
@@ -294,19 +294,19 @@
       window.WorkbenchReact.slideCommit(grid.querySelector('[data-slide]'),{enabled:false,compact:true,onConfirm:async()=>{const features=await call('GET','/api/features');return window.AgentValuation.toggle('codex',features.codexValuationEnabled===true);}});
     }
     if(state.liveAccount&&!state.liveAccount.stale){grid.querySelectorAll("[data-quota-slot]").forEach(row=>{if(windows.some(w=>w.slot===row.dataset.quotaSlot))return;row.dataset.quotaKnown="false";row.querySelector("[data-quota-percent]").textContent="--";row.querySelector("[data-quota-reset]").textContent="重置 --";row.querySelector("progress").value=0;tickQuota(row);});}
-    windows.forEach(w=>patchQuota(grid.querySelector('[data-quota-slot="'+w.slot+'"]'),w,state.animateEntry));if(windows.length){enteredAccounts.add(entryKey);while(enteredAccounts.size>32)enteredAccounts.delete(enteredAccounts.values().next().value);}
+    windows.forEach(w=>patchQuota(grid.querySelector('[data-quota-slot="'+w.slot+'"]'),w,state.animateEntry));
     grid.hidden=false;
     if(!state.accountAttempted||Date.now()-(state.accountRequestedAt||0)>30000){state.accountAttempted=true;state.accountRequestedAt=Date.now();queueMicrotask(()=>grid.querySelector('[data-codex-refresh]')?.click());}
     const account=state.liveAccount||selected?.snapshot||{},quota=account.quota||{},bucket=quota.rateLimitsByLimitId?.codex||quota.rateLimits||{},credits=bucket.credits||quota.credits,resets=quota.rateLimitResetCredits;
     const balance=credits?.balance,text=credits?.unlimited?'不限额':balance!=null&&balance!==''&&Number.isFinite(Number(balance))?Number(balance).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}):'--';
-    const credit=grid.querySelector('[data-credit]');if(credit.textContent!==text){const first=credit.textContent==='--'&&text!=='--';credit.textContent=text;if(first&&!enteredCredits.has(entryKey)){enteredCredits.add(entryKey);credit.classList.add('lingxi-credit-enter');}}
+    const credit=grid.querySelector('[data-credit]');if(credit.textContent!==text||state.animateEntry){window.workbenchDesign?.number(credit,text,state.animateEntry);}
     const resetSignature=JSON.stringify(resets||null);if(state.resetSignature!==resetSignature){state.resetSignature=resetSignature;state.paintReset=window.LingxiDesign.resetBatteries(grid.querySelector('[data-reset-card-host]'),resets);}
     state.root.querySelector('[data-codex-error]').textContent=account.unavailable?.quota || (account.stale?'账户刷新失败，显示上次读取结果':account.credentialSource==='local-codex-cache'?'已读取本机 Codex 登录':'');
   }
   function patchQuota(row, w, animate = true) {
     setAttribute(row,"data-quota-window",w.minutes);setAttribute(row,"data-quota-label",w.label);setText(row.querySelector(".quota-bar-area>span"),w.label);
     const first=row.dataset.quotaKnown === "false";row.dataset.quotaKnown="true";
-    if(first&&animate&&document.documentElement.dataset.motion!=="reduced"&&!matchMedia("(prefers-reduced-motion: reduce)").matches){row.classList.add("lingxi-quota-enter");const begin=performance.now();const animate=now=>{if(!row.isConnected)return;const elapsed=Math.min(1,(now-begin)/800),value=100+(w.remaining-100)*(1-Math.pow(1-elapsed,3));row.querySelector("progress").value=value;row.querySelector(".quota-remaining").setAttribute("stroke-dasharray",value+" 100");if(elapsed<1)requestAnimationFrame(animate);};requestAnimationFrame(animate);}
+    if(animate&&document.documentElement.dataset.motion!=="reduced"&&!matchMedia("(prefers-reduced-motion: reduce)").matches){row.classList.add("lingxi-quota-enter");cancelAnimationFrame(row._quotaFrame);const begin=performance.now();const animate=now=>{if(!row.isConnected)return;const elapsed=Math.min(1,(now-begin)/800),value=100+(w.remaining-100)*(1-Math.pow(1-elapsed,3));row.querySelector("progress").value=value;row.querySelector(".quota-remaining").setAttribute("stroke-dasharray",value+" 100");if(elapsed<1)row._quotaFrame=requestAnimationFrame(animate);};row._quotaFrame=requestAnimationFrame(animate);}
     setAttribute(row, "data-remaining", w.remaining);
     setAttribute(row, "data-reset-at", w.reset ?? "");
     setAttribute(row, "data-quota-tone", quotaTone(w.remaining));
@@ -354,7 +354,7 @@
     d.className = "control-dialog usage-lmu-auth";
     d.setAttribute("aria-label", "授权 LMU");
     d.innerHTML =
-      '<form><div class="control-dialog-head"><h3>授权 LMU</h3><button type="button" class="btn ghost" data-close aria-label="关闭">×</button></div><p class="meta">登录一次，自动续期。密码不保存。</p><label class="control-field">LMU 邮箱<input name="email" type="email" autocomplete="username"></label><label class="control-field">密码<input name="password" type="password" autocomplete="current-password"></label><label class="control-field" data-two-factor hidden>验证码<input name="totpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></label><details><summary>已有登录凭据</summary><label class="control-field">平台登录凭据<input name="accessToken" type="password" autocomplete="off"></label><label class="control-field">续期凭据（可选）<input name="refreshToken" type="password" autocomplete="off"></label></details><p class="control-form-error" role="alert"></p><div class="control-dialog-actions"><button type="button" class="btn ghost" data-close>取消</button><button type="submit" class="btn">授权并同步</button></div></form>';
+      '<form><div class="control-dialog-head"><h3>授权 LMU</h3><button type="button" class="btn ghost" data-close aria-label="关闭">×</button></div><p class="meta">登录一次，自动续期。密码不保存。</p><label class="control-field">LMU 邮箱<input name="email" type="email" autocomplete="username"></label><label class="control-field">密码<input name="password" type="password" autocomplete="current-password"></label><label class="control-field" data-two-factor hidden>验证码<input name="totpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></label><details><summary>已有登录凭据</summary><label class="control-field">平台登录凭据<input name="accessToken" type="password" autocomplete="off"></label><label class="control-field">续期凭据（可选）<input name="refreshToken" type="password" autocomplete="off"></label></details><p class="control-form-error" role="alert"></p><div class="control-dialog-actions"><button type="submit" class="btn">授权并同步</button><button type="button" class="btn ghost" data-close>取消</button></div></form>';
     document.body.append(d);
     const focus = document.activeElement;
     d.querySelectorAll("[data-close]").forEach(

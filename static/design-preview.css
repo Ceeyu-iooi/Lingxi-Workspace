@@ -2,3 +2,23 @@
 @media(max-width:1023px){.preview-grid.four,.preview-grid.three{grid-template-columns:repeat(2,minmax(0,1fr))}.preview-top{padding-inline:24px;gap:16px}.preview-top nav{gap:16px}.preview-content{padding-inline:24px}.preview-type-row{grid-template-columns:180px minmax(0,1fr);gap:24px}}
 @media(max-width:719px){.preview-top{height:60px;padding-inline:16px}.preview-top nav{display:none}.preview-top-actions{gap:12px}.preview-brand span{font-size:12px}.preview-brand img{width:24px;height:24px}.preview-content{padding-inline:16px}.preview-hero{padding:64px 0 72px;min-height:auto}.preview-hero h1{font-size:42px}.preview-hero p{font-size:16px}.preview-section{padding:48px 0;scroll-margin-top:60px}.preview-grid.four,.preview-grid.three,.preview-grid.two{grid-template-columns:minmax(0,1fr)}.preview-card{padding:22px}.preview-type-row{grid-template-columns:minmax(0,1fr);gap:14px}.preview-type-row p{font-size:min(var(--sample-size),42px)}.preview-radius,.preview-depth{grid-template-columns:repeat(2,minmax(0,1fr))}.preview-palette{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.preview-swatch>div{height:90px}.preview-swatch>section{padding:12px}.preview-settings{grid-template-columns:minmax(0,1fr)}.preview-settings nav{display:none}.lingxi-preview .onboarding-action{min-height:44px}.preview-footer{padding:24px 16px}.preview-state-row{gap:16px}}
 @media(prefers-reduced-motion:reduce){.lingxi-preview *{transition:none!important;animation:none!important}}
+
+/* Full-window surfaces retain the mounted screen underneath. */
+.lingxi-surface{position:fixed;inset:0;width:100vw!important;max-width:100vw!important;height:100dvh;max-height:100dvh;margin:0;padding:0;border:0;border-radius:0;background:var(--lingxi-body);color:var(--ink);overflow:auto;box-shadow:none}
+.lingxi-surface::backdrop{background:transparent}
+.lingxi-surface[open]{display:block}
+.lingxi-surface-content{min-height:100%;background:var(--lingxi-body);font:var(--text-ui-base,14px)/1.6 "Segoe UI","Microsoft YaHei UI",system-ui,sans-serif}
+.lingxi-preview .preview-top,.lingxi-surface-content>.preview-top{height:48px;min-height:48px;max-height:48px;gap:16px;scroll-margin-top:48px;background:var(--lingxi-body)}
+.lingxi-preview .preview-section{scroll-margin-top:48px}
+.preview-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.85fr);gap:64px;align-items:center;padding:80px 0 96px;min-height:550px}
+.preview-hero-copy{min-width:0}.preview-hero-copy>small:last-child{display:block;margin-top:24px;color:var(--ink-2);font-size:12px}
+.preview-code{width:100%;min-width:0;align-self:center;border:1px solid var(--line);border-radius:18px;background:var(--surface-soft,#f6f7f8);overflow:hidden;box-shadow:0 12px 32px -24px #0003}
+.preview-code header,.preview-code footer{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;font:13px/1.5 "Cascadia Mono",Consolas,monospace;border-bottom:1px solid var(--line)}
+.preview-code header button{border:0;background:transparent;color:var(--ink-2);font:inherit;padding:4px 8px;cursor:pointer;border-radius:6px}
+.preview-code pre{height:320px;margin:0;padding:20px;overflow:auto;color:var(--ink);font:12px/1.7 "Cascadia Mono",Consolas,monospace;tab-size:2;text-align:left}
+.preview-code footer{border-top:1px solid var(--line);border-bottom:0}.preview-code footer a{color:var(--ink-2);text-decoration:none}
+.design-reader{width:min(1100px,100%);margin:auto;padding:32px;overflow-wrap:anywhere;font-size:var(--text-ui-base,14px);line-height:1.8}
+.design-reader h1,.design-reader h2,.design-reader h3{font-weight:500;line-height:1.4}.design-reader pre{overflow:auto;padding:20px;background:var(--surface-soft);border:1px solid var(--line);border-radius:12px;white-space:pre;font:12px/1.7 Consolas,monospace}.design-reader table{width:100%;display:block;overflow:auto;border-collapse:collapse}.design-reader th,.design-reader td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--line)}.design-reader a{color:var(--accent)}
+:root[data-theme=dark] .preview-code{background:#1b252d}
+@media(max-width:1023px){.preview-hero{gap:28px;grid-template-columns:minmax(0,1fr) minmax(260px,.9fr)}.preview-hero h1{font-size:48px}.preview-top nav{gap:14px;font-size:12px}}
+@media(max-width:719px){.preview-hero{grid-template-columns:minmax(0,1fr);gap:32px;padding:48px 0 56px;min-height:0}.preview-code pre{height:240px}.preview-hero h1{font-size:40px}.preview-top{padding-inline:16px}.preview-top-actions{gap:8px}.preview-top-actions a{display:none}.preview-brand span{font-size:12px}

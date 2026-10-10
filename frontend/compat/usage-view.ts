@@ -138,23 +138,24 @@
     [0.9830508474576272, [85, 5, 3]],
     [1.0, [77, 0, 0]],
   ];
-  function number(el, value, raw = false, suffix = "") {
+  function number(el, value, raw = false, suffix = "", replay = false) {
     if (!el) return;
     const previous = counters.get(el);
     if (
-      previous?.target === value &&
+      !replay && previous?.target === value &&
       previous.raw === raw &&
       previous.suffix === suffix &&
       previous.currency === el.dataset.currency
     )
       return;
     if (previous) cancelAnimationFrame(previous.frame);
+    if(replay&&Number.isFinite(value)&&!quiet())el.animate([{transform:"translateY(4px)"},{transform:"translateY(0)"}],{duration:280,easing:"cubic-bezier(.2,.7,.3,1)"});
     const state = {
       target: value,
       raw,
       suffix,
       currency: el.dataset.currency,
-      current: previous?.current ?? value,
+      current: replay ? 0 : previous?.current ?? value,
       frame: 0,
     };
     counters.set(el, state);
@@ -183,16 +184,16 @@
           : "—") + suffix;
     };
     if (
-      !previous ||
+      (!previous && !replay) ||
       !Number.isFinite(value) ||
-      !Number.isFinite(previous.current) ||
+      !Number.isFinite(state.current) ||
       quiet()
     ) {
       paint(value);
       return;
     }
     const start = performance.now(),
-      from = previous.current;
+      from = state.current;
     const tick = (now) => {
       if (!el.isConnected) return;
       const p = Math.min(1, (now - start) / 280);
@@ -1098,7 +1099,9 @@
           s.accounting?.incomplete &&
           !s.lifetime?.requests),
       scope = root.dataset.usageScope || s.origin,
-      entering = state.scope !== scope;
+      entering = state.scope !== scope || state.entryPending;
+    state.entryPending=false;
+    if(entering){root.dataset.usageEntry=String(Number(root.dataset.usageEntry||0)+1);const shell=root.closest(".usage-stable");if(shell)shell.dataset.usageEntry=root.dataset.usageEntry;}
     if (
       agentScope(scope) &&
       (entering || !s.pricing?.enabled || !state.snapshot?.pricing?.enabled)
@@ -1145,7 +1148,7 @@
           : el.dataset.finance === "balance"
             ? "账户余额"
             : "账户累计消费";
-      number(el, Number.isFinite(n) ? n : null, "money");
+      number(el, Number.isFinite(n) ? n : null, "money", "", entering);
       el.title = Number.isFinite(n)
         ? (s.costCurrency === "USD" ? "$" : "￥") + n.toFixed(6)
         : "未返回";
@@ -1158,7 +1161,7 @@
         s.lifetime.longestStreak,
       ];
     all("[data-lifetime]", root).forEach((el, i) => {
-      number(el, unknown ? null : lifetime[i], true, i > 1 ? " 天" : "");
+      number(el, unknown ? null : lifetime[i], true, i > 1 ? " 天" : "", entering);
       el.nextElementSibling.textContent =
         i < 2
           ? (i ? "单日峰值" : "累计") + " Token"
@@ -1188,7 +1191,7 @@
             : s.summary.requests,
     );
     all("[data-summary]", root).forEach((el, i) => {
-      number(el, summary[i], true);
+      number(el, summary[i], true, "", entering);
       el.nextElementSibling.textContent =
         summary[i] >= 10000 ? fmt(summary[i]) : "";
     });
@@ -1253,5 +1256,6 @@
       valuation: null,
     });
   }
+  window.addEventListener("workbench:usage-enter",()=>{document.querySelectorAll("#usage-body").forEach(root=>{const state=states.get(root);if(state?.snapshot){state.entryPending=true;update(root,state.snapshot);}});});
   window.usageView = { init, update, number, options, heatColor, policy };
 })();

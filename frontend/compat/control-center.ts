@@ -84,7 +84,7 @@
       (location.hash.includes("usage") ? "" : " wb-redesign");
     d.setAttribute("aria-label", titleText);
     d.dataset.dialogSize="medium";
-    d.innerHTML = `<form class="lingxi-dialog-form"><div class="control-dialog-head"><h3>${e(titleText)}</h3><button type="button" class="btn ghost dialog-close" aria-label="关闭">×</button></div><div class="lingxi-dialog-body">${html}<p class="control-form-error" role="alert"></p></div><div class="control-dialog-actions"><button type="button" class="btn ghost dialog-close">取消</button><button type="submit" class="btn">保存</button></div></form>`;
+    d.innerHTML = `<form class="lingxi-dialog-form"><div class="control-dialog-head"><h3>${e(titleText)}</h3><button type="button" class="btn ghost dialog-close" aria-label="关闭">×</button></div><div class="lingxi-dialog-body">${html}<p class="control-form-error" role="alert"></p></div><div class="control-dialog-actions"><button type="submit" class="btn">保存</button><button type="button" class="btn ghost dialog-close">取消</button></div></form>`;
     document.body.append(d);
     const focus = document.activeElement;
     d.addEventListener("close", () => {

@@ -19,7 +19,6 @@
     window.usageCharts?.dispose(d);
     d._settingsAbort?.abort();
     d.close();
-    d.remove();
     if (restore && location.hash.startsWith("#/settings"))
       { history.replaceState(null, "", baseHash); window.dispatchEvent(new HashChangeEvent("hashchange")); }
     if (focus?.isConnected) focus.focus({ preventScroll: true });
@@ -49,6 +48,8 @@
       focus = document.activeElement;
       const d = document.createElement("dialog");
       d.className = "control-dialog wb-redesign settings-center-modal lingxi-dialog";
+      d._closeAnchor=document.querySelector("#control-profile .account-avatar")||document.getElementById("control-profile");
+      d.addEventListener("close",()=>d.remove(),{once:true});
       d.id = "settings-center-dialog";
       d.dataset.dialogSize="settings";
       d.setAttribute("aria-label", "设置中心");
@@ -86,7 +87,7 @@
       d.querySelector("header button").focus();
     }
     dialog.dataset.settingsRoute = location.hash;
-    return renderer(content());
+    return Promise.resolve(renderer(content())).then(()=>{if(dialog){window.workbenchDesign?.reveal(content(),true);if(location.hash.startsWith("#/settings/usage"))window.dispatchEvent(new CustomEvent("workbench:usage-enter"));}});
   }
   window.addEventListener("workbench:state", (e) => {
     if (!e.detail?.user || (identity && e.detail.user.username !== identity))

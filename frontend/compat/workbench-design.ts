@@ -114,14 +114,14 @@
     reconcile(root, template.content);
     window.roundedSelects?.scan();
   }
-  function number(node, text) {
+  function number(node, text, replay=false) {
     const previous = node.textContent;
-    if (previous === String(text)) return;
+    if (!replay && previous === String(text)) return;
     node.textContent = text;
     if (
       !reduced() &&
       previous &&
-      /\d/.test(previous) &&
+      (replay || /\d/.test(previous)) &&
       /\d/.test(String(text))
     ) {
       node.dataset.oldValue = previous;
@@ -182,24 +182,10 @@
     frames.set(node, animation);
     step(start);
   }
-  function reveal(root) {
-    if (reduced() || root.dataset.wbRevealed) return;
-    const nodes = [
-      ...root.querySelectorAll(
-        ".card,.hot-card,.ob-panel,.ob-stats>article,.resource-row,.agent-chat,.agent-sessions,.workspace-browser,.workspace-files",
-      ),
-    ].slice(0, 6);
-    if (!nodes.length) return;
-    root.dataset.wbRevealed = "true";
-    nodes.forEach((el, i) =>
-      el.animate?.(
-        [
-          { opacity: 0.92, transform: "translateY(6px)" },
-          { opacity: 1, transform: "none" },
-        ],
-        { duration: 180, delay: i * 20, easing: "cubic-bezier(.2,.7,.3,1)" },
-      ),
-    );
+  function reveal(root, force=false) {
+    if (!force && root.dataset.wbRevealed) return;
+    root._motionDispose?.();root.dataset.wbRevealed="true";
+    root._motionDispose=window.WorkbenchMotion?.rows(root);
   }
   function capture(root) {
     const fields = {};
@@ -271,6 +257,7 @@
     reveal(root);
   }
   function dispose(root) {
+    root._motionDispose?.();clearTimeout(root._sidebarSettle);
     root._wbAbort?.abort();
     root._columnResizeObserver?.disconnect();
     root._columnResizeAbort?.abort();

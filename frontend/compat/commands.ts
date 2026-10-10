@@ -23,7 +23,7 @@
     trigger.className = "shell-search";
     trigger.id = "command-trigger";
     trigger.innerHTML = "<span>搜索与跳转</span><kbd>Ctrl K</kbd>";
-    document.querySelector(".side nav").before(trigger);
+    const divider=document.createElement("div");divider.className="lingxi-nav-separator";divider.setAttribute("role","separator");document.querySelector(".side nav").before(divider);
     const dialog = document.createElement("dialog");
     dialog.className = "command-dialog";
     dialog.id = "command-dialog";
@@ -126,7 +126,7 @@
     mobileTrigger.setAttribute("aria-label", "搜索与跳转");
     mobileTrigger.onclick = open;
     document.querySelector(".shell-heading").prepend(mobileTrigger);
-    trigger.onclick = open;
+    window.WorkbenchCommands={open};
     input.oninput = draw;
     input.onkeydown = (e) => {
       if (e.key === "Escape") {

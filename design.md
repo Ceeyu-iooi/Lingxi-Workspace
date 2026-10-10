@@ -1,5 +1,5 @@
 ---
-version: "0.0.36"
+version: "0.0.37"
 name: Lingxi-Workspace-design-system
 status: prerelease
 description: 本机个人工作台的完整前端契约。原创连接 Logo、浅青框架、清晰白色内容和稳定的数据布局；浅深主题共用组件、业务状态与交互规则。
@@ -55,13 +55,20 @@ layout:
   content-padding: 24px
   mobile-padding: 16px
   mobile-navigation-height: 60px
-  settings-width: 1050px
+  settings-width: 1040px
   tooltip-width: 280px
   breakpoints: { phone: 390px, mobile: 768px, compact: 1000px, wide: 1380px }
 motion:
   micro: 140ms
   selection: 220ms
   sidebar: 300ms
+  module-row: 300ms
+  module-offset: 12px
+  module-stagger: 60ms
+  module-delay-cap: 300ms
+  window-open: 260ms
+  window-close: 200ms
+  scroll-reveal: once-per-opening
   theme: 650ms
   quota-entry: 800ms
   credit-entry: 650ms
@@ -73,7 +80,7 @@ components:
   button-secondary: { background: "{colors.surface}", border: "{colors.hairline}", radius: "{rounded.input}" }
   card: { background: "{colors.surface}", border: "{colors.hairline}", radius: "{rounded.card}", padding: "{spacing.xl}" }
   profile-card: { padding: "{spacing.xl}", radius: 16px, selected-border: "{colors.primary}" }
-  dialog: { radius: 18px, max-width: "calc(100vw - 24px)", max-height: "calc(100dvh - 24px)" }
+  dialog: { radius: 24px, max-width: "calc(100vw - 24px)", max-height: "calc(100dvh - 24px)" }
   quota: { windows: [five-hour, weekly], unknown: "--", unknown-arc: all-gray, identity: stable-node }
   valuation: { scope: local-usage, currencies: [USD, CNY], default: off, switch-width: 108px, switch-height: 32px }
   reset-card: { readonly: true, battery-width: 30px, battery-height: 18px }
@@ -141,7 +148,7 @@ components:
 └──────────────────────────┴─────────────────────────┘
 ```
 
-- 根框架铺满视口，顶栏 48px。模块栏与主体分别占位，不能因数据返回突然插入新顶栏。
+- 根框架铺满视口，顶栏 48px，桌面使用页面绘制的窗口按钮与受限桥；preview浅色顶栏纯白，按钮/导航不可拖动，仅空白处拖动。模态遮罩覆盖标题栏与窗口按钮。模块栏与主体分别占位，不能因数据返回突然插入新顶栏。
 - 侧栏默认 240px，收起保留 64px 图标栏；**收起不是完全隐藏**。文字横向退出，图标仍可操作。
 - 展开 / 收起约 300ms；主体同步横向伸缩，纵向保持可见内容锚点，不滚回顶部、不重新请求数据。
 - 文件、编辑、视图、帮助在各模块的间距和位置一致；业务 CSS 不得覆盖全局菜单。
@@ -161,7 +168,7 @@ components:
 
 ### 预览展陈
 
-1280px居中容器、桌面32px边距、96px章节节奏。顶栏与大标题之后依次展示色板、字体、按钮、卡片、表单、间距、圆角、层级和响应式。无常驻目录栏，横向入口仅返回、主题、规范和少量区块锚点。
+默认1280px居中容器、桌面32px边距、96px章节节奏。首屏左侧为主要“阅读规范”和次要“返回工作坊”，右侧从实际规范读取YAML代码；浅深共用结构。顶栏与大标题之后依次展示色板、字体、按钮、卡片、表单、间距、圆角、层级和响应式。无常驻目录栏，横向入口仅返回、主题、规范和少量区块锚点。
 
 ## Elevation & Depth
 
@@ -171,7 +178,7 @@ components:
 | 普通卡片 | 表面色 + 1px 细边 | 通常无 | 16px |
 | 输入与按钮 | 表面 / 主动作填充 | 轻微或无 | 12px；胶囊 999px |
 | 下拉、日期、个人菜单 | 同主题表面 + 细边 | 轻而集中 | 14–18px |
-| 模态弹窗 | 同主题表面 | 柔和投影 | 18px |
+| 模态弹窗 | 同主题表面 | 柔和投影 | 24px |
 | Toast | 同主题表面 + 细边 | 清楚但克制 | 14px |
 
 阴影只说明浮层，不给所有卡片都加大阴影。个人菜单位于头像栏上方，宽度接近侧栏，菜单项无边框、灰色悬停、键盘焦点清楚。
@@ -493,3 +500,15 @@ Profile 卡复用引导，说明身份与位置。创建加密备份、导出加
 ## Known Gaps
 
 0.0.36网页与无损存储已验证。原生最终验收已按用户要求取消；Windows登记清理、最终原位升级及400MB工作集目标不标记为通过。结果以逐项交付报告为准，不将源码或构建成功冒充原生产品验收。参考集合的部分文件无YAML，三份扩展文件的YAML存在解析错误，按原文与章节人工适配；Slack缺README，不影响正文与预览研究。
+
+### 窗口、辅助页面与动画契约
+
+- 通用窗口宽度由small=360、medium=560、large=800、settings=1040px定义上限，高度由内容决定；不为短授权内容添加空白最小高度。正文独立滚动，标题与操作可达。主按钮在左下、排列在次按钮前，保留取消/草稿/保存保护与键盘焦点。
+- 模块按视觉行从上至下渐显，同一行同步：位移12px、持续300ms、间隔60ms、累计延迟最多300ms；不限定组件数量，不在后台轮询时重播整页。
+- 沿用现有数字滚动与格式，每次进入用量、用量设置、切换Agent都重播；真实数据与动画独立，未知值不变成零。
+- 弹窗从触发控件260ms展开、关闭200ms缩回；设置关闭回到头像。无有效控件时居中淡出。快速切换取消旧动画，减少动画立即呈现最终结果。
+- preview元素首次进入视口时从下方淡入，每次打开重置；同次上下往返不重复播放。每个页面使用一个观察器，销毁时释放。
+- 工作坊内的preview、规范和价格页面使用同一辅助页面栈，底层节点保留。返回恢复原路由、Agent、筛选、滚动、侧栏和设置栏目；支持嵌套、Esc、后退/前进。规范读取实际`/design.md`构建资源，代码框与阅读界面同源。
+- 价格表格占可用宽度，行高约42px；容器高度为`min(50dvh,560px)`，表头固定、纵向内部滚动，窄屏横向内部滚动。
+- Toast边框及阴影归属于实际卡片；最后一条离场后卸载内容并隐藏宿主，不保留可见白框。ScrubField标签、数值和单位分别占位，旧输入箭头样式不进入组件内部。
+- setup/uninstall共用Win32/GDI+的24px圆角外缘、薄层边沿灰影、工作区居中与DPI坐标；遵从系统减少动画。原生交互与系统实际渲染须有原生验收证据，本轮该验收由维护者取消。

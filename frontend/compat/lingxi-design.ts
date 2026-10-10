@@ -87,8 +87,9 @@
   }
   async function login(host, completed = () => {}) {
     host.innerHTML='<div class="lingxi-codex-login"><h2>读取本机 Codex 登录凭据</h2><p class="meta">授权灵犀只读本机已有登录，用于查询额度、Credit 与重置卡。</p><div class="control-actions"><button type="button" class="onboarding-action" data-authorize>授权读取</button><button type="button" class="onboarding-action quiet" data-revoke>撤销授权</button></div><p data-login-status role="status"></p></div>';
-    const run=async authorized=>{const button=host.querySelector('[data-authorize]');button.disabled=true;try{const result=await request('POST','/api/codex/local-authorization',{authorized});if(!host.isConnected)return;host.querySelector('[data-login-status]').textContent=result.unavailable?.quota || (authorized?'已授权读取本机登录':'已撤销读取授权');completed();}catch(error){if(host.isConnected)host.querySelector('[data-login-status]').textContent=error.message;}finally{if(button.isConnected)button.disabled=false;}};
+    const authorize=host.querySelector('[data-authorize]'),revoke=host.querySelector('[data-revoke]');let busy=false;const run=async authorized=>{if(busy)return;busy=true;const button=authorize;button.disabled=true;revoke.disabled=true;try{const result=await request('POST','/api/codex/local-authorization',{authorized});if(!host.isConnected)return;host.querySelector('[data-login-status]').textContent=result.unavailable?.quota || (authorized?'已授权读取本机登录':'已撤销读取授权');completed();}catch(error){if(host.isConnected)host.querySelector('[data-login-status]').textContent=error.message;}finally{busy=false;if(button.isConnected)button.disabled=false;if(revoke.isConnected)revoke.disabled=false;}};
     host.querySelector('[data-authorize]').onclick=()=>run(true);host.querySelector('[data-revoke]').onclick=()=>run(false);
+    const footer=host.closest('dialog')?.querySelector('.control-dialog-actions');if(footer){const before=footer.firstChild;host.querySelectorAll('.control-actions>button').forEach(button=>footer.insertBefore(button,before));host.querySelector('.control-actions').remove();}
   }
   function tooltipMarkup(data) {
     if (typeof data === "string") {

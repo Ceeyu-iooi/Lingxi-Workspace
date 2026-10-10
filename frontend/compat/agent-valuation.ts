@@ -66,8 +66,8 @@
       disposeProgress();
       document.removeEventListener("keydown", blocked, true);
       delete document.documentElement.dataset.valuationBusy;
+      d.addEventListener("close",()=>d.remove(),{once:true});
       d.close();
-      d.remove();
       if(focus?.isConnected)focus.focus({preventScroll:true});
       modal = null;
       try {

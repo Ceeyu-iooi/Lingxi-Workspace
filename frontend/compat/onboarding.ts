@@ -63,6 +63,8 @@
             .join("")}</div>`
         : '<div class="onboarding-card"><h2>API 供应商</h2><p data-supplier-summary>正在读取连接…</p><button class="onboarding-action secondary" data-add-supplier>添加或管理供应商</button><div data-supplier-host hidden></div></div>'
     }<p class="onboarding-error" role="alert"></p><div class="onboarding-actions">${step !== "agents" ? '<button class="onboarding-action quiet" data-back>上一步</button>' : ""}<button class="onboarding-action quiet" data-skip>稍后设置</button><button class="onboarding-action" data-next>${step === "agents" ? "继续" : "进入工作台"}</button></div>`;
+    host._motionDispose?.();host._motionDispose=window.WorkbenchMotion?.rows(host);
+    window.WorkbenchWindow?.mount(surface.querySelector(".onboarding-top"));
     host.querySelector("h1").focus({ preventScroll: true });
     if (step === "codex") {
       host.querySelector("h1").textContent = "连接 Codex 账户";

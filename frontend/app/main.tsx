@@ -1,3 +1,5 @@
+import "./motion";
+import "./surfaces";
 import React, { useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 import { installRuntime } from "virtual:lingxi-runtime";
@@ -93,7 +95,7 @@ const pages: Record<string, React.ComponentType<{ ready: boolean }>> = {
 
 function Menus() {
   const action = (value: string, event: React.MouseEvent) => {
-    if (value === "search") document.getElementById("command-trigger")?.click();
+    if (value === "search") (window as any).WorkbenchCommands?.open();
     if (value === "sidebar") document.getElementById("sidebar-toggle")?.click();
     if (value === "theme")
       window.workbenchAppearance?.setTheme(

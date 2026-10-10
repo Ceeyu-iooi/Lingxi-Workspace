@@ -38,6 +38,8 @@
       ticket = 0,
       timer,
       catalog;
+    let alive=true,fxTicket=0;const abort=new AbortController();
+    root._wbDispose=()=>{alive=false;abort.abort();clearTimeout(timer);ticket++;fxTicket++;window.usageCharts?.dispose(root);};
     const today = new Date().toLocaleDateString("en-CA");
     q("[data-fx-end]", root).value = today;
     q("[data-fx-date]", root).value = today;
@@ -68,8 +70,8 @@
         }),
         stop = U.busy(root, "正在读取价格缓存…");
       try {
-        const data = await U.request("GET", "/api/pricing/catalog?" + params);
-        if (seq !== ticket) return;
+        const data = await U.request("GET", "/api/pricing/catalog?" + params,undefined,{signal:abort.signal});
+        if (!alive || seq !== ticket) return;
         catalog = data;
         q("[data-price-date]", root).value = data.date;
         option(q("[data-provider]", root), data.providers, "全部供应商");
@@ -122,20 +124,22 @@
         q("[data-next]", root).disabled =
           offset + data.items.length >= data.total;
       } catch (error) {
-        q("[role=alert]", root).textContent = error.message;
+        if(alive)q("[role=alert]", root).textContent = error.message;
       } finally {
         stop();
       }
     }
     async function loadFX() {
+      if(!alive)return;const current=++fxTicket;
       const params = new URLSearchParams({
         start: q("[data-fx-start]", root).value,
         end: q("[data-fx-end]", root).value,
         date: q("[data-fx-date]", root).value,
       });
       try {
-        const data = await U.request("GET", "/api/pricing/fx?" + params),
+        const data = await U.request("GET", "/api/pricing/fx?" + params,undefined,{signal:abort.signal}),
           card = data.card;
+        if(!alive||current!==fxTicket)return;
         q("[data-usd-cny]", root).textContent = card
           ? Number(card.usdCny).toFixed(6) + " CNY"
           : "—";
@@ -167,7 +171,7 @@
         chart.querySelector(".usage-plot").dataset.unit = " CNY / USD";
         window.usageCharts.mount(chart);
       } catch (error) {
-        q("[role=alert]", root).textContent = error.message;
+        if(alive)q("[role=alert]", root).textContent = error.message;
       }
     }
     root
@@ -207,7 +211,7 @@
         await load();
         await loadFX();
       } catch (error) {
-        q("[role=alert]", root).textContent = error.message;
+        if(alive)q("[role=alert]", root).textContent = error.message;
       } finally {
         stop();
         button.disabled = false;
@@ -475,5 +479,6 @@
     );
     window.roundedSelects?.scan();
   }
-  init();
+  window.WorkbenchPrices={mount:prices};
+  if(document.body.dataset.page)init();
 })();

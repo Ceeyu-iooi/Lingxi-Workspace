@@ -218,6 +218,7 @@ function renderControl(view, root) {
 let renderSequence = 0,
   renderedHash = "";
 function render() {
+  if(window.WorkbenchSurfaces?.isOpen())return;
   if(!location.hash.startsWith("#/settings"))try{sessionStorage.setItem("lingxi-last-work-route",location.hash||"#/overview");}catch{}
   if (!user) {
     showProfile();

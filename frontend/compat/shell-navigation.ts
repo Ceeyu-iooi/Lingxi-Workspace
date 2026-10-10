@@ -1,6 +1,6 @@
 // @ts-nocheck
 // Compatibility controller: retain the validated interactions during the React migration.
-/* Shared browser/desktop navigation; native window buttons remain Electron's. */
+/* Shared browser/desktop navigation and DOM window controls. */
 (() => {
   const bar = document.querySelector(".shell-bar"),
     heading = bar?.querySelector(".shell-heading");
@@ -67,4 +67,5 @@
     }
   });
   refresh();
+  window.WorkbenchWindow?.mount(bar);
 })();

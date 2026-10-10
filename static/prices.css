@@ -11,11 +11,13 @@ body[data-page=prices]{background:var(--lingxi-body,var(--surface));color:var(--
 [data-page=prices] :is(.wb-price-filters,.wb-fx-range) label{display:flex;flex-direction:column;gap:8px;min-width:0;flex:1 1 160px;color:var(--ink-2);font-size:12px}
 [data-page=prices] :is(input,select){width:100%;min-width:0;min-height:40px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit}
 [data-page=prices] .btn{min-height:40px;border-radius:10px;font-size:13px}
-[data-page=prices] .control-table-wrap{overflow:auto;width:100%}
+[data-page=prices] .control-table-wrap{overflow:auto;width:100%;height:min(50dvh,560px);border:1px solid var(--line);border-radius:12px}
 [data-page=prices] .control-table{min-width:720px;font-variant-numeric:tabular-nums}
-[data-page=prices] .control-table :is(th,td){padding:16px 12px;vertical-align:middle}
+[data-page=prices] .control-table :is(th,td){padding:8px 12px;height:42px;vertical-align:middle}
 [data-page=prices] .control-table :is(th,td):nth-child(n+3):nth-child(-n+6){text-align:right}
 [data-page=prices] .wb-fx-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin:32px 0}
 [data-page=prices] .wb-fx-card strong{display:block;font-size:36px;font-weight:500;line-height:1.2;font-variant-numeric:tabular-nums;margin:16px 0}
 [data-page=prices] :is(button,input,select,a):focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 @media(max-width:719px){[data-page=prices] .wb-standalone{padding:28px 16px 48px}[data-page=prices] .wb-standalone-header{flex-direction:column;gap:16px;margin-bottom:28px;padding-bottom:24px}[data-page=prices] .wb-panel{padding:20px}[data-page=prices] .wb-fx-cards{grid-template-columns:minmax(0,1fr);gap:16px}[data-page=prices] .btn{min-height:44px}}
+
+[data-page=prices] .control-table thead th{position:sticky;top:0;z-index:1;background:var(--surface);box-shadow:0 1px var(--line)}
