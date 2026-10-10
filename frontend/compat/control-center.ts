@@ -11,8 +11,6 @@
     ["shortcuts", "快捷键", "Shortcuts", "account"],
     ["about", "关于", "About", "account"],
   ];
-  if (window.workbenchDesktop?.updateState)
-    sections.push(["updates", "关于与更新", "About and updates", "account"]);
   const groups = [
     ["account", "个人设置"],
     ["services", "服务与用量"],
@@ -165,7 +163,9 @@
       ticket !== root._settingsSequence
     )
       return;
-    const requested = location.hash.split("/")[2] || "general";
+    const requestedSection = location.hash.split("/")[2] || "general";
+    const requested = requestedSection === "updates" ? "about" : requestedSection;
+    if(requestedSection === "updates")history.replaceState(history.state,'',location.pathname+location.search+'#/settings/about');
     const selected = sections.find((s) => s[0] === requested) || sections[0];
     root
       .closest(".module-surface")
@@ -906,7 +906,7 @@
       )
       .join(
         "",
-      )}</div><button type="button" class="btn ghost usage-manage-button" id="usage-account-add">管理API供应商</button></div><div class="usage-surface" id="usage-panel" role="tabpanel"><div class="usage-account-slot" data-open="false"><div id="usage-accounts"></div></div><div class="usage-toolbar"><label>时间范围<select id="usage-days">${[
+      )}</div><button type="button" class="btn ghost usage-manage-button" id="usage-account-add">管理供应商</button></div><div class="usage-surface" id="usage-panel" role="tabpanel"><div class="usage-account-slot" data-open="false"><div id="usage-accounts"></div></div><div class="usage-toolbar"><label>时间范围<select id="usage-days">${[
       [7, "近 7 天"],
       [30, "近 30 天"],
       [90, "近 90 天"],

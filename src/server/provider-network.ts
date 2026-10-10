@@ -1,5 +1,5 @@
 import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
+import { isIP, BlockList } from "node:net";
 import { Decimal } from "decimal.js";
 import { fetchJSON } from "./control.ts";
 import { hash, type JsonObject } from "./profile.ts";
@@ -43,28 +43,26 @@ export const RELAY_KINDS = [
   "moonshot",
   "minimax",
 ];
+const internalAddresses = new BlockList(), proxyFakeAddresses = new BlockList();
+for(const [address,prefix] of [
+  ['0.0.0.0',8],['10.0.0.0',8],['127.0.0.0',8],['169.254.0.0',16],
+  ['172.16.0.0',12],['192.168.0.0',16],['100.64.0.0',10],['192.0.0.0',24],
+  ['192.0.2.0',24],['198.18.0.0',15],['198.51.100.0',24],['203.0.113.0',24],['224.0.0.0',3],
+] as const)internalAddresses.addSubnet(address,prefix,'ipv4');
+for(const [address,prefix] of [['fc00::',7],['fe80::',10],['ff00::',8],['2001:db8::',32]] as const)internalAddresses.addSubnet(address,prefix,'ipv6');
+internalAddresses.addAddress('::','ipv6');internalAddresses.addAddress('::1','ipv6');
+proxyFakeAddresses.addSubnet('198.18.0.0',15,'ipv4');
 function publicAddress(address: string) {
-  if (isIP(address) === 4) {
-    const [a, b, c] = address.split(".").map(Number);
-    return !(
-      a === 0 ||
-      a === 10 ||
-      a === 127 ||
-      a >= 224 ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      (a === 100 && b >= 64 && b <= 127) ||
-      (a === 192 && b === 0 && [0, 2].includes(c)) ||
-      (a === 198 && [18, 19, 51].includes(b)) ||
-      (a === 203 && b === 0 && c === 113)
-    );
-  }
-  const v = address.toLowerCase();
-  if (v.startsWith("::ffff:")) return publicAddress(v.slice(7));
-  return (
-    !["::", "::1"].includes(v) && !/^f[cd]|^fe[89ab]|^ff|^2001:db8/.test(v)
-  );
+  const family=isIP(address);return family!==0&&!internalAddresses.check(address,family===4?'ipv4':'ipv6');
+}
+export function usableProviderAddress(address: string, hostname: string) {
+  if(publicAddress(address))return true;
+  const family=isIP(address);
+  // A proxy may map a public DNS name into its reserved fake-IP range. Keep
+  // the HTTPS hostname and TLS verification; literal/private destinations stay blocked.
+  return family!==0&&!isIP(hostname)&&hostname.includes('.')&&
+    !/\.(local|localhost|localdomain)$/i.test(hostname)&&
+    proxyFakeAddresses.check(address,family===4?'ipv4':'ipv6');
 }
 export function validateURL(value: string, kind?: string) {
   let parsed: URL;
@@ -108,7 +106,7 @@ export async function providerJSON(
     addresses = await lookup(parsed.hostname.replace(/^\[|\]$/g, ""), {
       all: true,
     });
-  if (addresses.some((r) => !publicAddress(r.address)))
+  if (addresses.some((r) => !usableProviderAddress(r.address,parsed.hostname.replace(/^\[|\]$/g,""))))
     throw new Error("供应商地址指向内部网络");
   const body = await fetchJSON(
     url,

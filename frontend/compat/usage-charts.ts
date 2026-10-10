@@ -87,6 +87,7 @@
     tip.id = "usage-tooltip-" + ++sequence;
     tip.role = "tooltip";
     tip.hidden = true;
+    let lastMarkup = '';
     host.append(tip);
     const outside = (ev) => {
       if (!host.contains(ev.target)) {
@@ -105,7 +106,8 @@
         tip.hidden = true;
       },
       show: (text, x, y) => {
-        tip.innerHTML = window.LingxiDesign.tooltipMarkup(text);
+        const markup=window.LingxiDesign.tooltipMarkup(text);
+        if(markup!==lastMarkup){tip.innerHTML=markup;lastMarkup=markup;}
         tip.hidden = false;
         if(host.clientWidth < tip.offsetWidth + 16){
           tip.style.position="fixed";
@@ -311,8 +313,8 @@
       let text = valid(row)
         ? `${row.date}\n${row.provided === false ? "已知 " : ""}${value(host, row.total)}${unit(host)}${host.dataset.experimental === "true" ? " · API 等价值（实验）" : ""}`
         : `${row.date}\n${host.dataset.experimental === "true" ? "该日等价值未知" : "平台未返回该日" + (host.dataset.metric === "cost" ? "费用" : "用量")}`;
-      const rows = segment ? [{ label: segment.dataset.model, value: value(host, Number(segment.dataset.total)) + unit(host), color: segment.getAttribute("fill") || "#2563EB" }] : (row.models || []).map((m,i)=>({ label:m.model, value:value(host,m.total)+unit(host), color:"#2563EB" }));
-      tip.show({primary:valid(row)?value(host,row.total)+unit(host):"未返回",date:row.date,rows}, clientX ?? screen.x, clientY ?? screen.y);
+      const detailRows = segment ? [{ label: segment.dataset.model, value: value(host, Number(segment.dataset.total)) + unit(host), color: segment.getAttribute("fill") || "#2563EB" }] : (row.models || []).map((m,i)=>({ label:m.model, value:value(host,m.total)+unit(host), color:"#2563EB" }));
+      tip.show({primary:valid(row)?value(host,row.total)+unit(host):"未返回",date:row.date,rows:detailRows}, clientX ?? screen.x, clientY ?? screen.y);
     };
     const clipId = "usage-reveal-" + ++sequence;
     const draw = () => {
@@ -562,25 +564,6 @@
       const p = point(svg, ev.clientX, ev.clientY);
       if (p) show(layout.nearest(p.x), ev.clientX, ev.clientY, bar);
     };
-    svg.addEventListener(
-      "wheel",
-      (ev) => {
-        if (!rows.length || !ev.deltaY) return;
-        ev.preventDefault();
-        const rect = svg.getBoundingClientRect(),
-          anchor = Math.max(
-            0,
-            Math.min(1, (ev.clientX - rect.left) / rect.width),
-          );
-        host.dispatchEvent(
-          new CustomEvent("usage-chart-zoom", {
-            bubbles: true,
-            detail: { factor: ev.deltaY > 0 ? 1.25 : 0.8, anchor },
-          }),
-        );
-      },
-      { passive: false },
-    );
     svg.addEventListener("pointermove", move);
     svg.addEventListener("pointerdown", move);
     svg.addEventListener("pointerleave", (ev) => {

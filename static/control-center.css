@@ -122,8 +122,8 @@
 .sidebar-collapsed .side-foot { display:block; font-size:0; padding:8px 2px; }
 .sidebar-collapsed .side-foot .local-dot,.sidebar-collapsed #local-status { display:none; }
 .sidebar-collapsed .nav-item>span:not(.ico) { display:none; }
-.workbench-menubar { display:flex; gap:4px; margin-left:auto; order:1; }
-.shell-bar .theme-toggle { order:2; }
+.workbench-menubar { display:flex; gap:4px; margin-left:0; order:0; }
+.shell-bar .theme-toggle { order:0; }
 .workbench-menubar details { position:relative; }
 .workbench-menubar summary { list-style:none; cursor:pointer; padding:4px 7px; border-radius:5px; font-size:var(--text-ui-sm); }
 .workbench-menubar summary:hover,.workbench-menubar details[open]>summary { background:var(--color-hover); }

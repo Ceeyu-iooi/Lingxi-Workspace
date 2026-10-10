@@ -108,3 +108,10 @@ html[data-profile-required=true] .side,html[data-profile-required=true] .tabbar,
 :root[data-motion=reduced] .layout,:root[data-motion=reduced] .layout>.side :is(.nav-label,.account-name,.brand-name){transition:none!important}
 
 @media(max-width:600px){.desktop-shell .preview-brand span{display:none}.desktop-shell .layout>.shell-bar{gap:2px;padding-left:4px}.desktop-shell .shell-heading{gap:2px!important}.desktop-shell .shell-heading .mobile-command-trigger{display:none}.desktop-shell .layout>.shell-bar :is(.shell-history,#sidebar-toggle){width:26px;height:30px;padding:3px}.desktop-shell .lingxi-window-controls button{width:40px}.desktop-shell .preview-top{gap:8px}.desktop-shell .preview-top-actions{gap:4px}}
+
+/* Product cards share a restrained surface hierarchy. */
+.main-shell>#main{scrollbar-gutter:stable}.main-shell :is(.card,.ob-panel,.sum-card,.wb-library-card,.account-quota-window,.lingxi-account-details>section){box-shadow:0 6px 24px -24px #15151755;border-color:var(--line)}
+.usage-tooltip.quota-tooltip{width:min(220px,calc(100vw - 24px))!important;max-width:min(220px,calc(100vw - 24px))!important}.quota-tooltip .lingxi-tip-rows>div{align-items:flex-start;flex-wrap:wrap}.quota-tooltip .lingxi-tip-rows span{white-space:normal;overflow:visible;text-overflow:clip}.quota-tooltip .lingxi-tip-rows b{white-space:normal;overflow-wrap:anywhere}
+.lingxi-release-notes{line-height:1.8;overflow-wrap:anywhere;padding:4px 0 16px}.lingxi-release-notes h2{font-size:20px;margin:24px 0 12px}.lingxi-release-notes h3{font-size:16px;margin:20px 0 10px}.lingxi-release-notes ul,.lingxi-release-notes ol{padding-left:22px;margin:10px 0 20px}.lingxi-release-notes li{margin:6px 0}.lingxi-release-notes p{margin:12px 0}.lingxi-release-notes code{font-size:.9em;overflow-wrap:anywhere}
+
+.lingxi-module-bar .usage-tabs .usage-manage-button{margin-left:auto!important;flex:none!important;border:0!important;box-shadow:none!important;background:transparent!important;border-radius:0;padding:8px 0 8px 16px;min-width:0;height:auto;color:var(--ink-2)}.lingxi-module-bar .usage-tabs .usage-manage-button:hover{color:var(--accent);background:transparent!important}

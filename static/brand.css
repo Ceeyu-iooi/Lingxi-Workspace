@@ -1,0 +1,30 @@
+/* Lingxi: the original connecting arcs, calm surfaces and clear hierarchy. */
+@font-face{font-family:"Lingxi Brush";src:url("assets/fonts/LingxiBrush.woff2") format("woff2");font-display:swap}
+.lingxi-mark{display:inline-grid;place-items:center;width:56px;height:56px;flex:none;color:#3976f6}
+.lingxi-mark svg{width:100%;height:100%;overflow:visible;display:block}
+.lingxi-mark--large{width:clamp(140px,20vw,260px);height:auto;aspect-ratio:1}
+.lingxi-mark .lingxi-arc{stroke:currentColor;stroke-width:10;stroke-linecap:round}
+.lingxi-mark-eye{fill:var(--surface,#fff)}
+.lingxi-orbit{stroke:currentColor;stroke-width:1.3;stroke-dasharray:14 86;opacity:0;transform-origin:60px 60px}
+[data-brand-motion=breath] .lingxi-mark-body{transform-origin:60px 60px;animation:lingxi-breathe 2.4s ease-in-out infinite}
+[data-brand-motion=trace] .lingxi-arc{animation:lingxi-trace 2.8s ease-in-out infinite}
+[data-brand-motion=trace] .lingxi-arc-b{animation-delay:-1.4s}
+[data-brand-motion=orbit] .lingxi-orbit{opacity:.45;animation:lingxi-orbit 3s linear infinite}
+.lingxi-loader-label{display:block;margin-top:12px;color:var(--ink-2);font-size:12px;text-align:center}
+.lingxi-progress{height:6px;min-height:6px!important;position:relative;overflow:hidden;border-radius:999px;background:var(--line,#e3e8ee);width:100%}
+.lingxi-progress-fill{display:block;width:100%;height:100%;border-radius:inherit;background:var(--accent,#3976f6);transform-origin:left center;transition:transform 220ms ease}
+@keyframes lingxi-breathe{0%,100%{opacity:.65;transform:scale(.965)}50%{opacity:1;transform:scale(1)}}
+@keyframes lingxi-trace{0%,100%{stroke-dasharray:75 25;stroke-dashoffset:0;opacity:.55}50%{stroke-dasharray:100 0;stroke-dashoffset:-100;opacity:1}}
+@keyframes lingxi-orbit{to{transform:rotate(360deg)}}
+.preview-brand span,.brand-lockup{font-family:"Lingxi Brush",serif;font-weight:400}
+.brand-lockup{font-size:clamp(28px,3vw,42px);letter-spacing:.04em;color:var(--ink)}
+.brand-candidate-stage{display:flex;align-items:center;justify-content:center;gap:28px;min-height:210px;background:var(--surface-soft);border-radius:12px;margin-bottom:20px}
+.brand-candidate-stage .lingxi-mark--large{width:140px}
+.brand-candidate-stage .lingxi-mark--small{width:40px;height:40px}
+.brand-candidates h3{margin-bottom:8px}.brand-candidates p{margin-bottom:0}
+.brand-visual{position:relative;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:28px;min-height:400px;width:100%;border:0;background:transparent;box-shadow:none;overflow:visible}
+.brand-visual>*{position:relative}
+:root[data-theme=dark] .lingxi-mark{color:#8aafff}
+:root[data-motion=reduced] .lingxi-mark *{animation:none!important}
+:root[data-motion=reduced] .lingxi-progress-fill{transition:none}
+@media(prefers-reduced-motion:reduce){.lingxi-mark *{animation:none!important}.lingxi-progress-fill{transition:none}}

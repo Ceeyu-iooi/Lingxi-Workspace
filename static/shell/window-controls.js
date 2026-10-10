@@ -7,7 +7,7 @@
   const controls=document.createElement('div');controls.className='lingxi-window-controls';
   const icons={minimize:'<path d="M4 12h12"/>',maximize:'<rect x="4" y="4" width="12" height="12"/>',restore:'<path d="M7 7V4h9v9h-3"/><rect x="4" y="7" width="9" height="9"/>',close:'<path d="m5 5 10 10M15 5 5 15"/>'};
   for(const [action,label] of [['minimize','最小化'],['maximize','最大化'],['close','关闭']]){const button=document.createElement('button');button.type='button';button.dataset.windowAction=action;button.setAttribute('aria-label',label);button.title=label;button.innerHTML='<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">'+icons[action]+'</svg>';button.onclick=()=>bridge.windowAction(action).catch(()=>{});controls.append(button);}
-  host.append(controls);
+  (host.querySelector(':scope > .preview-top-actions')||host).append(controls);
   const paint=state=>{if(!controls.isConnected)return;const button=controls.querySelector('[data-window-action=maximize]');button.setAttribute('aria-label',state.maximized?'还原':'最大化');button.title=state.maximized?'还原':'最大化';button.innerHTML='<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">'+icons[state.maximized?'restore':'maximize']+'</svg>';};
   bridge.windowState().then(paint).catch(()=>{});const unsubscribe=bridge.onWindowState(paint);
   const dispose=()=>{unsubscribe();disposers.delete(host);controls.remove();if(!disposers.size){observer?.disconnect();observer=null;}};disposers.set(host,dispose);

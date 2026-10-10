@@ -1,9 +1,9 @@
 {
-  "version": "0.0.37",
+  "version": "0.1.0",
   "files": [
     {
       "file": "README.md",
-      "sha256": "85b8131484f63f4cb607fc551a26fff19c0f9b32b485863a5c6df6c60a20a389"
+      "sha256": "78718535620dd91f296c903d25df2f9aad769566a7f596774f105255328d6f5b"
     },
     {
       "file": "LICENSE",
@@ -19,11 +19,11 @@
     },
     {
       "file": "VERSION",
-      "sha256": "17e397d7c72ee3bc8e5f20c1fbcb427dcfae7315e394018eeba6a6731e49c9bb"
+      "sha256": "e9dd8507f4bf0c6f42458e41aea833ad0bd3f6127272335eee9bf4d58541ed67"
     },
     {
       "file": "design.md",
-      "sha256": "2b882a903ea34fd40c1e9162422df228f5de025e63ab3d1ba5e52bea3afbd9ae"
+      "sha256": "8d153431e83a760f4488f4b3f780397665902d1992e376da927742387f76927a"
     },
     {
       "file": "start.bat",
@@ -151,7 +151,7 @@
     },
     {
       "file": "src/server/provider-network.ts",
-      "sha256": "97cd389655276d89fa7613dc9fe2bdb544d932d98e0cf05fae51956017bda2e3"
+      "sha256": "b04ad53abdb4aaa718a574029d5e4c4cf87e3391ef8552aea1e25fec5b086aa5"
     },
     {
       "file": "src/server/relay.ts",
@@ -210,6 +210,10 @@
       "sha256": "15deafbd0cbd5236dd24b745875a00c15fea816a6ecf0bf01fe22533a2da2881"
     },
     {
+      "file": "frontend/app/brand.ts",
+      "sha256": "ccc4f10329342fd1a75e549f6d5b7299e374aaa10dda16489ad057bc7de8c5cb"
+    },
+    {
       "file": "frontend/app/controller-order.json",
       "sha256": "c08e91f7d56d3e96449b7f7cced562fb06abbf5a0186dddb2acd520899bb2781"
     },
@@ -219,11 +223,11 @@
     },
     {
       "file": "frontend/app/main.tsx",
-      "sha256": "5f64b36fa9d714bb1d8f122836179a8b40ee3592e4d678bb07f226800dead453"
+      "sha256": "cffe043c74070590020d088c1bce9fcccf1bb18f2b9f4b6cc0cd758fa1d71353"
     },
     {
       "file": "frontend/app/motion.ts",
-      "sha256": "05aac228eb5d5dcc9cdac7d87c325f102ac2ccb054d6b505f664a8202074f20c"
+      "sha256": "afc6e6d6450329999006a5917d22bbee7f5e7568e4adb884c77ee8302559ece6"
     },
     {
       "file": "frontend/app/preview-dark.html",
@@ -235,7 +239,7 @@
     },
     {
       "file": "frontend/app/preview.ts",
-      "sha256": "3c883384280708dba91dceb35fe4b77c8f64b3052769d018a6cc02c77e97af7f"
+      "sha256": "04f72023a70b25a26737ab8ca8789a4071c4e67b041a45439b684c047fec3274"
     },
     {
       "file": "frontend/app/prices.html",
@@ -243,7 +247,7 @@
     },
     {
       "file": "frontend/app/runtime.d.ts",
-      "sha256": "1ebae4b397a56a6cfe22f6ea4c2b42fc4633ed690b0b5fe4ac50595f6961b90b"
+      "sha256": "42b7c7e4289621d3692966f50921b1147e1d9599b2382a403b1636b7ac26c2fe"
     },
     {
       "file": "frontend/app/standalone.tsx",
@@ -251,7 +255,7 @@
     },
     {
       "file": "frontend/app/surfaces.ts",
-      "sha256": "1f646315667ae9a08addf3237a4b835c89906f6a01853b1de6bda85c0241fdac"
+      "sha256": "b8242e5002027f56394e01d29c20e590ca9063d9a73c211ab84a9efc08b793bd"
     },
     {
       "file": "frontend/app/ui-kit.html",
@@ -259,7 +263,7 @@
     },
     {
       "file": "frontend/compat/agent-valuation.ts",
-      "sha256": "01695497dafb7cf7822774a804b49fba8aba63c87551c3dbd6d5f95f2cd6e3b1"
+      "sha256": "dcb494326472fb3423d1a0459e0fb1927a4c1e5639c03f76898dd27e2f2e00a9"
     },
     {
       "file": "frontend/compat/app.ts",
@@ -275,11 +279,11 @@
     },
     {
       "file": "frontend/compat/control-center.ts",
-      "sha256": "09a062ce1eab4df56788b5ecddbf7e905bd8cf63e890465522054daab6df9c3e"
+      "sha256": "bdec219bcbc9e0df11513511e90ea6a950ce41b2ffb33876bbd87609934b9674"
     },
     {
       "file": "frontend/compat/dialogs.ts",
-      "sha256": "7d71c203331b73c10466fdb2a41a731dfdbe136fc35afe8e61bf08ac367f9f1d"
+      "sha256": "a63aeb30a5ce96237a9ed96f643c04acfb379847f3a6ff419928b7b85590bd67"
     },
     {
       "file": "frontend/compat/layout-storage.ts",
@@ -335,11 +339,11 @@
     },
     {
       "file": "frontend/compat/theme.ts",
-      "sha256": "db5b1e510104800a18e98b5c31442024b9204f9688e1befb5df7a84fa7e082df"
+      "sha256": "31ea74eceee95dde38c5e63b987363351897b010f55e1d8c76efec99f94f2f64"
     },
     {
       "file": "frontend/compat/ui-core.ts",
-      "sha256": "33435a62a21f2493e3635e440b193842a8a4c33c3b974c28c23bbf0f929c7b5f"
+      "sha256": "fcb73f98cab93df97eaf971f7dc851c44dbc2ae65cd463b2313965ba49f521fa"
     },
     {
       "file": "frontend/compat/usage-accounts.ts",
@@ -347,7 +351,7 @@
     },
     {
       "file": "frontend/compat/usage-charts.ts",
-      "sha256": "2497e0bfc030617176ac015f15be91fca7004e1cde6fc732ed5bb9ddb08a34de"
+      "sha256": "49e34dd1f8eb25694775be2dc53be07a6a990a04635bb2eabb36c6d5a5ea48cf"
     },
     {
       "file": "frontend/compat/usage-filters.ts",
@@ -359,7 +363,7 @@
     },
     {
       "file": "frontend/compat/usage-view.ts",
-      "sha256": "7444866f07f5bea30119472196d1456402cd8fb8bbc1a83f5a4ecbe48bdcea4b"
+      "sha256": "2e57267857fabd5001355044a5b13b074a052be809cb10688bedd8c43094d8ac"
     },
     {
       "file": "frontend/compat/workbench-design.ts",
@@ -380,6 +384,26 @@
     {
       "file": "static/app.css",
       "sha256": "b8540d7430c4e2e3e1455df63e7e5f07f6b88a4b91e1441124ff065e8e017324"
+    },
+    {
+      "file": "static/assets/brand/lingxi-dark.svg",
+      "sha256": "375838cc1ff5a196330fefe04adeb41b2c28416174645ae3de93ec68413cf0b2"
+    },
+    {
+      "file": "static/assets/brand/lingxi-idle.svg",
+      "sha256": "3cfc1e75b715e3c454418a8c96dac3a29ec135d75d1d50e9970f37f396879ec8"
+    },
+    {
+      "file": "static/assets/brand/lingxi-light.svg",
+      "sha256": "03f86e68c030082f2c1b7bd95f9ac0218b821a137661a7d5a79c98eebc11fafb"
+    },
+    {
+      "file": "static/assets/brand/lingxi-mono.svg",
+      "sha256": "c0d0c989b807448dfd7b07d0cc8b2190d1f3363829f85ddf82ddf010cd90bb11"
+    },
+    {
+      "file": "static/assets/brand/lingxi-wordmark.svg",
+      "sha256": "dc6a725d65ce315cc719a050763d62f7ce44349afc59cbc1f2fd42ec258b7ae1"
     },
     {
       "file": "static/assets/deepseek-logo.svg",
@@ -422,16 +446,20 @@
       "sha256": "4f772a5e4c4a06d977d88ed0765fbd747898fb0b43d54e62df124309fb3f69e7"
     },
     {
+      "file": "static/brand.css",
+      "sha256": "f4616e173024be2f32cfc1734f95ae9eef4dfae1513a476ace480f5c488aae84"
+    },
+    {
       "file": "static/control-center.css",
-      "sha256": "f0131913628675ce8d58fa4c2e5692d8dd499f4be5e497a43fc52b1a2b09df18"
+      "sha256": "07f91ef0f5e5da4976ec5cad89a71d547bef4a36cdb6a473153a326bc44cd3a6"
     },
     {
       "file": "static/design-preview.css",
-      "sha256": "dbaec2edf171f24424dba38f40aad0e241f2e017681c518d62d10289e17e25ed"
+      "sha256": "5b1b4befebc7e4c11841d2b762827124c45cfea4a74a6c3e0f382627305540e4"
     },
     {
       "file": "static/dialogs.css",
-      "sha256": "a5e777360c7eae28a198605bd9af963bfeeca0877de4f98d65205eebaaeebba0"
+      "sha256": "458067d721d3ed96b80fe8d2f130a8aa741b3ab38e325b0e9fa72bd18f0b55a1"
     },
     {
       "file": "static/dsh-settings.css",
@@ -443,7 +471,7 @@
     },
     {
       "file": "static/lingxi-design.css",
-      "sha256": "e74e857d94cb296400a950e5d4e9e22a63871c8235da94ad717530b3b0fd50e9"
+      "sha256": "3ec8d49ff92e5c99cccec060498dc85197ca3b4d25a958b1288c0f496b46167b"
     },
     {
       "file": "static/news-board.css",
@@ -475,11 +503,11 @@
     },
     {
       "file": "static/shell/window-controls.css",
-      "sha256": "c1225c75d351a8fca207fe520bda531cb3fa6609918aaddf0ca8be2b8544f696"
+      "sha256": "d1a29f98d80ca273ad423d43dbcb264d7c1bd9dd9b21897e710fd64ce4670188"
     },
     {
       "file": "static/shell/window-controls.js",
-      "sha256": "e8ab239a8d5cdccb4bb1acaf4cf4d176670b1cf1fa991118dabe69663b9e5238"
+      "sha256": "811ddf0c4b958c03f5fce1bfab864f716242543f80b088265fd07754a9ca388a"
     },
     {
       "file": "static/shell-experience.css",
@@ -591,7 +619,7 @@
     },
     {
       "file": "docs/design-coverage.json",
-      "sha256": "e13e5839e12ff6be6f5faec7254463e79b32eb693ff1ecd3c26b548af0011e40"
+      "sha256": "ea84e82afcbadef9e1635771ddb3608813ea62987dabc1c2849ed78463b33dd7"
     },
     {
       "file": "docs/design-reference-audit.json",
@@ -611,7 +639,7 @@
     },
     {
       "file": "docs/product-manifest.json",
-      "sha256": "b68c50740e0c0bd715a1425dd312d41229ee123702dff372eacdc8fdd5e9cf2d"
+      "sha256": "97881ba3a82d502322a3f4e4f12391ef5ac95f3d82ffa861df2f0852a644e71f"
     },
     {
       "file": "docs/TYPESCRIPT_MIGRATION.md",

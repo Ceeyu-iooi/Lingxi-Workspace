@@ -28,7 +28,7 @@ HTMLDialogElement.prototype.showModal = function () {
     (this as any)._motionCancelInstalled=true;
     this.addEventListener('cancel',event=>{if(!event.defaultPrevented){event.preventDefault();this.close();}});
   }
-  this.querySelectorAll('.control-dialog-actions,.wb-dialog-foot').forEach(footer=>{const buttons=[...footer.children].filter(child=>child instanceof HTMLButtonElement);buttons.sort((a,b)=>Number(b.classList.contains('btn')&&!b.classList.contains('ghost')&&!b.classList.contains('danger'))-Number(a.classList.contains('btn')&&!a.classList.contains('ghost')&&!a.classList.contains('danger'))).forEach(button=>footer.append(button));});
+  this.querySelectorAll('.control-dialog-actions,.wb-dialog-foot').forEach(footer=>{const buttons=[...footer.children].filter(child=>child instanceof HTMLButtonElement);buttons.sort((a,b)=>Number(a.classList.contains('btn')&&!a.classList.contains('ghost')&&!a.classList.contains('danger'))-Number(b.classList.contains('btn')&&!b.classList.contains('ghost')&&!b.classList.contains('danger'))).forEach(button=>footer.append(button));});
   nativeShow.call(this);
   const origin = anchor((this as any)._openAnchor || (performance.now()-triggerAt<1000?triggerRect:null) || document.activeElement);
   if (origin) origins.set(this, origin);
@@ -51,18 +51,30 @@ function rows(root: HTMLElement, scrolling = false) {
   const grouped = candidates.map(node => ({node, top:node.getBoundingClientRect().top})).sort((a,b) => a.top-b.top);
   let row = -1, top = -Infinity;
   const delays = new Map<HTMLElement, number>();
-  grouped.forEach(item => {if(item.top-top>4){row++;top=item.top;}delays.set(item.node,Math.min(row*60,300));});
-  const running = new Set<Animation>();
+    grouped.forEach(item => {if(item.top-top>4){row++;top=item.top;}delays.set(item.node,Math.min(row*70,280));});
+  const running = new Map<HTMLElement,Animation>();
+  const originalOpacity = new Map(candidates.map(node=>[node,node.style.opacity]));
+  const visible = new Set<HTMLElement>();
   const play = (node: HTMLElement, delay = 0) => {
-    const animation=node.animate([{opacity:0,transform:'translateY(12px)'},{opacity:1,transform:'translateY(0)'}],{duration:300,delay,easing:ease,fill:'backwards'});
-    running.add(animation); void animation.finished.catch(()=>{}).finally(()=>running.delete(animation));
+    running.get(node)?.cancel();node.style.opacity='1';
+    const heroEntry=node.matches('.preview-hero-copy-inner,.brand-visual-inner');
+    const animation=node.animate([{opacity:0,transform:`translateY(${heroEntry?18:scrolling?28:20}px)`},{opacity:1,transform:'translateY(0)'}],{duration:heroEntry?680:scrolling?520:420,delay,easing:ease,fill:'backwards'});
+    running.set(node,animation);void animation.finished.catch(()=>{}).finally(()=>{if(running.get(node)===animation)running.delete(node);});
   };
   let observer: IntersectionObserver | undefined;
   if (scrolling) {
-    observer=new IntersectionObserver(entries=>{const visible=entries.filter(entry=>entry.isIntersecting).sort((a,b)=>a.boundingClientRect.top-b.boundingClientRect.top);let line=-1,last=-Infinity;visible.forEach(entry=>{if(entry.boundingClientRect.top-last>4){line++;last=entry.boundingClientRect.top;}play(entry.target as HTMLElement,Math.min(line*60,300));observer!.unobserve(entry.target);});},{root:root.closest('.lingxi-surface') || null,threshold:.08});
-    grouped.forEach(({node})=>observer!.observe(node));
+    observer=new IntersectionObserver(entries=>{
+      const entering=entries.filter(entry=>entry.isIntersecting).sort((a,b)=>a.boundingClientRect.top-b.boundingClientRect.top);
+      let line=-1,last=-Infinity;
+      entering.forEach(entry=>{const node=entry.target as HTMLElement;if(visible.has(node))return;visible.add(node);if(entry.boundingClientRect.top-last>4){line++;last=entry.boundingClientRect.top;}if(!quiet())play(node,Math.min(line*70,280));else node.style.opacity='1';});
+      entries.filter(entry=>!entry.isIntersecting).forEach(entry=>{const node=entry.target as HTMLElement;visible.delete(node);running.get(node)?.cancel();node.style.opacity=quiet()?'1':'0';});
+    },{root:root.closest('.lingxi-surface') || null,threshold:[0,.08]});
+    grouped.forEach(({node})=>{node.style.opacity='0';observer!.observe(node);});
   } else grouped.forEach(({node})=>play(node,delays.get(node)));
-  return () => {observer?.disconnect();running.forEach(animation=>animation.cancel());running.clear();};
+  const restore=()=>{if(quiet()){running.forEach(animation=>animation.cancel());candidates.forEach(node=>node.style.opacity='1');}};
+  const media=matchMedia('(prefers-reduced-motion: reduce)');media.addEventListener('change',restore);
+  const preferences=new MutationObserver(restore);preferences.observe(document.documentElement,{attributes:true,attributeFilter:['data-motion']});
+  return () => {observer?.disconnect();preferences.disconnect();media.removeEventListener('change',restore);running.forEach(animation=>animation.cancel());running.clear();originalOpacity.forEach((opacity,node)=>{node.style.opacity=opacity;});};
 }
 (window as any).WorkbenchMotion = {rows,quiet,anchor,closeNow(dialog: HTMLDialogElement){(dialog as any)._skipMotion=true;nativeClose.call(dialog);delete (dialog as any)._skipMotion;}};
 export { rows, quiet };

@@ -18,8 +18,9 @@
       "data-dialog-size":"small",
       "aria-label": "准备 API 参考等价值",
     });
+    d._skipMotion=true;
     d.innerHTML =
-      '<button type="button" class="lingxi-dialog-close btn ghost valuation-close" data-dismiss aria-label="取消计价准备并关闭">×</button><div class="valuation-wait"><div data-loader></div><div class="valuation-progress" data-progress></div><p data-error class="wb-inline-error" role="alert" hidden></p><div class="control-actions"><button type="button" class="btn" data-retry hidden>重试</button><button type="button" class="btn ghost" data-cancel hidden>取消并关闭计价</button></div></div>';
+      '<div class="valuation-wait"><button type="button" class="lingxi-dialog-close btn ghost valuation-close" data-dismiss aria-label="取消计价准备并关闭">×</button><div data-loader></div><div class="valuation-progress" data-progress></div><p data-error class="wb-inline-error" role="alert" hidden></p><div class="control-actions"><button type="button" class="btn" data-retry hidden>重试</button><button type="button" class="btn ghost" data-cancel hidden>取消并关闭计价</button></div></div>';
     document.body.append(d);
     d.showModal();
     d.querySelector("[data-dismiss]").onclick=()=>d.querySelector("[data-cancel]").click();

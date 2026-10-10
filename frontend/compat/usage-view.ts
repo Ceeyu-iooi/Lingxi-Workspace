@@ -388,45 +388,6 @@
       state.signatures.trend = null;
       charts(root, state);
     };
-    root.addEventListener("usage-chart-zoom", (event) => {
-      const s = state.snapshot;
-      if (!s?.daily?.length) return;
-      const daily = state.trendRows || s.daily,
-        current = state.trendViewport || {
-          start: daily[0].date,
-          end: daily.at(-1).endDate || daily.at(-1).date,
-        },
-        a = Date.parse(current.start),
-        b = Date.parse(current.end),
-        day = 86400000,
-        span = Math.max(1, (b - a) / day + 1),
-        next = Math.max(1, span * event.detail.factor),
-        anchor = event.detail.anchor,
-        center = a + anchor * (b - a);
-      let left = center - anchor * (next - 1) * day,
-        right = left + (next - 1) * day;
-      const low = Date.parse(
-          state.trendBounds?.start || s.range?.earliest || s.daily[0].date,
-        ),
-        high = Date.parse(
-          state.trendBounds?.end || s.range?.end || s.daily.at(-1).date,
-        );
-      if (left < low) {
-        right += low - left;
-        left = low;
-      }
-      if (right > high) {
-        left -= right - high;
-        right = high;
-      }
-      left = Math.max(low, left);
-      state.trendViewport = {
-        start: new Date(left).toISOString().slice(0, 10),
-        end: new Date(Math.max(left, right)).toISOString().slice(0, 10),
-      };
-      clearTimeout(state.trendTimer);
-      state.trendTimer = setTimeout(() => loadTrend(root, state), 80);
-    });
     window.usageCharts.track(root, () => {
       clearTimeout(state.trendTimer);
       state.trendAbort?.abort();

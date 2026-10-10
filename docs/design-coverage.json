@@ -1,5 +1,5 @@
 {
-  "version": "0.0.37",
+  "version": "0.1.0",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
@@ -9,6 +9,7 @@
       "palette",
       "typography",
       "buttons",
+      "brand",
       "cards",
       "forms",
       "spacing",
@@ -50,20 +51,35 @@
   ],
   "native": "source-and-payload-only",
   "data": "synthetic-only",
-  "contracts037": {
+  "contracts": {
     "titlebar": 48,
     "sidebar": [
       240,
       64
     ],
+    "quotaTooltipWidth": 220,
     "windowControls": "DOM + bounded desktop bridge",
     "auxiliaryPages": [
       "preview",
       "prices",
       "design"
     ],
-    "motion": "row entrance; existing number replay; origin expansion; once-per-opening viewport reveal",
-    "nativeAcceptance": "cancelled-by-user",
-    "layoutReview": "All A/B/C rejected by user; original 1280px container and whitespace retained, with code preview"
+    "motion": "420ms rows; 520ms rearming reveal; one wheel gesture triggers complete 620ms hero contraction/restoration",
+    "loadingCandidates": [
+      "breath",
+      "trace",
+      "orbit"
+    ],
+    "loadingSelection": "orbit",
+    "nativeAcceptance": "not-automatically-run",
+    "manualInstallerUi": "pending-maintainer-review",
+    "layoutReview": "card surfaces with restrained layers; approachable luxury; dynamic brand hero; fixed reader contents",
+    "heroVariant": "trace",
+    "installerActions": "centered primary; secondary to its right; no stock MUI chrome including separator 1036; native composition shadow",
+    "heroEntrance": "680ms opacity/18px separate inner layer",
+    "heroLayout": "normal document flow; no sticky scroll runway; initially scale 1.16 and inward shifts",
+    "supplierManager": "right-aligned borderless action",
+    "titlebarScrolling": "titlebar outside content scroller",
+    "onboardingControls": "right-aligned full-width flex titlebar"
   }
 }

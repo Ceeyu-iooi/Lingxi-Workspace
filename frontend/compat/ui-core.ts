@@ -371,7 +371,7 @@
     ["button", "按钮"],
     ["field", "输入与选择"],
     ["choice", "JellyRadio 胶囊"],
-    ["loader", "LatticeLoader 加载"],
+    ["loader", "灵犀 Logo 加载"],
     ["progress", "WakeSlider 进度"],
     ["dialog", "弹窗与抽屉"],
     ["filter", "筛选面板"],

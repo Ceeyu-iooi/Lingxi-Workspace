@@ -1,4 +1,5 @@
 import "./motion";
+import "./brand";
 import "./surfaces";
 import React, { useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
