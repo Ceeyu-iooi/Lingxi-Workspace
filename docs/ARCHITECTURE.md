@@ -12,7 +12,7 @@ Profile 是唯一资料身份，用户名可改，profileId 不随改名变化�
 
 加密备份包括 Profile 身份、用户名、头像、业务库、设置、凭据与工作区，排除更新包、日志、浏览器临时缓存和备份自身。数据库采用一致性备份；恢复先验证 AES-GCM、摘要与路径，制作加密预备份，再暂存应用，失败回滚。迁移先停止自有服务、取得写入锁、一致性复制、核验文件及数据库，然后原子切换定位。旧副本仅在用户确认后删除摘要未变化的文件。
 
-Electron 渲染器关闭 Node 集成，启用 contextIsolation 与 sandbox。主进程只允许可信主 frame 使用资料选择、窗口主题和手动更新桥。桌面在独立 utilityProcess 中复用 Electron 自带 Node，不额外附带 Node.exe；网页仍用 Node 24。SQLite 使用运行时内置 node:sqlite，头像编解码在受限且串行的工作线程内完成。安装版和便携版定位到程序旁的 Profile；便携版不能把资料写入临时解包目录。
+Electron 渲染器关闭 Node 集成，启用 contextIsolation 与 sandbox。主进程只允许可信主 frame 使用资料选择、窗口主题和手动更新桥。桌面在独立 utilityProcess 中复用 Electron 自带 Node，不额外附带 Node.exe；网页仍用 Node 24。SQLite 使用运行时内置 node:sqlite，头像编解码在受限且串行的工作线程内完成。安装版定位到程序旁或显式选择的Profile。便携版构建、验收和发布已永久取消；旧客户端兼容读取不得把真实资料写入临时解包目录。
 
 图的层次、边界和带说明的箭头参考 [C4 容器图](https://c4model.com/diagrams/container)，图形、布局和内容为本项目自绘。
 
