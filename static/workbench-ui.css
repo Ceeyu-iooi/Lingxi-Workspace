@@ -14,8 +14,7 @@
 .brand-knot .brand-knot-dark { display:none; }
 .side .workbench-brand{container:sidebar-brand / inline-size;min-width:0}
 .side .workbench-brand .brand-name{display:flex;flex:0 0 auto;align-items:baseline}
-.side .workbench-brand .brand-suffix{display:block;max-width:3.2em;overflow:hidden;opacity:1;transform:translateX(0);transition:max-width 220ms ease,opacity 160ms ease,transform 220ms ease}
-@container sidebar-brand (width < 184px){.side .workbench-brand .brand-suffix{max-width:0;opacity:0;transform:translateX(-6px)}}
+.side .workbench-brand .brand-suffix{display:inline;max-width:none;opacity:1;transform:none}
 :root[data-theme="dark"] .brand-knot .brand-knot-light { display:none; }
 :root[data-theme="dark"] .brand-knot .brand-knot-dark { display:block; }
 button.workbench-brand { cursor:pointer; border-radius:8px; }

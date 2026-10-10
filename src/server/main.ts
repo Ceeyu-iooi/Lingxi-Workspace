@@ -32,6 +32,7 @@ import { Pricing, ValuationTasks } from "./pricing.ts";
 import { parseUsageFile } from "./usage-import.ts";
 import { Decimal } from "decimal.js";
 import { profileStorage, clearDerived, preflight } from "./maintenance.ts";
+import {installUsageStorage,registerStorageFunctions,initializeUsageStorage,packPendingUsage} from './usage-storage.ts';
 
 export async function startServer(
   options: {
@@ -105,6 +106,7 @@ export async function startServer(
     return agents.sync(scope, path);
   };
   const initialize = () => {
+    initializeUsageStorage(profile);
     business = new Business(profile);
     control = new Control(profile);
     codexLogin?.close();
@@ -122,6 +124,10 @@ export async function startServer(
     accounts = new UsageAccounts(monitor, control);
     relay = new Relay(accounts);
     pricing = new Pricing(monitor);
+    if(!profile.db.usageStorage&&installUsageStorage(profile.db)){
+      // A newly created Profile gets the same compact layout as a migrated one.
+      new Monitor(profile);new Pricing(monitor);
+    }
     valuation = new ValuationTasks(pricing, control, syncAgent);
     monitor.valuation = (rows, currency) => pricing.rows(rows, currency, true, true);
     monitor.priceVersion = () => pricing.version();
@@ -1144,6 +1150,17 @@ export async function startServer(
     }
   }, 30000);
   background.unref();
+  const storagePacking=setInterval(()=>{
+    if(closing||!profile.meta||backgroundBusy||backups?.busy||valuation?.running)return;
+    try{
+      packPendingUsage(profile.db,1000);
+      if(profile.db.pragma('auto_vacuum',{simple:true})===2&&Number(profile.db.pragma('freelist_count',{simple:true}))>64)profile.db.pragma('incremental_vacuum(64)');
+      // Do not wait for an external reader during quiet maintenance. Retry on
+      // a later tick; a pinned reader must never stall the interactive server.
+      profile.db.pragma('busy_timeout=0');
+      try{profile.db.pragma('wal_checkpoint(TRUNCATE)');}finally{profile.db.pragma('busy_timeout=15000');}
+    }catch(error){app.log.error({err:error},'用量证据整理失败');}
+  },5000);storagePacking.unref();
   const cliOwned=!!(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url));
   let parentWatch:ReturnType<typeof setInterval>|undefined;
   const parent=Number(process.env.WORKBENCH_PARENT_PID);
@@ -1155,6 +1172,7 @@ export async function startServer(
     if(parentWatch)clearInterval(parentWatch);
     closing = true;
     clearInterval(background);
+    clearInterval(storagePacking);
     if (profile.meta) {
       for (const scope of ["codex", "zcode", "dsh"])
         if (valuation.status(scope).status === "running")
@@ -1171,6 +1189,7 @@ export async function startServer(
     }
     codexLogin?.close();
     webUpdates.close();
+    if(profile.meta){packPendingUsage(profile.db,Infinity);profile.db.pragma('wal_checkpoint(TRUNCATE)');}
     profile.close();
     if(cliOwned){process.stdin.destroy();setImmediate(()=>process.exit(0));}
   });

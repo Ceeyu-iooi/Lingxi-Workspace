@@ -105,8 +105,8 @@ function esc(s) {
   );
 }
 let toastTimer;
-function toast(msg) {
-  const host=$("#toast");if(window.WorkbenchReact?.toast){window.WorkbenchReact.toast(host,msg);return;}
+function toast(msg, options = {}) {
+  const host=$("#toast");if(window.WorkbenchReact?.toast){window.WorkbenchReact.toast(host,msg,options);return;}
   host.textContent=msg;host.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>host.classList.remove('show'),2600);
 }
 window.workbenchNotify = toast;
@@ -233,7 +233,7 @@ function render() {
     }
     return window.settingsCenter
       .open(renderSettings, renderedHash)
-      .catch((e) => toast(e.message));
+      .catch((e) => toast(e.message, {kind:"error"}));
   }
   if (window.settingsCenter?.isOpen() && !window.settingsCenter.close(false)) {
     history.replaceState(null, "", "#/settings");
@@ -317,7 +317,7 @@ function render() {
         user?.username === identity &&
         location.hash === requestedHash
       )
-        toast(error.message);
+        toast(error.message, {kind:"error"});
     });
   else finish();
 }
@@ -464,7 +464,7 @@ function bindTodoRows(root) {
           await refresh();
           if (root.isConnected) renderProjects(root);
         } catch (error) {
-          if (root.isConnected) toast(error.message);
+          if (root.isConnected) toast(error.message, {kind:"error"});
         } finally {
           if (cb.isConnected) cb.disabled = false;
         }
@@ -478,12 +478,12 @@ function bindTodoRows(root) {
         btn.disabled = true;
         try {
           await store.remove("tasks", id);
-          toast("已删除待办");
+          toast("已删除待办", {kind:"success"});
           await refresh();
           if (root.isConnected) renderProjects(root);
         } catch (error) {
           if (btn.isConnected) btn.disabled = false;
-          if (root.isConnected) toast(error.message);
+          if (root.isConnected) toast(error.message, {kind:"error"});
         }
       }),
   );
@@ -520,7 +520,7 @@ function bindAiPanel(root, projSel) {
   $("#ai-do", panel).onclick = async () => {
     const text = $("#ai-text", panel).value.trim();
     if (!text) {
-      toast("先粘贴一段通知原文");
+      toast("先粘贴一段通知原文", {kind:"warning"});
       return;
     }
     const btn = $("#ai-do", panel);
@@ -531,7 +531,7 @@ function bindAiPanel(root, projSel) {
       const parsed = await api("POST", "/api/ai/parse", { text });
       if (!panel.isConnected) return;
       if ($("#ai-text", panel).value.trim() !== text) {
-        toast("内容已修改，请重新识别");
+        toast("内容已修改，请重新识别", {kind:"warning"});
         return;
       }
       aiResult = parsed;
@@ -547,7 +547,7 @@ function bindAiPanel(root, projSel) {
       $("#ai-engine", panel).textContent =
         aiResult.engine === "ai" ? "已用外部 AI" : "本地解析引擎";
     } catch (e) {
-      if (panel.isConnected) toast("识别失败：" + e.message);
+      if (panel.isConnected) toast("识别失败：" + e.message,{kind:"error"});
     } finally {
       btn.disabled = false;
       btn.textContent = "识别时间/地点/主题";
@@ -556,7 +556,7 @@ function bindAiPanel(root, projSel) {
   $("#ai-save", panel).onclick = async () => {
     const title = $("#ai-title", panel).value.trim();
     if (!title) {
-      toast("主题为空，请填写");
+      toast("主题为空，请填写", {kind:"warning"});
       return;
     }
     const due = $("#ai-due", panel).value;
@@ -576,13 +576,13 @@ function bindAiPanel(root, projSel) {
           .slice(0, 5),
       });
       if (!panel.isConnected) return;
-      toast("已存为待办 ✓");
+      toast("已存为待办",{kind:"success"});
       panel.hidden = true;
       $("#ai-text", panel).value = "";
       await refresh();
       if (root.isConnected) renderProjects(root);
     } catch (error) {
-      if (panel.isConnected) toast(error.message);
+      if (panel.isConnected) toast(error.message, {kind:"error"});
     } finally {
       if (button.isConnected) button.disabled = false;
     }
@@ -603,12 +603,12 @@ function bindQuickAdd(inputSel, projSel, aiBtnSel) {
         input.value = "";
         delete input.dataset.wbDirty;
       }
-      if (input.isConnected) toast("已记录 ✓");
+      if (input.isConnected) toast("已记录 ✓", {kind:"success"});
       await refresh();
       if (input.isConnected)
         renderProjects(input.closest(".module-surface") || $("#main"));
     } catch (error) {
-      if (input.isConnected) toast(error.message);
+      if (input.isConnected) toast(error.message, {kind:"error"});
     } finally {
       adding = false;
     }
@@ -873,7 +873,7 @@ function renderFinance(root) {
       !Number.isFinite(row.amount) ||
       row.amount < 0.01
     ) {
-      toast("请填写日期、说明和金额");
+      toast("请填写日期、说明和金额", {kind:"warning"});
       return;
     }
     const identity = user?.username,
@@ -903,9 +903,9 @@ function renderFinance(root) {
         }
       });
       renderFinance(root);
-      toast("交易已添加");
+      toast("交易已添加", {kind:"success"});
     } catch (e) {
-      if (user?.username === identity) toast(e.message);
+      if (user?.username === identity) toast(e.message, {kind:"error"});
     } finally {
       if (button.isConnected) button.disabled = false;
     }
@@ -924,7 +924,7 @@ function renderFinance(root) {
           await refresh();
           if (root.isConnected) renderFinance(root);
         } catch (error) {
-          if (root.isConnected) toast(error.message);
+          if (root.isConnected) toast(error.message, {kind:"error"});
         } finally {
           if (btn.isConnected) btn.disabled = false;
         }
@@ -938,7 +938,7 @@ function renderFinance(root) {
     const file = input.files[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      toast("账单文件不能超过 5 MB");
+      toast("账单文件不能超过 5 MB", {kind:"warning"});
       return;
     }
     input.disabled = true;
@@ -1012,7 +1012,7 @@ function renderFinance(root) {
       drawPreview();
       $("#bill-dialog").showModal();
     } catch (err) {
-      if (billDialog.isConnected) toast("识别失败：" + err.message);
+      if (billDialog.isConnected) toast("识别失败：" + err.message,{kind:"error"});
     } finally {
       input.value = "";
       input.disabled = false;
@@ -1047,9 +1047,10 @@ function renderFinance(root) {
       renderFinance(root);
       toast(
         `已导入 ${result.added} 笔，去重 ${result.duplicates} 笔 · ${financeMonth}`,
+        {kind:"success"},
       );
     } catch (err) {
-      if (user?.username === identity) toast("导入失败：" + err.message);
+      if (user?.username === identity) toast("导入失败：" + err.message,{kind:"error"});
       if (btn.isConnected) btn.disabled = false;
     }
   };
@@ -1072,7 +1073,7 @@ const appReady = (async function init() {
       note.className = "wb-runtime-note";
       note.setAttribute("role", "status");
       note.textContent = runtime.preview
-        ? `${runtime.version} 隔离测试 · 合成资料；不代表正式8765验收`
+        ? `${runtime.version} 隔离测试 · 不写入正式 Profile；不代表正式8765验收`
         : `前端 ${window.WorkbenchUI.version} · 后端仍为 ${runtime.version}，新功能需重启后端服务。`;
       document.querySelector(".shell-heading").append(note);
     }

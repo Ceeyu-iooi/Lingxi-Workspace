@@ -56,7 +56,7 @@
         const next = await refresh();
         if (root.isConnected) update(next);
       } catch (error) {
-        if (root.isConnected) toast(error.message);
+        if (root.isConnected) toast(error.message, {kind:"error"});
       } finally {
         if (button.isConnected) button.disabled = false;
       }

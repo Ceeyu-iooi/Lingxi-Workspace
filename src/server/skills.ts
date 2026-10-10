@@ -19,6 +19,7 @@ import { homedir } from "node:os";
 import YAML from "yaml";
 import { ProfileStore, hash, type JsonObject } from "./profile.ts";
 import { Jobs } from "./control.ts";
+import {packText,unpackText,compactSkillCatalog} from './compressed-text.ts';
 
 const inside = (path: string, root: string) => {
   const rel = relative(root, path);
@@ -32,6 +33,7 @@ export class Skills {
     profile.db.exec(
       "CREATE TABLE IF NOT EXISTS skill_sources(owner TEXT,id TEXT,config TEXT,PRIMARY KEY(owner,id));CREATE TABLE IF NOT EXISTS skill_catalog(owner TEXT,id TEXT,title TEXT,description TEXT,body TEXT,meta TEXT,fingerprint TEXT,PRIMARY KEY(owner,id));CREATE TABLE IF NOT EXISTS skill_scan_state(owner TEXT PRIMARY KEY,value TEXT);CREATE INDEX IF NOT EXISTS skill_catalog_owner ON skill_catalog(owner,title)",
     );
+    profile.transaction(()=>compactSkillCatalog(profile.db,128));
   }
   defaults(): JsonObject[] {
     if (process.env.WORKBENCH_SKILL_ROOTS)
@@ -321,8 +323,8 @@ export class Skills {
             r.id,
             r.title,
             r.description,
-            r.body,
-            JSON.stringify(r.meta),
+            packText(r.body),
+            packText(JSON.stringify(r.meta)),
             r.fingerprint,
           );
         db.prepare(
@@ -347,12 +349,12 @@ export class Skills {
         "SELECT * FROM skill_catalog WHERE owner=? ORDER BY title COLLATE NOCASE",
       )
       .all(this.profile.owner) as JsonObject[]) {
-      const meta = JSON.parse(row.meta);
+      const meta = JSON.parse(unpackText(row.meta));
       if (!allowed.some((r) => inside(meta.path, r))) continue;
       meta.sources = meta.sources.filter((s: JsonObject) => ids.has(s.id));
       if (
         q &&
-        !(row.title + "\n" + row.description + "\n" + row.body)
+        !(row.title + "\n" + row.description + "\n" + unpackText(row.body))
           .toLowerCase()
           .includes(q)
       )
@@ -403,7 +405,7 @@ export class Skills {
       .prepare("SELECT * FROM skill_catalog WHERE owner=? AND id=?")
       .get(this.profile.owner, id) as JsonObject | undefined;
     if (!row) throw new Error("技能不存在");
-    const meta = JSON.parse(row.meta),
+    const meta = JSON.parse(unpackText(row.meta)),
       allowed = this.sources()
         .filter((s) => s.enabled !== false && s.exists)
         .map((s) => realpathSync(s.path));
@@ -415,7 +417,7 @@ export class Skills {
       id,
       title: row.title,
       description: row.description,
-      content: row.body,
+      content: unpackText(row.body),
       meta,
       readonly: true,
     };

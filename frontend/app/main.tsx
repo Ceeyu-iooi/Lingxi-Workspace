@@ -109,7 +109,7 @@ function Menus() {
   };
   return (
     <div className="workbench-menubar">
-      <details className="workbench-menu-compact">
+      <details name="lingxi-title-menu" className="workbench-menu-compact">
         <summary aria-label="应用菜单">菜单</summary>
         <div className="workbench-menu">
           <strong>文件</strong><a href="#/prompts">提示词库</a><a href="#/settings/data">数据与备份</a>
@@ -118,14 +118,14 @@ function Menus() {
           <strong>帮助</strong><a href="#/settings/shortcuts">快捷键</a><a href="preview.html">设计预览</a>
         </div>
       </details>
-      <details>
+      <details name="lingxi-title-menu">
         <summary>文件</summary>
         <div className="workbench-menu">
           <a href="#/prompts">提示词库</a>
           <a href="#/settings/data">导入 / 导出 / 备份</a>
         </div>
       </details>
-      <details>
+      <details name="lingxi-title-menu">
         <summary>编辑</summary>
         <div className="workbench-menu">
           <button data-menu="search" onClick={(e) => action("search", e)}>
@@ -134,7 +134,7 @@ function Menus() {
           <a href="#/skills">本地技能</a>
         </div>
       </details>
-      <details>
+      <details name="lingxi-title-menu">
         <summary>视图</summary>
         <div className="workbench-menu">
           <button onClick={(e) => action("sidebar", e)}>
@@ -145,7 +145,7 @@ function Menus() {
           <a href="#/settings/appearance">界面设置</a>
         </div>
       </details>
-      <details>
+      <details name="lingxi-title-menu">
         <summary>帮助</summary>
         <div className="workbench-menu">
           <a href="#/settings/shortcuts">快捷键</a>
@@ -176,15 +176,21 @@ function App() {
         }
       });
     const closeMenus = (event: MouseEvent) => {
-      if (!(event.target as Element)?.closest(".workbench-menubar"))
-        document
-          .querySelectorAll(".workbench-menubar details[open]")
-          .forEach((d) => d.removeAttribute("open"));
+      const target=event.target instanceof Element?event.target:null;
+      const summary=target?.closest('.workbench-menubar summary');
+      const active=summary?.closest('details');
+      document.querySelectorAll<HTMLDetailsElement>('.workbench-menubar details[open]').forEach(menu=>{if(menu!==active)menu.open=false;});
     };
-    document.addEventListener("click", closeMenus);
+    const escapeMenus=(event:KeyboardEvent)=>{if(event.key!=='Escape')return;const menu=document.querySelector<HTMLDetailsElement>('.workbench-menubar details[open]');if(!menu)return;event.preventDefault();menu.open=false;menu.querySelector<HTMLElement>('summary')?.focus();};
+    const placeMenu=(event:Event)=>{const menu=event.target;if(!(menu instanceof HTMLDetailsElement)||!menu.open||!menu.closest('.workbench-menubar'))return;document.querySelectorAll<HTMLDetailsElement>('.workbench-menubar details[open]').forEach(other=>{if(other!==menu)other.open=false;});const panel=menu.querySelector<HTMLElement>('.workbench-menu');if(!panel)return;panel.style.removeProperty('translate');const rect=panel.getBoundingClientRect();if(rect.right>innerWidth-8)panel.style.translate=Math.min(0,innerWidth-8-rect.right)+'px 0';};
+    document.addEventListener('click',closeMenus);
+    document.addEventListener('keydown',escapeMenus);
+    document.addEventListener('toggle',placeMenu,true);
     return () => {
       alive = false;
       document.removeEventListener("click", closeMenus);
+      document.removeEventListener("keydown", escapeMenus);
+      document.removeEventListener("toggle", placeMenu, true);
     };
   }, []);
   return (

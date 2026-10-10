@@ -48,7 +48,7 @@
         signal,
       });
     } catch (error) {
-      if (current(root, owner)) U().notify(error.message);
+      if (current(root, owner)) U().notify(error.message, {kind:"error"});
     }
     if (!current(root, owner)) return;
     root._wbUnsaved = () => editor?.dirty || false;
@@ -447,7 +447,7 @@
         cache.clear();
         load();
       } catch (error) {
-        U().notify(error.message);
+        U().notify(error.message, {kind:"error"});
       }
     }
     function folderDialog(folder = {}) {
@@ -504,10 +504,10 @@
           id: pid,
           action: "copy",
         });
-        U().notify("提示词已复制");
+        U().notify("提示词已复制", {kind:"success"});
         cache.clear();
       } catch (error) {
-        U().notify(error.message);
+        U().notify(error.message, {kind:"error"});
       }
     }
     async function editPrompt(pid, draft) {
@@ -827,7 +827,7 @@
           id: saved.id,
           action: "apply",
         });
-        U().notify("已应用变量并复制");
+        U().notify("已应用变量并复制", {kind:"success"});
       };
       q("[data-feedback]", m.d).onclick = async () => {
         const saved = dirty || !item.id ? await save(true) : item;
@@ -841,7 +841,7 @@
           action: "feedback",
           details: { rating, note },
         });
-        U().notify("反馈已记录");
+        U().notify("反馈已记录", {kind:"success"});
       };
       q("[data-versions]", m.d).onclick = async () => {
         if (!item.id) return;
@@ -1061,11 +1061,11 @@
           source: item.source,
           id: item.id,
         });
-        U().notify("已保存到我的提示词库");
+        U().notify("已保存到我的提示词库", {kind:"success"});
         cache.clear();
         return p;
       } catch (error) {
-        U().notify(error.message);
+        U().notify(error.message, {kind:"error"});
       }
     }
     async function syncMarket() {
@@ -1081,7 +1081,7 @@
         cache.clear();
         load();
       } catch (error) {
-        U().notify(error.message);
+        U().notify(error.message, {kind:"error"});
       } finally {
         stop();
       }
@@ -1315,7 +1315,7 @@
           m.close(true);
           cache.clear();
           load();
-          U().notify("导入完成");
+          U().notify("导入完成", {kind:"success"});
         } catch (error) {
           data.items = data.items.slice(done);
           q("[role=alert]", m.d).textContent =
@@ -1418,7 +1418,7 @@
         q("[data-path]", card).onclick = async () => {
           try {
             await navigator.clipboard.writeText(item.meta.path);
-            U().notify("路径已复制");
+            U().notify("路径已复制", {kind:"success"});
           } catch {
             U().notify(item.meta.path);
           }

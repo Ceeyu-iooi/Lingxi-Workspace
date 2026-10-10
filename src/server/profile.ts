@@ -178,15 +178,49 @@ export class ProfileStore {
     this.acquire();
     const file = join(this.root, "data", "storage", "workbench.sqlite");
     mkdirSync(dirname(file), { recursive: true });
+    const recovery=join(this.root,'backups','usage-schema-baseline.sqlite');
+    // Recover the only vulnerable rename boundary before SQLite could create
+    // a fresh empty file after an interrupted conversion.
+    if(!existsSync(file)&&existsSync(recovery))renameSync(recovery,file);
     this.database = new DatabaseSync(file);
+    if(!this.database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' LIMIT 1").get())this.database.exec('PRAGMA auto_vacuum=INCREMENTAL');
     this.database
-      .exec(`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=15000; PRAGMA foreign_keys=ON;
+      .exec(`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=15000; PRAGMA foreign_keys=ON; PRAGMA wal_autocheckpoint=256; PRAGMA journal_size_limit=1048576;
       CREATE TABLE IF NOT EXISTS documents(namespace TEXT NOT NULL,entity TEXT NOT NULL,payload TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1,content_hash TEXT NOT NULL,updated_at INTEGER NOT NULL,PRIMARY KEY(namespace,entity));
-      CREATE INDEX IF NOT EXISTS documents_updated ON documents(namespace,updated_at DESC); PRAGMA user_version=2;`);
+      CREATE INDEX IF NOT EXISTS documents_updated ON documents(namespace,updated_at DESC);`);
   }
   get db() {
     if (!this.database) throw new Error("请先创建或选择 Profile");
     return this.database;
+  }
+  /** Lifecycle lock is already held. Publish a checked snapshot with a single
+   * file rename; never rewrite the active legacy database during conversion. */
+  migrateDatabase(transform:(candidate:Database)=>void){
+    const live=this.db,file=join(this.root,'data','storage','workbench.sqlite');
+    const stage=join(this.root,'runtime','usage-migration.sqlite');
+    const recovery=join(this.root,'backups','usage-schema-baseline.sqlite');
+    if(existsSync(stage)||existsSync(recovery))throw Error('已有用量迁移暂存或恢复基线，请核验恢复状态后再迁移');
+    mkdirSync(dirname(recovery),{recursive:true});
+    live.exec("VACUUM INTO '"+stage.replaceAll("'","''")+"'");
+    let candidate:Database|null=new Database(stage),switched=false,detached=false;
+    try{
+      transform(candidate);
+      const foreign=candidate.pragma('foreign_key_check');
+      if(candidate.pragma('integrity_check',{simple:true})!=='ok'||!Array.isArray(foreign)||foreign.length)throw Error('迁移数据库完整性校验失败');
+      candidate.exec('PRAGMA auto_vacuum=INCREMENTAL; VACUUM');candidate.close();candidate=null;
+      const checkpoint=live.pragma('wal_checkpoint(TRUNCATE)') as JsonObject[];
+      if(checkpoint.some(row=>row.busy))throw Error('数据库仍有读取连接，迁移保持原库，请关闭后重试');
+      live.close();this.database=null;
+      renameSync(file,recovery);detached=true;
+      renameSync(stage,file);switched=true;
+      this.open();
+    }catch(error){
+      candidate?.close();
+      if(switched){this.database?.close();this.database=null;renameSync(file,stage);renameSync(recovery,file);this.open();if(existsSync(stage))unlinkSync(stage);}
+      if(detached&&!switched){renameSync(recovery,file);this.open();}
+      if(!detached&&existsSync(stage))unlinkSync(stage);
+      throw error;
+    }
   }
   get owner() {
     if (!this.meta) throw new Error("请先创建或选择 Profile");
@@ -220,13 +254,14 @@ export class ProfileStore {
       .run(this.owner, entity, payload, hash(payload), Date.now());
   }
   transaction<T>(work: () => T): T {
-    this.db.exec("BEGIN IMMEDIATE");
+    const nested=this.db.inTransaction;
+    this.db.exec(nested?"SAVEPOINT lingxi_nested":"BEGIN IMMEDIATE");
     try {
       const value = work();
-      this.db.exec("COMMIT");
+      this.db.exec(nested?"RELEASE lingxi_nested":"COMMIT");
       return value;
     } catch (error) {
-      this.db.exec("ROLLBACK");
+      this.db.exec(nested?"ROLLBACK TO lingxi_nested; RELEASE lingxi_nested":"ROLLBACK");
       throw error;
     }
   }

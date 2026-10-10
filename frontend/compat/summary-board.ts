@@ -76,7 +76,7 @@
             } catch (error) {
               if (root.isConnected) {
                 b.disabled = false;
-                toast(error.message);
+                toast(error.message, {kind:"error"});
               }
             }
           }),

@@ -1,8 +1,11 @@
 {
   "name": "lingxi-workbench-web",
-  "version": "0.0.35",
+  "version": "0.0.36",
   "private": true,
   "license": "CC-BY-NC-4.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "scripts": {
     "build:app": "node scripts/build_app.cjs",
     "build:server": "node scripts/build_server.cjs",
@@ -36,8 +39,5 @@
     "@vitejs/plugin-react": "6.1.2",
     "marked": "18.1.0",
     "dompurify": "3.4.16"
-  },
-  "engines": {
-    "node": ">=24.0.0"
   }
 }

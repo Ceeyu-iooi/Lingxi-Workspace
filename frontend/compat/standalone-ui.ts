@@ -20,6 +20,7 @@
       }
       const settings = await U.request("GET", "/api/control");
       window.workbenchAppearance.config(settings.config);
+      const theme=q('[data-price-theme]');if(theme){const label=()=>{theme.textContent=document.documentElement.dataset.theme==='dark'?'浅色主题':'深色主题';};label();theme.onclick=()=>{window.workbenchAppearance.setTheme(document.documentElement.dataset.theme==='dark'?'zai-light':'zai-dark');label();};}
       if (document.body.dataset.page === "prices") await prices(root);
       else kit(root);
     } catch (error) {

@@ -48,8 +48,9 @@
           : "#/overview";
       focus = document.activeElement;
       const d = document.createElement("dialog");
-      d.className = "control-dialog wb-redesign settings-center-modal";
+      d.className = "control-dialog wb-redesign settings-center-modal lingxi-dialog";
       d.id = "settings-center-dialog";
+      d.dataset.dialogSize="settings";
       d.setAttribute("aria-label", "设置中心");
       d.innerHTML =
         '<header class="settings-center-head"><h2>设置中心</h2><button type="button" class="btn ghost" aria-label="关闭设置中心">×</button></header><div class="settings-center-content module-surface wb-redesign"></div>';

@@ -205,7 +205,7 @@
           } catch (e) {
             if (button.isConnected) {
               button.disabled = false;
-              toast(e.message);
+              toast(e.message, {kind:"error"});
             }
           }
         }),
@@ -223,7 +223,7 @@
           delete input.dataset.wbDirty;
         }
       } catch (e) {
-        if (input.isConnected) toast(e.message);
+        if (input.isConnected) toast(e.message, {kind:"error"});
       } finally {
         if (button.isConnected) button.disabled = false;
       }

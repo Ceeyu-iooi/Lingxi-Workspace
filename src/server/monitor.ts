@@ -10,6 +10,7 @@ import {
 } from "./profile.ts";
 import { Dataset, FIELDS, shanghaiDay } from "./usage-summary.ts";
 import { UsageCube } from "./usage-cube.ts";
+import { isUsageEventRecord } from "../shared/contracts.ts";
 import { ResponseCache } from "./response-cache.ts";
 
 export function canonical(value: any): string {
@@ -228,13 +229,14 @@ export class Monitor {
     row.duration_ms = Math.max(0, Math.trunc(Number(meta.duration_ms) || 0));
     row.cost = "imported_cost" in meta ? meta.imported_cost : cost;
     row.currency = String(meta.currency || rates.currency || "CNY").slice(0, 8);
+    if(this.profile.db.usageStorage&&this.profile.db.prepare('SELECT 1 FROM events WHERE owner=? AND id=?').get(row.owner,row.id))return 0;
     const fields = Object.keys(row),
       result = this.profile.db
         .prepare(
           `INSERT OR IGNORE INTO events(${fields.join(",")}) VALUES(${fields.map(() => "?").join(",")})`,
         )
         .run(...Object.values(row));
-    return result.changes;
+    return this.profile.db.usageStorage?1:result.changes;
   }
   *iterateEvents(scope?:string):Generator<JsonObject>{
     const sql=scope?"SELECT * FROM events WHERE owner=? AND source=? ORDER BY at DESC":"SELECT * FROM events WHERE owner=? ORDER BY at DESC";
@@ -269,6 +271,7 @@ export class Monitor {
       (r) =>
         !["codex-cumulative", "unverified"].includes(r.source) &&
         !(
+          isUsageEventRecord(r) &&
           r.source === "codex" &&
           r.id.startsWith("codex:") &&
           !r.id.startsWith("codex:v4:")

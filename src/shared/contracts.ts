@@ -1,4 +1,25 @@
 export type Theme = "zai-light" | "zai-dark" | "light" | "dark" | "system";
+
+export interface UsageEventRecord {
+  id: string;
+  source: string;
+  at: string;
+  granularity?: "event";
+}
+export interface UsageAggregateRecord {
+  source: string;
+  at: string;
+  local_date: string;
+  granularity: "summary";
+  _aggregate: { observations: number; failures: number; [key: string]: unknown };
+}
+/** Aggregate identity is source + date + dimensions, never an event ID. */
+export function isUsageEventRecord(row: Record<string, any>): row is UsageEventRecord {
+  if (row.granularity === "summary") return false;
+  if (typeof row.id !== "string" || !row.id)
+    throw new Error("逐条用量记录缺少有效消费 ID");
+  return true;
+}
 export interface ProfileSession {
   user: { username: string; display_name: string; profileId: string } | null;
   profile: {

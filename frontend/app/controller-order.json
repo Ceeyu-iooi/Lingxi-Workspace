@@ -1,5 +1,6 @@
 [
   "lingxi-design.ts",
+  "dialogs.ts",
   "theme.ts",
   "layout-storage.ts",
   "ui-core.ts",

@@ -127,8 +127,8 @@
       throw new Error(current.error || "任务没有完成");
     return current.result;
   }
-  const notify = (message) =>
-    typeof toast === "function" ? toast(message) : console.info(message);
+  const notify = (message, options = {}) =>
+    typeof toast === "function" ? toast(message, options) : console.info(message);
   async function fileBase64(file) {
     const bytes = new Uint8Array(await file.arrayBuffer());
     let value = "";
@@ -137,6 +137,7 @@
     return btoa(value);
   }
   function dialog(title, body, { beforeClose } = {}) {
+    if(window.WorkbenchDialogs)return window.WorkbenchDialogs.open({title,body,beforeClose});
     const d = el("dialog", { class: "wb-editor-dialog", "aria-label": title });
     d.innerHTML = `<header class="wb-dialog-head"><h2>${e(title)}</h2><button type="button" class="btn ghost" data-modal-close aria-label="关闭">×</button></header><div class="wb-dialog-body">${body}</div><footer class="wb-dialog-foot"></footer>`;
     const focus = document.activeElement;
@@ -474,7 +475,7 @@
     diff,
     registry,
     refreshControls,
-    version: "0.0.34",
+    version: __LINGXI_VERSION__,
   };
   let frame;
   const upgrade = () => {

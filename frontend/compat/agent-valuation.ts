@@ -12,14 +12,17 @@
     );
   async function preparation(scope, task) {
     if (modal) return modal.promise;
+    const focus=document.activeElement;
     const d = U.el("dialog", {
-      class: "valuation-modal",
+      class: "valuation-modal lingxi-dialog",
+      "data-dialog-size":"small",
       "aria-label": "准备 API 参考等价值",
     });
     d.innerHTML =
-      '<div class="valuation-wait"><div data-loader></div><div class="valuation-progress" data-progress></div><p data-error class="wb-inline-error" role="alert" hidden></p><div class="control-actions"><button type="button" class="btn" data-retry hidden>重试</button><button type="button" class="btn ghost" data-cancel hidden>取消并关闭计价</button></div></div>';
+      '<button type="button" class="lingxi-dialog-close btn ghost valuation-close" data-dismiss aria-label="取消计价准备并关闭">×</button><div class="valuation-wait"><div data-loader></div><div class="valuation-progress" data-progress></div><p data-error class="wb-inline-error" role="alert" hidden></p><div class="control-actions"><button type="button" class="btn" data-retry hidden>重试</button><button type="button" class="btn ghost" data-cancel hidden>取消并关闭计价</button></div></div>';
     document.body.append(d);
     d.showModal();
+    d.querySelector("[data-dismiss]").onclick=()=>d.querySelector("[data-cancel]").click();
     document.documentElement.dataset.valuationBusy = "true";
     const dispose = window.WorkbenchReact.loader(
       d.querySelector("[data-loader]"),
@@ -49,6 +52,7 @@
     document.addEventListener("keydown", blocked, true);
     d.addEventListener("cancel", (event) => event.preventDefault());
     let settled = false,
+      closeFailed = false,
       resolve,
       timer,
       pollToken = 0;
@@ -64,6 +68,7 @@
       delete document.documentElement.dataset.valuationBusy;
       d.close();
       d.remove();
+      if(focus?.isConnected)focus.focus({preventScroll:true});
       modal = null;
       try {
         signalFeatures(await U.request("GET", "/api/features"));
@@ -78,8 +83,13 @@
         signalFeatures(r.features);
         await close(false);
       } catch (error) {
-        d.querySelector("[data-error]").textContent = error.message;
+        closeFailed=true;
+        d.querySelector("[data-error]").textContent = error.message+"；取消尚未确认，关闭窗口后后台任务可能继续。";
+        d.querySelector("[data-error]").hidden=false;
+        let exit=d.querySelector('[data-return]');
+        if(!exit){exit=document.createElement('button');exit.type='button';exit.className='btn ghost';exit.dataset.return='';exit.textContent='关闭窗口';exit.onclick=()=>close(false);d.querySelector('.control-actions').append(exit);}
         b.disabled = false;
+        b.hidden=false;
       }
     };
     const poll = async () => {
@@ -91,7 +101,7 @@
           "/api/valuation/status?scope=" + scope,
         );
         if (settled || token !== pollToken) return;
-        if (t.status === "running") {
+        if (t.status === "running" && !closeFailed) {
           d.querySelector("[data-error]").hidden = true;
           d.querySelector("[data-retry]").hidden = true;
           d.querySelector("[data-cancel]").hidden = true;
@@ -267,9 +277,17 @@
       )
         .then((tasks) => {
           const t =
-            tasks.find((t) => t.status === "running") ||
-            tasks.find((t) => t.scope === scope && t.status === "failed");
+            tasks.find((t) => t.status === "running" && !t.background);
           if (t) preparation(t.scope, t);
+          const failed=tasks.find(t=>t.scope===scope&&t.status==='failed');
+          if(failed&&panel.isConnected){
+            let error=panel.querySelector('[data-preparation-error]');
+            if(!error){error=U.el('p',{class:'wb-inline-error',role:'alert','data-preparation-error':''});panel.append(error);}
+            error.textContent=failed.error||'计价准备失败，请重试';
+            const retry=U.el('button',{type:'button',class:'btn ghost'},'重试');
+            retry.onclick=async()=>{retry.disabled=true;try{const task=await U.request('POST','/api/valuation/prepare',{scope});if(task.status!=='complete')await preparation(scope,task);error.remove();}catch(e){U.notify(e.message,{kind:'error'});}finally{if(retry.isConnected)retry.disabled=false;}};
+            error.append(retry);
+          }
         })
         .catch(() => {});
     }

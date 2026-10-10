@@ -1,5 +1,6 @@
 import { Decimal } from "decimal.js";
 import { deflateSync, inflateSync } from "node:zlib";
+import {writeCompactValuation,writeCompactValuationBatch,packPendingUsage,compactEventProjection} from './usage-storage.ts';
 import { Monitor, canonical, iso } from "./monitor.ts";
 import { hash, parseExact, encode, uid, type JsonObject } from "./profile.ts";
 import { Control } from "./control.ts";
@@ -138,31 +139,47 @@ export function validatePrices(body: string, expected?: string) {
   }
   return { day, models };
 }
+// Bound retained lookup data by encoded size as well as entry count. Empty
+// misses consume a budget too; unknown historical dates cannot grow forever.
+class BudgetMap<V> extends Map<string,V> {
+  private sizes=new Map<string,number>();
+  private bytes=0;
+  constructor(private budget:number,private limit=512){super();}
+  override set(key:string,value:V){
+    this.delete(key);
+    const bytes=(Buffer.byteLength(key)+Buffer.byteLength(encode(value)??''))*2+128;
+    if(bytes>this.budget)return this;
+    super.set(key,value);this.sizes.set(key,bytes);this.bytes+=bytes;
+    while(this.bytes>this.budget||this.size>this.limit)this.delete(this.keys().next().value!);
+    return this;
+  }
+  override delete(key:string){this.bytes-=this.sizes.get(key)??0;this.sizes.delete(key);return super.delete(key);}
+  override clear(){super.clear();this.sizes.clear();this.bytes=0;}
+}
 export class Pricing {
+  private preparedUpdates:Map<string,JsonObject>|null=null;
   refreshing = false;
   task: JsonObject = { status: "idle", errors: [] };
-  private indexVersion = -1;
-  private prices = new Map<string, JsonObject>();
-  private fx = new Map<string, JsonObject>();
   private syncJob: Promise<JsonObject> | null = null;
   private dayCache=new Map<string,{digest:string,bytes:number,models:Map<string,JsonObject>}>();
   private dayBytes=0;
   private lookupVersion=-1;
-  private fxCache=new Map<string,JsonObject|undefined>();
+  private fxCache=new BudgetMap<JsonObject|undefined>(512*1024);
   private proofCache=new Map<string,string>();
   private proofBytes=0;
-  private formulaCache=new Map<string,{fingerprint:string,value:JsonObject}>();
-  private rawCache=new Map<string,JsonObject>();
+  private formulaCache=new BudgetMap<{fingerprint:string,value:JsonObject}>(2*1024*1024);
+  private rawCache=new BudgetMap<JsonObject>(1024*1024,512);
   private lookupDay(day:string){
     const cached=this.dayCache.get(day);if(cached)return cached.models;
     const row=this.monitor.profile.db.prepare("SELECT * FROM radar_days WHERE day=?").get(day) as JsonObject|undefined;
-    if(!row){const models=new Map<string,JsonObject>();this.dayCache.set(day,{digest:"",bytes:0,models});return models;}
+    if(!row){const models=new Map<string,JsonObject>();this.dayCache.set(day,{digest:"",bytes:128,models});this.dayBytes+=128;this.trimDays();return models;}
     const old=this.dayCache.get(day);if(old && old.digest===row.digest){this.dayCache.delete(day);this.dayCache.set(day,old);return old.models;}
     const body=this.body(row.body),models=new Map<string,JsonObject>(validatePrices(body,day).models.map(price=>[price.model,{...price,day,digest:row.digest,observed:row.observed,snapshotSource:row.source}]));
-    if(old)this.dayBytes-=old.bytes;const bytes=Buffer.byteLength(body)*2;this.dayCache.set(day,{digest:row.digest,bytes,models});this.dayBytes+=bytes;
-    while(this.dayBytes>8*1024*1024&&this.dayCache.size){const key=this.dayCache.keys().next().value!;this.dayBytes-=this.dayCache.get(key)!.bytes;this.dayCache.delete(key);}
+    if(old)this.dayBytes-=old.bytes;const bytes=Buffer.byteLength(encode([...models]))*2+128;this.dayCache.set(day,{digest:row.digest,bytes,models});this.dayBytes+=bytes;
+    this.trimDays();
     return models;
   }
+  private trimDays(){while((this.dayBytes>6*1024*1024||this.dayCache.size>512)&&this.dayCache.size){const key=this.dayCache.keys().next().value!;this.dayBytes-=this.dayCache.get(key)!.bytes;this.dayCache.delete(key);}}
   private lookupFx(at:string){const day=shanghaiDay(at);if(this.fxCache.has(day))return this.fxCache.get(day);const result=this.monitor.profile.db.prepare("SELECT * FROM value_fx WHERE day>=? AND day<=? ORDER BY day DESC LIMIT 1").get(addDays(day,-7),day) as JsonObject|undefined;this.fxCache.set(day,result);return result;}
   constructor(readonly monitor: Monitor) {
     monitor.profile.db.exec(
@@ -171,7 +188,12 @@ export class Pricing {
     const db=monitor.profile.db;db.exec("CREATE TABLE IF NOT EXISTS valuation_dirty(owner TEXT,id TEXT,PRIMARY KEY(owner,id));CREATE TABLE IF NOT EXISTS valuation_rule(owner TEXT PRIMARY KEY,rule TEXT);");
     for(const op of ['INSERT','UPDATE']){db.exec(`CREATE TRIGGER IF NOT EXISTS value_event_${op.toLowerCase()} AFTER ${op} ON events WHEN NEW.source IN ('codex','zcode','dsh') BEGIN INSERT OR IGNORE INTO valuation_dirty VALUES(NEW.owner,NEW.id); END;`);}
     for(const table of ['codex_evidence','agent_evidence'])for(const op of ['INSERT','UPDATE','DELETE']){const row=op==='DELETE'?'OLD':'NEW';db.exec(`CREATE TRIGGER IF NOT EXISTS value_${table}_${op.toLowerCase()} AFTER ${op} ON ${table} BEGIN INSERT OR IGNORE INTO valuation_dirty VALUES(${row}.owner,${row}.id); END;`);}
-    for(const table of ['radar_days','value_fx'])for(const op of ['INSERT','UPDATE']){const condition=table==='radar_days'?"substr(e.at,1,10)>=NEW.day AND substr(e.at,1,10)<=date(NEW.day,'+1 day')":"date(e.at,'+8 hours')>=NEW.day AND date(e.at,'+8 hours')<=date(NEW.day,'+7 day')";db.exec(`CREATE TRIGGER IF NOT EXISTS value_${table}_${op.toLowerCase()} AFTER ${op} ON ${table} BEGIN INSERT OR IGNORE INTO valuation_dirty SELECT e.owner,e.id FROM events e WHERE e.source IN ('codex','zcode','dsh') AND ${condition}; END;`);}
+    for(const table of ['radar_days','value_fx'])for(const op of ['INSERT','UPDATE']){
+      const condition=table==='radar_days'?"e.at>=NEW.day||'T00:00:00' AND e.at<date(NEW.day,'+2 days')||'T00:00:00'":"e.at>=date(NEW.day,'-1 day')||'T16:00:00' AND e.at<date(NEW.day,'+7 days')||'T16:00:00'";
+      const name=`value_${table}_${op.toLowerCase()}`,sql=`CREATE TRIGGER ${name} AFTER ${op} ON ${table} BEGIN INSERT OR IGNORE INTO valuation_dirty SELECT e.owner,e.id FROM usage_versions u CROSS JOIN events e ON e.owner=u.owner WHERE e.source IN ('codex','zcode','dsh') AND ${condition}; END`;
+      const old=db.prepare("SELECT sql FROM sqlite_schema WHERE type='trigger' AND name=?").get(name);
+      if(old?.sql!==sql){db.exec('DROP TRIGGER IF EXISTS '+name);db.exec(sql);}
+    }
     const rule=db.prepare('SELECT rule FROM valuation_rule WHERE owner=?').get(monitor.profile.owner) as JsonObject|undefined;if(rule?.rule!=='incremental-v2'){db.prepare("INSERT OR IGNORE INTO valuation_dirty SELECT owner,id FROM events WHERE owner=? AND source IN ('codex','zcode','dsh')").run(monitor.profile.owner);db.prepare('INSERT OR REPLACE INTO valuation_rule VALUES(?,?)').run(monitor.profile.owner,'incremental-v2');}
   }
   store(body: string) {
@@ -179,7 +201,7 @@ export class Pricing {
     const raw = Buffer.from(body);
     if (raw.length > 4 * 1024 * 1024) throw new Error("证据超过保存限制");
     const digest = hash(raw);
-    this.monitor.profile.db
+    if(!this.monitor.profile.db.prepare('SELECT 1 FROM evidence_blobs WHERE digest=?').get(digest))this.monitor.profile.db
       .prepare("INSERT OR IGNORE INTO evidence_blobs VALUES(?,?,?,?)")
       .run(digest, "zlib", raw.length, deflateSync(raw, { level: 6 }));
     const reference="@blob:"+digest;this.proofCache.set(body,reference);this.proofBytes+=raw.length*2;while(this.proofBytes>2*1024*1024||this.proofCache.size>128){const first=this.proofCache.keys().next().value!;this.proofBytes-=Buffer.byteLength(first)*2;this.proofCache.delete(first);}return reference;
@@ -216,7 +238,9 @@ export class Pricing {
   }
   index() {
     const version = this.version();
-    if (version !== this.indexVersion) {
+    // The full price catalogue belongs to this response, not a second
+    // permanently retained copy alongside bounded day lookups.
+    {
       const prices = new Map<string, JsonObject>(),
         db = this.monitor.profile.db;
       for (const row of db
@@ -232,15 +256,13 @@ export class Pricing {
             snapshotSource: row.source,
           });
       }
-      this.prices = prices;
-      this.fx = new Map(
+      const fx = new Map(
         (db.prepare("SELECT * FROM value_fx").all() as JsonObject[]).map(
           (r) => [r.day, r],
         ),
       );
-      this.indexVersion = version;
+      return {prices,fx,version};
     }
-    return { prices: this.prices, fx: this.fx, version };
   }
   state() {
     const index = this.index(),
@@ -554,8 +576,8 @@ export class Pricing {
       observed,
     };
   }
-  evaluate(row: JsonObject, raw: JsonObject | undefined, currency: string) {
-    const version=this.version();if(this.lookupVersion!==version){this.lookupVersion=version;this.dayCache.clear();this.dayBytes=0;this.fxCache.clear();this.formulaCache.clear();}
+  evaluate(row: JsonObject, raw: JsonObject | undefined, currency: string, version=this.version()) {
+    if(this.lookupVersion!==version){this.lookupVersion=version;this.dayCache.clear();this.dayBytes=0;this.fxCache.clear();this.formulaCache.clear();}
     const day = new Date(row.at).toISOString().slice(0, 10),
       model = String(row.model).replace(/^chatgpt-web\//, ""),
       price = this.lookupDay(day).get(model),
@@ -565,7 +587,7 @@ export class Pricing {
         valueReason: reason,
         valueProof: proof,
         valueParts: {},
-        valueVersion: this.version(),
+        valueVersion: version,
       });
     if (!price) return fail("missing_historical_price");
     if (price.sourceType !== "provider") return fail("fallback_price");
@@ -678,7 +700,7 @@ export class Pricing {
       valueParts: Object.fromEntries(
         Object.entries(parts).map(([k, v]) => [k, v.toString()]),
       ),
-      valueVersion: this.version(),
+      valueVersion: version,
     };
   }
   rows(rows: JsonObject[], currency = 'USD', readonly = false, includeProof = false) {
@@ -687,20 +709,23 @@ export class Pricing {
     const version=this.version();if(this.lookupVersion!==version){this.lookupVersion=version;this.dayCache.clear();this.dayBytes=0;this.fxCache.clear();this.formulaCache.clear();}
     const updates:JsonObject[]=[];
     const result=rows.map(row=>{
-      const old=read.get(p.owner,row.id,currency) as JsonObject|undefined;
-
-      const rawText=((row.source==='codex'?codex:agent).get(p.owner,row.id) as JsonObject|undefined)?.raw;
-      let raw=rawText?this.rawCache.get(rawText):undefined;if(rawText&&!raw){raw=parseExact(rawText);if(rawText.length<8000){this.rawCache.set(rawText,raw!);while(this.rawCache.size>128)this.rawCache.delete(this.rawCache.keys().next().value!);}}
+      const keys=row._storageKeys,name=currency.toLowerCase();
+      const old=keys?db.prepare('SELECT lower(hex('+name+'_fingerprint)) fingerprint,'+name+'_payload payload FROM compact_valuations WHERE owner=? AND id=?').get(keys.owner,keys.id):read.get(p.owner,row.id,currency) as JsonObject|undefined;
+      const rawText=keys?db.prepare('SELECT lingxi_read_payload(p.delta,p.pack,p.ordinal,'+(row.source==='codex'?4:0)+') raw FROM compact_'+(row.source==='codex'?'codex_evidence':'agent_evidence')+' e JOIN usage_payloads p ON p.k=e.payload WHERE e.owner=? AND e.id=? AND e.verified=1').get(keys.owner,keys.id)?.raw:((row.source==='codex'?codex:agent).get(p.owner,row.id) as JsonObject|undefined)?.raw;
+      let raw=rawText?this.rawCache.get(rawText):undefined;if(rawText&&!raw){raw=parseExact(rawText);if(rawText.length<8000)this.rawCache.set(rawText,raw!);}
       const day=new Date(row.at).toISOString().slice(0,10),model=String(row.model).replace(/^chatgpt-web\//,''),price=this.lookupDay(day).get(model),previous=this.lookupDay(addDays(day,-1)).get(model),fx=price?.currency===currency?null:this.lookupFx(row.at);
       const signature=canonical(['incremental-v2',row.source,model,day,shanghaiDay(row.at),row.input,row.output,row.cached,row.total,raw?[raw.model,raw.last_token_usage&&Object.keys(raw.last_token_usage).length?raw.last_token_usage:raw.usage]:null,price?.digest||null,previous?.digest||null,fx?[fx.day,fx.usd_cad,fx.cny_cad]:null,currency]);
       let memo=this.formulaCache.get(signature);const fingerprint=memo?.fingerprint||hash(signature);let value:JsonObject;
-      if(old?.fingerprint===fingerprint)value=parseExact(old.result);
-      else{if(!memo){const evaluated=this.evaluate(row,raw,currency),{valueProof,valueVersion,currency:unusedCurrency,...rest}=evaluated;const compact:JsonObject=rest;compact._proof=this.store(encode(valueProof||{}));memo={fingerprint,value:compact};this.formulaCache.set(signature,memo);while(this.formulaCache.size>512)this.formulaCache.delete(this.formulaCache.keys().next().value!);}value=memo.value;updates.push({id:row.id,fingerprint,value,source:row.source,day:shanghaiDay(row.at)});}
+      // Preparation only needs changed results. A matching persisted fingerprint
+      // must not decompress the old result just to throw it away afterwards.
+      if(this.preparedUpdates&&old?.fingerprint===fingerprint)return row;
+      if(old?.fingerprint===fingerprint)value=parseExact(keys?db.prepare('SELECT lingxi_read_payload(delta,pack,ordinal,0) result FROM usage_payloads WHERE k=?').get(old.payload).result:old.result);
+      else{if(!memo){const evaluated=this.evaluate(row,raw,currency,version),{valueProof,valueVersion,currency:unusedCurrency,...rest}=evaluated;const compact:JsonObject=rest;compact._proof=this.store(encode(valueProof||{}));memo={fingerprint,value:compact};this.formulaCache.set(signature,memo);while(this.formulaCache.size>512)this.formulaCache.delete(this.formulaCache.keys().next().value!);}value=memo.value;updates.push({id:row.id,fingerprint,value,keys:row._storageKeys,source:row.source,day:shanghaiDay(row.at)});}
       value={...value,currency,valueVersion:version};
       if(includeProof&&value._proof){value={...value,valueProof:parseExact(this.body(value._proof))};delete value._proof;}
       return {...row,...value};
     });
-    if(updates.length)p.transaction(()=>{db.exec("CREATE TABLE IF NOT EXISTS usage_dirty(owner TEXT,source TEXT,day TEXT,PRIMARY KEY(owner,source,day))");const dirty=db.prepare("INSERT OR IGNORE INTO usage_dirty VALUES(?,?,?)");for(const r of updates){save.run(p.owner,r.id,currency,r.fingerprint,encode(r.value));dirty.run(p.owner,r.source,r.day);}});
+    if(updates.length&&this.preparedUpdates){for(const row of updates){const saved=this.preparedUpdates.get(row.id)||{id:row.id,keys:row.keys,source:row.source,day:row.day};saved[currency.toLowerCase()]=row;this.preparedUpdates.set(row.id,saved);}}else if(updates.length)p.transaction(()=>{db.exec("CREATE TABLE IF NOT EXISTS usage_dirty(owner TEXT,source TEXT,day TEXT,PRIMARY KEY(owner,source,day))");const dirty=db.prepare("INSERT OR IGNORE INTO usage_dirty VALUES(?,?,?)");for(const r of updates){if(db.usageStorage)writeCompactValuation(db,p.owner,r.id,currency,r.fingerprint,r.value,r.keys);else save.run(p.owner,r.id,currency,r.fingerprint,encode(r.value));dirty.run(p.owner,r.source,r.day);}});
     if(updates.length)this.monitor.responseCache.clear();
     return result;
   }
@@ -708,8 +733,38 @@ export class Pricing {
     const p=this.monitor.profile,where=scope?' AND source=?':'';return p.db.prepare("SELECT DISTINCT substr(at,1,10) AS day,model FROM events WHERE owner=? AND source IN ('codex','zcode','dsh')"+where+" ORDER BY day").all(...(scope?[p.owner,scope]:[p.owner])).map((row:JsonObject)=>({at:row.day+'T00:00:00Z',model:row.model}));
   }
   async prepareRows(scope:string,check:()=>void=()=>{},progress?:(v:JsonObject)=>void){
-    const p=this.monitor.profile,db=p.db,where=scope?' AND e.source=?':'',stmt=db.prepare('SELECT e.* FROM valuation_dirty d CROSS JOIN events e WHERE d.owner=? AND e.owner=d.owner AND e.id=d.id'+where+' LIMIT 1000').safeIntegers();let completed=0;const total=progress?Number((db.prepare("SELECT count(*) AS n FROM valuation_dirty d JOIN events e ON e.owner=d.owner AND e.id=d.id WHERE d.owner=?"+(scope?" AND e.source=?":"")).get(...(scope?[p.owner,scope]:[p.owner])) as JsonObject).n):0;
-    while(true){const batch=stmt.all(...(scope?[p.owner,scope]:[p.owner])).map((row:JsonObject)=>Object.fromEntries(Object.entries(row).map(([key,value])=>[key,typeof value==='bigint'&&value<=BigInt(Number.MAX_SAFE_INTEGER)?Number(value):value])));if(!batch.length)break;check();for(const currency of ['USD','CNY'])this.rows(batch,currency);p.transaction(()=>{const remove=db.prepare('DELETE FROM valuation_dirty WHERE owner=? AND id=?');for(const row of batch)remove.run(p.owner,row.id);});completed+=batch.length;progress?.({phase:"valuation",completed,total:Math.max(completed,total)});await new Promise(resolve=>setImmediate(resolve));}
+    const p=this.monitor.profile,db=p.db,where=scope?' AND e.source=?':'';
+    const compact=db.usageStorage,ownerKey=compact?db.prepare('SELECT k FROM usage_strings WHERE value=?').get(p.owner).k:null;
+    if(compact)db.exec('CREATE TABLE IF NOT EXISTS usage_dirty(owner TEXT,source TEXT,day TEXT,PRIMARY KEY(owner,source,day))');
+    const stmt=db.prepare(compact?'SELECT '+compactEventProjection()+',d.owner AS storage_owner,d.id AS storage_id FROM compact_valuation_dirty d CROSS JOIN compact_events e WHERE e.owner=d.owner AND e.id=d.id AND d.owner=?'+(scope?' AND e.source=(SELECT k FROM usage_strings WHERE value=?)':'')+' LIMIT 256':'SELECT e.* FROM valuation_dirty d CROSS JOIN events e WHERE d.owner=? AND e.owner=d.owner AND e.id=d.id'+where+' LIMIT 256').safeIntegers();
+    const args=[compact?ownerKey:p.owner,...(scope?[scope]:[])];
+    const preferred=compact&&scope==='codex'?db.prepare('SELECT '+compactEventProjection()+',d.owner AS storage_owner,d.id AS storage_id,x.payload AS proof_payload FROM compact_codex_evidence x INDEXED BY compact_codex_payload_scan CROSS JOIN compact_valuation_dirty d CROSS JOIN compact_events e WHERE x.owner=? AND x.payload>? AND d.owner=x.owner AND d.id=x.id AND e.owner=d.owner AND e.id=d.id AND e.source=(SELECT k FROM usage_strings WHERE value=?) ORDER BY x.payload LIMIT 256').safeIntegers():null;
+    let proofCursor:number|bigint=0;
+    let completed=0;const total=progress?Number((db.prepare("SELECT count(*) AS n FROM valuation_dirty d JOIN events e ON e.owner=d.owner AND e.id=d.id WHERE d.owner=?"+(scope?" AND e.source=?":"")).get(...(scope?[p.owner,scope]:[p.owner])) as JsonObject).n):0;
+    while(true){
+      let savedRows:JsonObject[]=preferred?.all(ownerKey,proofCursor,scope)||[];
+      if(savedRows.length)proofCursor=savedRows.at(-1)!.proof_payload;else savedRows=stmt.all(...args);
+      const batch=savedRows.map((saved:JsonObject)=>{
+        const {storage_owner,storage_id,proof_payload,...values}=saved;
+        const row=Object.fromEntries(Object.entries(values).map(([key,value])=>[key,typeof value==='bigint'&&value<=BigInt(Number.MAX_SAFE_INTEGER)?Number(value):value]));
+        if(compact)Object.defineProperty(row,'_storageKeys',{value:{owner:storage_owner,id:storage_id}});
+        return row;
+      });
+      if(!batch.length)break;check();
+      batch.sort((a:JsonObject,b:JsonObject)=>String(a.at).localeCompare(String(b.at)));
+      const days:JsonObject[][]=[];for(const row of batch){const group=days.at(-1);if(group&&String(group[0].at).slice(0,10)===String(row.at).slice(0,10))group.push(row);else days.push([row]);}
+      const groups=days.every(group=>{const day=String(group[0].at).slice(0,10);return this.dayCache.has(day)&&this.dayCache.has(addDays(day,-1));})?[batch]:days;
+      // One durable commit per bounded batch: both currencies, queue removal
+      // and evidence sealing succeed together, without weakening WAL durability.
+      try{p.transaction(()=>{if(compact)this.preparedUpdates=new Map();try{for(const group of groups)for(const currency of ['USD','CNY'])this.rows(group,currency);if(this.preparedUpdates){const dirty=db.prepare('INSERT OR IGNORE INTO usage_dirty VALUES(?,?,?)');writeCompactValuationBatch(db,p.owner,[...this.preparedUpdates.values()]);for(const row of this.preparedUpdates.values())dirty.run(p.owner,row.source,row.day);}}finally{this.preparedUpdates=null;}const remove=db.prepare(compact?'DELETE FROM compact_valuation_dirty WHERE owner=? AND id=?':'DELETE FROM valuation_dirty WHERE owner=? AND id=?');for(const row of batch){if(compact)remove.run(ownerKey,row._storageKeys.id);else remove.run(p.owner,row.id);}packPendingUsage(db,1000);check();});}
+      catch(error){
+        // Proofs and formula results created in this transaction may refer to
+        // rolled-back rows. A retry must rebuild them from persistent data.
+        this.proofCache.clear();this.proofBytes=0;this.formulaCache.clear();
+        throw error;
+      }
+      completed+=batch.length;progress?.({phase:"valuation",completed,total:Math.max(completed,total)});await new Promise(resolve=>setImmediate(resolve));
+    }
     return completed;
   }
   catalog(params: JsonObject) {
@@ -861,10 +916,12 @@ export class ValuationTasks {
     const current = this.status(scope);
     if (current.status === "running") return current;
     const p = this.control.profile;
-    if(!background&&current.status==='complete'&&current.versions?.usage===String(this.pricing.monitor.version())&&current.versions?.priceAndFx===this.pricing.version()){this.control.saveConfig({[this.flag(scope)]:true});queueMicrotask(()=>this.start(scope,true));return current;}
+    if(!background&&current.coverage&&current.versions?.usage===String(this.pricing.monitor.version())&&current.versions?.priceAndFx===this.pricing.version()){this.control.saveConfig({[this.flag(scope)]:true});queueMicrotask(()=>this.start(scope,true));return {...current,status:'complete'};}
     const id = uid(),
       owner = p.owner,
       state: JsonObject = {
+        background,
+        ...(background?{coverage:current.coverage,versions:current.versions}:{}),
         id,
         scope,
         status: "running",
@@ -875,7 +932,7 @@ export class ValuationTasks {
         deadline: Date.now() / 1000 + 300,
       };
     this.live.add(id);
-    this.control.saveConfig({ [this.flag(scope)]: false });
+    if(!background)this.control.saveConfig({ [this.flag(scope)]: false });
     p.write("valuation-" + scope, state);
     const check = () => {
         const saved = p.read<JsonObject>("valuation-" + scope, {});

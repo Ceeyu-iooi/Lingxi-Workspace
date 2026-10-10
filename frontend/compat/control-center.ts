@@ -74,35 +74,42 @@
       await fn();
     } catch (error) {
       if (error.name !== "AbortError" && user?.username === identity)
-        toast(error.message);
+        toast(error.message, {kind:"error"});
     }
   }
   function dialog(titleText, html, save) {
     const d = document.createElement("dialog");
     d.className =
-      "control-dialog" +
+      "control-dialog lingxi-dialog" +
       (location.hash.includes("usage") ? "" : " wb-redesign");
     d.setAttribute("aria-label", titleText);
-    d.innerHTML = `<form><div class="control-dialog-head"><h3>${e(titleText)}</h3><button type="button" class="btn ghost dialog-close" aria-label="关闭">×</button></div>${html}<p class="control-form-error" role="alert"></p><div class="control-dialog-actions"><button type="button" class="btn ghost dialog-close">取消</button><button type="submit" class="btn">保存</button></div></form>`;
+    d.dataset.dialogSize="medium";
+    d.innerHTML = `<form class="lingxi-dialog-form"><div class="control-dialog-head"><h3>${e(titleText)}</h3><button type="button" class="btn ghost dialog-close" aria-label="关闭">×</button></div><div class="lingxi-dialog-body">${html}<p class="control-form-error" role="alert"></p></div><div class="control-dialog-actions"><button type="button" class="btn ghost dialog-close">取消</button><button type="submit" class="btn">保存</button></div></form>`;
     document.body.append(d);
     const focus = document.activeElement;
     d.addEventListener("close", () => {
       d.remove();
       if (focus?.isConnected) focus.focus();
     });
-    qa(".dialog-close", d).forEach((b) => (b.onclick = () => d.close()));
+    const baseline=JSON.stringify([...new FormData(q('form',d))]);let saving=false;
+    const close=()=>{if(saving){toast('正在保存，关闭窗口后操作仍会继续',{kind:'info'});d.close();return;}if(JSON.stringify([...new FormData(q('form',d))])!==baseline&&!confirm('尚未保存，关闭窗口并放弃修改？'))return;d.close();};
+    qa(".dialog-close", d).forEach((b) => (b.onclick = close));
+    d.addEventListener('cancel',event=>{event.preventDefault();close();});
     q("form", d).onsubmit = async (event) => {
       event.preventDefault();
       const submit = q("[type=submit]", d);
       if (submit.disabled) return;
       submit.disabled = true;
+      saving=true;
       try {
         await save(Object.fromEntries(new FormData(event.target)), d);
+        if(!d.isConnected)toast('保存完成',{kind:'success'});
         d.close();
       } catch (error) {
-        q(".control-form-error", d).textContent = error.message;
+        if(d.isConnected)q(".control-form-error", d).textContent = error.message;else toast(error.message,{kind:'error'});
       } finally {
         submit.disabled = false;
+        saving=false;
       }
     };
     d.showModal();
@@ -147,7 +154,7 @@
       current = await load(root.closest(".module-surface")?._wbAbort?.signal);
     } catch (err) {
       if (root.isConnected && ticket === root._settingsSequence)
-        toast(err.message);
+        toast(err.message, {kind:"error"});
       return;
     }
     if (
@@ -276,7 +283,7 @@
             window.dispatchEvent(
               new CustomEvent("workbench:features", { detail: r.features }),
             );
-            toast(r.task ? "已开启，价格缓存正在后台准备" : "设置已保存");
+            toast(r.task ? "已开启，价格缓存正在后台准备" : "设置已保存", {kind:"success"});
           } catch (error) {
             if (root.isConnected) {
               input.checked = before;
@@ -310,7 +317,7 @@
           )
             delete el.dataset.wbDirty;
         });
-        toast("采集设置已保存");
+        toast("采集设置已保存", {kind:"success"});
       } catch (error) {
         q("[role=alert]", form).textContent = error.message;
       } finally {
@@ -324,7 +331,7 @@
       await call("POST", "/api/profile", { displayName: name });
       if (avatar) await call("POST", "/api/profile/avatar", { data: avatar });
       if (remove) await call("POST", "/api/profile/avatar", { remove: true });
-      await load(); await refresh(); refreshFooter(); toast("资料已保存");
+      await load(); await refresh(); refreshFooter(); toast("资料已保存", {kind:"success"});
     }});
   }
   function dataSettings(root) {
@@ -400,7 +407,7 @@
                   password,
                 });
                 await reloadProfile();
-                toast("Profile 已恢复");
+                toast("Profile 已恢复", {kind:"success"});
               });
             }),
         );
@@ -411,7 +418,7 @@
     q("[data-backup]", body).onclick = () =>
       passwordDialog("创建加密备份", true, async (password) => {
         await call("POST", "/api/backup", { password });
-        toast("加密备份已创建");
+        toast("加密备份已创建", {kind:"success"});
         await list();
       });
     q("[data-export-profile]", body).onclick = () =>
@@ -419,7 +426,7 @@
         const result = await call("POST", "/api/backup", { password });
         await downloadBackup(result.file);
         await list();
-        toast("加密 Profile 已导出");
+        toast("加密 Profile 已导出", {kind:"success"});
       });
     if (!window.workbenchDesktop) {
       const access = document.createElement("section");
@@ -442,7 +449,7 @@
             enabled: q("[data-lan-enabled]", access).checked,
           });
           delete q("[data-lan-enabled]", access).dataset.wbDirty;
-          toast("访问范围已保存，请正常退出并重启网页后台");
+          toast("访问范围已保存，请正常退出并重启网页后台", {kind:"success"});
         } catch (error) {
           q("[role=alert]", access).textContent = error.message;
         } finally {
@@ -451,7 +458,7 @@
       };
       q("[data-copy-token]", access).onclick = () =>
         navigator.clipboard.writeText(q(".wb-instance-token", access).value).then(
-          () => toast("实例凭证已复制"),
+          () => toast("实例凭证已复制", {kind:"success"}),
           () => toast("请选中凭证手动复制"),
         );
     }
@@ -462,10 +469,10 @@
     restart.className = "btn ghost onboarding-start-again";
     restart.textContent = "重新打开启动引导";
     restart.onclick = () =>
-      window.lingxiOnboarding?.open().catch((error) => toast(error.message));
+      window.lingxiOnboarding?.open().catch((error) => toast(error.message, {kind:"error"}));
     body.append(restart);
   }
-  
+
   function appearance(root) {
     const body = viewHeader(root, "外观", "主题、字号、强调色与界面亮度。");
     const icons = {
@@ -624,7 +631,7 @@
         await load();
         if (root.isConnected && user?.username === identity) {
           applyMode();
-          toast("外观设置已保存");
+          toast("外观设置已保存", {kind:"success"});
         }
       } catch (error) {
         if (root.isConnected && user?.username === identity)
@@ -744,7 +751,7 @@
           });
           await load();
           draw();
-          toast("模型服务已保存");
+          toast("模型服务已保存", {kind:"success"});
         },
       );
     q("#provider-add", root).onclick = () => edit();
@@ -768,11 +775,11 @@
             if (el.value === value && el.checked === checked)
               delete el.dataset.wbDirty;
           });
-          toast("设置已保存");
+          toast("设置已保存", {kind:"success"});
         }
       } catch (error) {
         if (form.isConnected && error.name !== "AbortError")
-          toast(error.message);
+          toast(error.message, {kind:"error"});
       } finally {
         if (button.isConnected) button.disabled = false;
       }
@@ -1041,7 +1048,7 @@
             if (ticket === generation && body.isConnected) update();
           }, 250);
       } catch (err) {
-        if (ticket === generation && body.isConnected) toast(err.message);
+        if (ticket === generation && body.isConnected) toast(err.message, {kind:"error"});
       } finally {
         if (ticket === generation) body.setAttribute("aria-busy", "false");
       }

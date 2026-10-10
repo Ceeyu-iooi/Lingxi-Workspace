@@ -285,7 +285,7 @@
     if (!grid.querySelector('.lingxi-codex-account')) {
       const unknown=(slot,label,minutes)=>quotaRow({slot,label,minutes,remaining:0,reset:null}).replace('data-quota-slot=', 'data-quota-known="false" data-quota-slot=').replace('0.0% 剩余','--').replace('平台未返回重置时间','重置 --');
       grid.innerHTML='<div class="lingxi-codex-account"><div class="lingxi-quota-stack">'+unknown('primary','5 小时额度',300)+unknown('secondary','每周额度',10080)+'</div><div class="lingxi-account-details"><section class="lingxi-value-card"><div data-codex-value><section class="agent-value-panel"><header><h3>API等效参考价值</h3><div class="agent-value-commit"><span data-enabled></span><div data-slide></div></div></header><div class="agent-value-line"><div class="agent-value-amounts"><span class="agent-value-usd">USD <strong>--</strong></span><span class="agent-value-cny">CNY <strong>--</strong></span></div><a href="prices.html" target="_blank" rel="noopener" class="agent-value-source">查看价格与汇率 ↗</a></div></section></div></section><section class="lingxi-credit-single"><h4>剩余 Credit</h4><strong data-credit>--</strong></section><section class="lingxi-reset-card" data-reset-card-host></section></div><div class="lingxi-account-actions" hidden><button type="button" data-codex-refresh>刷新账户</button></div></div>';
-      state.root.querySelector('[data-codex-login]').onclick=()=>{const d=document.createElement('dialog');d.className='control-dialog';document.body.append(d);window.LingxiDesign.login(d,()=>{grid.querySelector('[data-codex-refresh]')?.click();});d.addEventListener('close',()=>d.remove(),{once:true});const close=document.createElement('button');close.className='btn ghost';close.textContent='完成';close.onclick=()=>d.close();d.append(close);d.showModal();};
+      state.root.querySelector('[data-codex-login]').onclick=()=>{const windowShell=window.WorkbenchDialogs.open({title:'连接 Codex',size:'medium',body:'<div data-codex-authorization></div>',actions:[{id:'done',label:'完成',kind:'primary'}]});window.LingxiDesign.login(windowShell.body.querySelector('[data-codex-authorization]'),()=>{grid.querySelector('[data-codex-refresh]')?.click();});};
       grid.querySelector('[data-codex-refresh]').onclick=async()=>{
         if(state.accountPending)return;state.accountPending=true;
         try{state.liveAccount=await call('GET','/api/codex/account');if(grid.isConnected)patchInline(state);}catch(error){if(state.root.isConnected)state.root.querySelector('[data-codex-error]').textContent=error.message;}finally{state.accountPending=false;}
@@ -399,7 +399,7 @@
           return;
         }
         d.close();
-        toast("LMU 已授权并同步");
+        toast("LMU 已授权并同步", {kind:"success"});
       } catch (error) {
         message.textContent = error.message;
       } finally {
@@ -600,6 +600,7 @@
           toast(
             (c.id ? "已保存" : "已导入 " + added + " 个 APIKey") +
               (failedSync ? "；" + failedSync + " 个同步失败，请查看卡片" : ""),
+            {kind:failedSync?"warning":"success"},
           );
         }
       } catch (error) {
@@ -782,7 +783,7 @@
             await syncConnection(b.dataset.sync);
             if (managerActive(state)) await refreshManaged(state);
           } catch (error) {
-            if (managerActive(state)) toast(error.message);
+            if (managerActive(state)) toast(error.message, {kind:"error"});
           } finally {
             if (b.isConnected) b.disabled = false;
           }
@@ -806,7 +807,7 @@
             state.supplierOpen.delete(b.dataset.remove);
             await refreshManaged(state);
           } catch (error) {
-            if (managerActive(state)) toast(error.message);
+            if (managerActive(state)) toast(error.message, {kind:"error"});
             if (b.isConnected) b.disabled = false;
           }
         }),

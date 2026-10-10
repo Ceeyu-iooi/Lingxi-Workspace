@@ -144,7 +144,7 @@ export function profileStorage(profile: ProfileStore, monitor: Monitor) {
       .get() as JsonObject,
     derived = db
       .prepare(
-        "SELECT coalesce(sum(length(cast(result as blob))),0) bytes FROM radar_values",
+        db.usageStorage?"SELECT coalesce(sum(coalesce(p.raw_size,0)+coalesce(q.raw_size,0)),0) bytes FROM compact_valuations v LEFT JOIN usage_payloads p ON p.k=v.usd_payload LEFT JOIN usage_payloads q ON q.k=v.cny_payload":"SELECT coalesce(sum(length(cast(result as blob))),0) bytes FROM radar_values",
       )
       .get() as JsonObject;
   return {
@@ -152,6 +152,11 @@ export function profileStorage(profile: ProfileStore, monitor: Monitor) {
     categories: rows,
     incomplete,
     databaseBytes: totals.databases.bytes,
+    usageDatabaseBytes:statSync(join(profile.root,'data/storage/workbench.sqlite')).size,
+    usageWalBytes:existsSync(join(profile.root,'data/storage/workbench.sqlite-wal'))?statSync(join(profile.root,'data/storage/workbench.sqlite-wal')).size:0,
+    usageStorageBytes:statSync(join(profile.root,'data/storage/workbench.sqlite')).size+(existsSync(join(profile.root,'data/storage/workbench.sqlite-wal'))?statSync(join(profile.root,'data/storage/workbench.sqlite-wal')).size:0),
+    usageStorageTargetBytes:20000000,
+    usageStorageSchema:db.pragma('user_version',{simple:true}),
     businessBytes: size(join(profile.root, "data")),
     priceEvidenceCompressedBytes: blobs.compressed,
     priceEvidenceRawBytes: blobs.raw,
@@ -163,7 +168,7 @@ export function profileStorage(profile: ProfileStore, monitor: Monitor) {
     ),
     responseCacheBytes: monitor.responseCache.bytes,
     responseCacheBudget: monitor.responseCache.budget,
-    compression: { status: "complete" },
+    compression: { status: db.usageStorage?"complete":"legacy",format:db.usageStorage?'dictionary + exact decimal + indexed lossless packs':'legacy text' },
   };
 }
 export function clearDerived(

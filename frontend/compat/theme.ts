@@ -173,10 +173,7 @@
     sidebarWidth = 240;
   try {
     sidebarCollapsed = localStorage.getItem("wb-sidebar-collapsed") === "1";
-    sidebarWidth = Math.max(
-      180,
-      Math.min(340, Number(localStorage.getItem("wb-sidebar-width")) || 240),
-    );
+    localStorage.removeItem("wb-sidebar-width");
   } catch (_) {}
   function applySidebar() {
     document.documentElement.classList.toggle(
@@ -228,59 +225,7 @@
       } catch (_) {}
       window.dispatchEvent(new Event("resize"));
     };
-    const side = document.querySelector(".side");
-    const divider = document.createElement("span");
-    divider.className = "sidebar-resize";
-    divider.tabIndex = 0;
-    divider.setAttribute("role", "separator");
-    divider.setAttribute("aria-orientation", "vertical");
-    divider.setAttribute("aria-label", "调整侧边栏宽度");
-    const setWidth = (value) => {
-      sidebarWidth = Math.max(180, Math.min(340, value));
-      applySidebar();
-      divider.setAttribute("aria-valuenow", sidebarWidth);
-    };
-    divider.setAttribute("aria-valuemin", "180");
-    divider.setAttribute("aria-valuemax", "340");
-    setWidth(sidebarWidth);
-    const saveWidth = () => {
-      try {
-        localStorage.setItem("wb-sidebar-width", String(sidebarWidth));
-      } catch (_) {}
-      window.dispatchEvent(new Event("resize"));
-    };
-    divider.onpointerdown = (e) => {
-      if (sidebarCollapsed || e.button !== 0) return;
-      e.preventDefault();
-      divider.setPointerCapture(e.pointerId);
-      divider.classList.add("active");
-      const startX = e.clientX,
-        startWidth = sidebarWidth;
-      const move = (ev) =>
-        setWidth(
-          startWidth +
-            (ev.clientX - startX) /
-              1,
-        );
-      const end = () => {
-        divider.removeEventListener("pointermove", move);
-        divider.removeEventListener("pointerup", end);
-        divider.removeEventListener("pointercancel", end);
-        divider.classList.remove("active");
-        saveWidth();
-      };
-      divider.addEventListener("pointermove", move);
-      divider.addEventListener("pointerup", end);
-      divider.addEventListener("pointercancel", end);
-    };
-    divider.onkeydown = (e) => {
-      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-        e.preventDefault();
-        setWidth(sidebarWidth + (e.key === "ArrowLeft" ? -10 : 10));
-        saveWidth();
-      }
-    };
-    side.appendChild(divider);
+    document.querySelectorAll(".sidebar-resize").forEach(node=>node.remove());
     const icons = {
       home: '<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M9 21v-8h6v8"/>',
       list: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',

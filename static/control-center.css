@@ -127,7 +127,7 @@
 .workbench-menubar details { position:relative; }
 .workbench-menubar summary { list-style:none; cursor:pointer; padding:4px 7px; border-radius:5px; font-size:var(--text-ui-sm); }
 .workbench-menubar summary:hover,.workbench-menubar details[open]>summary { background:var(--color-hover); }
-.workbench-menu { position:absolute; right:0; top:28px; width:210px; background:var(--color-menu); border:1px solid var(--color-popover-border); padding:6px; border-radius:8px; box-shadow:0 8px 24px #0002; z-index:30; }
+.workbench-menu { position:absolute; left:0; right:auto; top:calc(100% + 6px); width:min(210px,calc(100vw - 16px)); background:var(--color-menu); border:1px solid var(--color-popover-border); padding:6px; border-radius:8px; box-shadow:0 8px 24px #0002; z-index:30; }
 .workbench-menu a,.workbench-menu button { display:block; border:0; background:transparent; color:var(--ink); padding:8px; border-radius:5px; width:100%; text-align:left; font-size:var(--text-ui-base); }
 .workbench-menu a:hover,.workbench-menu button:hover { background:var(--color-menu-hover); }
 :root[data-interface-mode=coding] .agent-message pre { font-family:var(--font-mono); }

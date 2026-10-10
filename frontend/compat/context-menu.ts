@@ -19,9 +19,9 @@
   async function copy(text) {
     try {
       await navigator.clipboard.writeText(text);
-      toast("已复制");
+      toast("已复制", {kind:"success"});
     } catch {
-      toast("复制失败，请使用浏览器复制功能");
+      toast("复制失败，请使用浏览器复制功能", {kind:"error"});
     }
   }
   function open(event, target, x, y) {
@@ -86,7 +86,7 @@
         try {
           await items[index].action();
         } catch (e) {
-          toast(e.message || "操作失败");
+          toast(e.message || "操作失败",{kind:"error"});
         }
       };
     });
