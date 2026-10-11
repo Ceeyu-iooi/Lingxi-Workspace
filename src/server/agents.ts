@@ -144,7 +144,20 @@ export class Agents {
       compressed: true,
       maxBytes: 256 * 1024 * 1024,
     }))
-      if (row && typeof row === "object" && !Array.isArray(row)) rows.push(row);
+      if (row && typeof row === "object" && !Array.isArray(row)) {
+        // Keep only accounting context while folding the transcript. Large
+        // user/tool/assistant bodies are never retained in the scan array.
+        if(row.type==='session'||row.type==='session/end-seed')rows.push(row);
+        else if(['request/header','llm/retry-started','assistant/message','assistant/attempt','compaction/summary'].includes(row.type)) {
+          const d=row.data||{},source=d.message?.source||d.source||{};
+          rows.push({type:row.type,time:row.time,seq:row.seq,data:{
+            turn:d.turn,step:d.step,attemptId:d.attemptId,retryId:d.retryId,compactionId:d.compactionId,
+            usage:d.usage,header:d.header?{config:d.header.config}:undefined,inherited:d.inherited,
+            message:{id:d.message?.id,source:{model:source.model,provider:source.provider,replayState:{response:{responseModel:source.replayState?.response?.responseModel}}}},
+            stream:(d.stream||[]).filter((item:JsonObject)=>item.type==='chunk'&&item.chunk?.type==='usage'),
+          }});
+        }
+      }
     const header = rows.find((r) => r.type === "session") || {},
       sid = header.id,
       version = header.version ?? null;
@@ -345,6 +358,7 @@ export class Agents {
       if (
         prior.size === fingerprint.size &&
         prior.mtime === fingerprint.mtime &&
+        prior.readerVersion === "zstd-frames-v2" &&
         !prior.error
       )
         continue;
@@ -353,6 +367,7 @@ export class Agents {
         continue;
       }
       try {
+        fingerprint.readerVersion = "zstd-frames-v2";
         if (fingerprint.size > 128 * 1024 * 1024)
           throw new Error("Harness 文件超过单次读取限制");
         items.push(...(await this.parseDSH(file)));

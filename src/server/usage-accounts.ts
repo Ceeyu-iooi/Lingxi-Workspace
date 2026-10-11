@@ -148,12 +148,13 @@ export class UsageAccounts {
           throw new Error("平台登录已过期，请重新导入");
         const matches = (data.biz_data?.api_keys || []).filter(
           (row: JsonObject) => {
-            const masked = row.sensitive_id || "";
+            if(row.api_key === key)return true;
+            const masked = String(row.sensitive_id || "").replace(/…|\.{3}/g,'*');
             if (masked.replaceAll("*", "").length < 8) return false;
             const pattern = masked
-              .split("*")
+              .split(/\*+/)
               .map((s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-              .join(".");
+              .join(".*");
             return (
               row.api_key === key || new RegExp("^" + pattern + "$").test(key)
             );
@@ -456,6 +457,17 @@ export class UsageAccounts {
       }
     }
     return { connection: this.list().connections.find((r) => r.id === id) };
+  }
+  async authorizeDeepseek(id:string,credential:string,active=()=>true) {
+    const p=this.control.profile,owner=p.owner;
+    const row=this.rows().find(r=>r.id===id&&r.kind==='deepseek');
+    const keys=p.credentials(),key=keys['usage:'+id];
+    if(!row||!key)throw Error('DeepSeek Key 不存在');
+    const matched=await this.matchDeepseek(key,credential);
+    if(!matched.tracking||owner!==p.owner||!active())throw Error('平台未匹配此 Key，或授权已取消');
+    keys['platform:'+id]=matched.platform;
+    p.saveCredentials(keys);
+    this.write({...row,keyTrackingId:matched.tracking,historyEnabled:true,capabilities:{...row.capabilities,historyQuery:true},revision:uid()});
   }
   private async deepseek(key: string) {
     const get = (path: string) =>

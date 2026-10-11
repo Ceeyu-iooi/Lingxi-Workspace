@@ -87,6 +87,7 @@
           b.click();
       },
     );
+    s.tables=[...root.querySelectorAll("[data-usage-table]")].map((section,i)=>{const host=document.createElement("div");host.className="table-metric-radio";section.querySelector("h3").after(host);const button=section.querySelector("[data-table-money]");button.classList.add("usage-radio-action");return group(host,"表格统计量",[["token","用量"],["cost","价格"]],value=>{if((button.getAttribute("aria-pressed")==="true")!==(value==="cost"))button.click();});});
     states.set(root, s);
   }
   function sync(root) {
@@ -94,6 +95,7 @@
     if (!s) return;
     s.heat.set(root.dataset.heatViewMode || "day");
     s.chart.set(root.dataset.chartViewMode || "line");
+    s.tables.forEach((radio,i)=>{const b=root.querySelector("[data-table-money=\""+i+"\"]");radio.root.parentElement.hidden=b.hidden;radio.set(b.getAttribute("aria-pressed")==="true"?"cost":"token");});
     for (const [name, key] of [
       ["metricHeat", "heat"],
       ["metricChart", "charts"],
@@ -102,9 +104,7 @@
       s[name].root.hidden = button.hidden;
       s[name].set(
         button.getAttribute("aria-pressed") === "true" ? "cost" : "token",
-        ["codex", "zcode", "dsh"].includes(root.dataset.usageScope)
-          ? "API 参考等价值"
-          : "费用",
+        "费用",
       );
     }
   }

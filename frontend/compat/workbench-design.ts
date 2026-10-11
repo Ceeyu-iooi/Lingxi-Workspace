@@ -46,7 +46,7 @@
     for (const attr of [...old.attributes])
       if (
         !next.hasAttribute(attr.name) &&
-        !["data-wb-dirty", "data-layout-index", "tabindex"].includes(attr.name)
+        !["data-wb-dirty", "data-wb-react-root", "data-layout-index", "tabindex"].includes(attr.name)
       )
         old.removeAttribute(attr.name);
     for (const attr of next.attributes)
@@ -63,6 +63,7 @@
       if (old.type === "checkbox" && !dirty) old.checked = next.checked;
       return;
     }
+    if(old.dataset.wbReactRoot==='true')return;
     if (resizable) old.classList.add("resizable-panel");
     if (numeric) number(old, next.textContent);
     else if (!next.dataset.wbSlot || next.childNodes.length)

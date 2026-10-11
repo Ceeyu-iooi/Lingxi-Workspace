@@ -8,8 +8,72 @@ import {
   realpathSync,
 } from "node:fs";
 import { join, relative, isAbsolute, sep } from "node:path";
-import { createZstdDecompress, constants } from "node:zlib";
+import { open } from "node:fs/promises";
+import { zstdDecompressSync, constants } from "node:zlib";
 import { parseExact } from "./profile.ts";
+
+// Node's Zstandard decoder stops at the first frame. Read the framing (RFC
+// 8878) separately so each complete frame is decoded once, without rescanning
+// partial input or retaining the entire transcript in memory.
+async function* zstdFrames(file: string, maxBytes: number) {
+  const handle = await open(file, "r");
+  let offset = 0, decoded = 0, frames = 0;
+  const read = async (length: number, eof = false) => {
+    const result = Buffer.allocUnsafe(length);
+    let filled = 0;
+    while (filled < length) {
+      const { bytesRead } = await handle.read(result, filled, length - filled, offset);
+      if (!bytesRead) {
+        if (!filled && eof) return null;
+        throw new Error("Harness 压缩帧尚未写完或已截断");
+      }
+      offset += bytesRead; filled += bytesRead;
+    }
+    return result;
+  };
+  try {
+    for (;;) {
+      const magic = await read(4, true);
+      if (!magic) break;
+      const number = magic.readUInt32LE();
+      if ((number >>> 4) === (0x184d2a50 >>> 4)) {
+        const size = (await read(4))!.readUInt32LE();
+        if (offset + size > (await handle.stat()).size) throw new Error("Harness 元数据帧已截断");
+        offset += size;
+        continue;
+      }
+      if (number !== 0xfd2fb528) throw new Error("Harness 压缩帧标识不正确");
+      const descriptor = (await read(1))!, flags = descriptor[0];
+      if (flags & 8) throw new Error("Harness 压缩帧使用不支持的格式");
+      const single = !!(flags & 32), contentFlag = flags >>> 6;
+      const headerSize = (single ? 0 : 1) + [0, 1, 2, 4][flags & 3] + (contentFlag ? [0, 2, 4, 8][contentFlag] : single ? 1 : 0);
+      const parts: Buffer[] = [magic, descriptor];
+      if (headerSize) parts.push((await read(headerSize))!);
+      let frameBytes = 5 + headerSize;
+      for (;;) {
+        const block = (await read(3))!, value = block.readUIntLE(0, 3);
+        const type = (value >>> 1) & 3, size = value >>> 3;
+        if (type === 3 || size > 131072) throw new Error("Harness 压缩块不正确");
+        const physicalSize = type === 1 ? 1 : size;
+        frameBytes += 3 + physicalSize;
+        if (frameBytes > 128 * 1024 * 1024) throw new Error("Harness 压缩帧超过读取限制");
+        parts.push(block);
+        if (physicalSize) parts.push((await read(physicalSize))!);
+        if (value & 1) break;
+      }
+      if (flags & 4) parts.push((await read(4))!);
+      const remaining = maxBytes - decoded;
+      if (remaining <= 0) throw new Error("解压或读取数据超过单次限制");
+      const output = zstdDecompressSync(Buffer.concat(parts), {
+        maxOutputLength: Math.min(remaining, 64 * 1024 * 1024),
+        params: { [constants.ZSTD_d_windowLogMax]: 26 },
+      });
+      decoded += output.length;
+      yield output;
+      if (++frames % 32 === 0) await new Promise<void>(resolve => setImmediate(resolve));
+    }
+  } finally { await handle.close(); }
+}
 
 export async function* records(
   file: string,
@@ -21,8 +85,7 @@ export async function* records(
     codexUsageOnly?: boolean;
   } = {},
 ) {
-  let stream: any = createReadStream(file, { highWaterMark: (options.codexUsageOnly ? 1024 : 128) * 1024 }),
-    decoder: any = null;
+  let stream: any = createReadStream(file, { highWaterMark: (options.codexUsageOnly ? 1024 : 128) * 1024 });
   if (options.compressed) {
     if (statSync(file).size > 128 * 1024 * 1024)
       throw new Error("Harness 压缩文件超过单次限制");
@@ -33,11 +96,9 @@ export async function* records(
     } finally {
       closeSync(fd);
     }
-    if (magic.equals(Buffer.from([0x28, 0xb5, 0x2f, 0xfd]))) {
-      decoder = createZstdDecompress({
-        params: { [constants.ZSTD_d_windowLogMax]: 26 },
-      });
-      stream = stream.pipe(decoder);
+    if (magic.readUInt32LE() === 0xfd2fb528 || (magic.readUInt32LE() >>> 4) === (0x184d2a50 >>> 4)) {
+      stream.destroy();
+      stream = zstdFrames(file, options.maxBytes ?? 256 * 1024 * 1024);
     }
   }
   let chunks: Buffer[] = [],
@@ -133,8 +194,7 @@ export async function* records(
       }
     }
   } finally {
-    stream.destroy();
-    decoder?.destroy();
+    stream.destroy?.();
   }
 }
 export async function listFiles(

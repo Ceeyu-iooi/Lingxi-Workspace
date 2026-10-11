@@ -386,21 +386,16 @@
   function refreshControls(root) {
     root
       .querySelectorAll(
-        ".wb-setting-switch input[type=checkbox],.settings-content .control-checkbox input[type=checkbox],.control-dialog .control-checkbox input[type=checkbox],#appearance-font,#appearance-brightness",
+        ".wb-setting-switch input[type=checkbox],.settings-content .control-checkbox input[type=checkbox],.control-dialog .control-checkbox input[type=checkbox]",
       )
       .forEach((input) => {
         let state = controls.get(input);
         if (!state) {
-          const slider =
-              input.id === "appearance-font" ||
-              input.id === "appearance-brightness",
-            host = el("span", {
-              class: slider ? "wb-slider-host" : "wb-switch-host",
-            });
+          const host=el("span",{class:"wb-switch-host"});
           input.hidden = true;
           input.tabIndex = -1;
           input.after(host);
-          state = { host, slider };
+          state = { host };
           controls.set(input, state);
           input.addEventListener("change", () =>
             refreshControls(input.parentElement),
@@ -421,23 +416,6 @@
             .trim() ||
           input.name ||
           input.id;
-        if (state.slider)
-          window.WorkbenchReact.scrubField(state.host, {
-            value: Number(input.value),
-            min: Number(input.min),
-            max: Number(input.max),
-            step: Number(input.step),
-            ariaLabel: label,
-            disabled: input.disabled,
-            formatValue: (v) =>
-              v + (input.id === "appearance-font" ? " px" : "%"),
-            onChange: (v) => {
-              input.value = String(v);
-              input.dispatchEvent(new Event("input", { bubbles: true }));
-              input.dispatchEvent(new Event("change", { bubbles: true }));
-            },
-          });
-        else
           window.WorkbenchReact.squishSwitch(state.host, {
             checked: input.checked,
             disabled: input.disabled,
@@ -490,7 +468,7 @@
               (input) =>
                 !controls.has(input) &&
                 input.matches(
-                  "input[type=checkbox],#appearance-font,#appearance-brightness",
+                  "input[type=checkbox]",
                 ),
             )
           )

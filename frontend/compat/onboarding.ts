@@ -27,13 +27,17 @@
     surface?.isConnected &&
     typeof user !== "undefined" &&
     user?.username === identity;
-  function close() {
+  function close(transition=false) {
     generation++;
     if (surface) window.usageCharts?.dispose(surface);
     surface
       ?.querySelectorAll("[data-switch]")
       .forEach((host) => window.WorkbenchReact?.unmount?.(host));
-    surface?.remove();
+    const exiting=surface;
+    if(transition&&exiting&&!window.WorkbenchMotion?.quiet()){
+      exiting.animate([{opacity:1},{opacity:0}],{duration:500,fill:'forwards'}).finished.finally(()=>exiting.remove());
+      document.getElementById('app')?.animate([{opacity:0},{opacity:1}],{duration:500,fill:'backwards'});
+    }else exiting?.remove();
     surface = null;
     const app = document.getElementById("app");
     if (app) app.inert = false;

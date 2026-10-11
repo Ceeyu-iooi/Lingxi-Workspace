@@ -62,14 +62,13 @@
             : (m.costs?.[currency] ?? 0),
       })),
     }));
-  const valueSnapshot = (state) =>
-    agentScope(state.scope)
-      ? state.snapshot.pricing?.enabled === true
-        ? state.snapshot.valuation
-        : null
-      : state.scope === "api"
-        ? state.snapshot
-        : null;
+  const valueSnapshot = (state) => {
+    if(state.scope==='api')return state.snapshot;
+    if(state.scope!=='codex')return null;
+    if(state.snapshot.valuation)return state.snapshot.valuation;
+    const unknown=rows=>(rows||[]).map(row=>({...row,costUnknown:row.requests||1,pricedRequests:0,cost:null,costs:{CNY:null,USD:null}}));
+    return {...state.snapshot,costCurrency:'CNY',cachedAvailable:false,activity:unknown(state.snapshot.activity),daily:unknown(state.snapshot.daily),groups:unknown(state.snapshot.groups),events:unknown(state.snapshot.events)};
+  };
   const chartIcon = (mode) =>
     '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 3v17h17" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>' +
     (mode === "bar"
@@ -908,7 +907,7 @@
     if (!s) return;
     const valued = valueSnapshot(state),
       cash =
-        agentScope(state.scope) && !!valued && state.metrics["table" + index];
+        ["codex","api"].includes(state.scope) && !!valued && state.metrics["table" + index];
     const section = all("[data-usage-table]", root)[index],
       model = q("[data-table-model]", section),
       sort = q("[data-table-sort]", section),
@@ -924,7 +923,7 @@
           "时间",
           "Agent",
           "实际模型 / 请求模型",
-          cash ? "API 等价值 · 实验" : "Token",
+          cash ? (state.scope==="codex"?"API 参考费用":"费用") : "Token",
           "状态",
           "耗时",
         ]
@@ -1065,7 +1064,7 @@
     if(entering){root.dataset.usageEntry=String(Number(root.dataset.usageEntry||0)+1);const shell=root.closest(".usage-stable");if(shell)shell.dataset.usageEntry=root.dataset.usageEntry;}
     if (
       agentScope(scope) &&
-      (entering || !s.pricing?.enabled || !state.snapshot?.pricing?.enabled)
+      entering
     ) {
       for (const key of Object.keys(state.metrics)) state.metrics[key] = false;
       all("[data-metric],[data-table-money]", root).forEach((b) =>
@@ -1078,7 +1077,7 @@
     const valued = valueSnapshot(state),
       currency = valued?.costCurrency || s.costCurrency || "CNY";
     all("button[data-metric]", root).forEach((b) => {
-      b.hidden = !valued;
+      b.hidden = !valued && scope !== "codex";
       b.textContent = currency === "USD" ? "$" : "￥";
       b.title = agentScope(scope)
         ? "切换 Token／API 等价值（实验）"
@@ -1086,7 +1085,7 @@
       b.setAttribute("aria-label", b.title);
     });
     all("[data-table-money]", root).forEach((b) => {
-      b.hidden = !agentScope(scope) || !valued;
+      b.hidden = !["codex","api"].includes(scope);
       b.textContent = currency === "USD" ? "$" : "￥";
     });
     all(
@@ -1200,7 +1199,7 @@
     if (
       !state?.snapshot ||
       !agentScope(state.scope) ||
-      features[state.scope + "ValuationEnabled"]
+      state.scope === "codex" || features[state.scope + "ValuationEnabled"]
     )
       return;
     for (const key of Object.keys(state.metrics)) state.metrics[key] = false;

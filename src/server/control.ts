@@ -11,8 +11,6 @@ import {
 
 export const FEATURES = {
   codexValuationEnabled: false,
-  zcodeValuationEnabled: false,
-  dshValuationEnabled: false,
   promptAutosave: true,
   promptAIEnabled: true,
 };
@@ -37,6 +35,7 @@ const ALLOWED = new Set([
   ...BOOL,
   ...PATHS,
   "workspaceIgnore",
+  "themePreset",
   "interfaceMode",
   "locale",
   "shortcuts",
@@ -120,7 +119,7 @@ export class Control {
   state() {
     const value = this.profile.read<JsonObject>("control", {});
     return {
-      config: { theme: "light", ...FEATURES, ...value.config },
+      config: { theme: "light", ...FEATURES, ...Object.fromEntries(Object.entries(value.config||{}).filter(([key])=>!['zcodeValuationEnabled','dshValuationEnabled'].includes(key))) } as JsonObject,
       providers: value.providers || [],
       resources: {},
       sessions: [],
@@ -198,9 +197,10 @@ export class Control {
       interfaceMode: ["coding", "office"],
       locale: ["system", "zh-CN", "en-US"],
       theme: ["system", "light", "dark", "zai-light", "zai-dark"],
+      themePreset: ["mist", "linen", "jade", "nocturne", "wisteria", "silver"],
       onboardingStep: ["identity", "agents", "codex", "suppliers", "complete"],
       uiFontSize: [12, 14, 16, 18],
-      accent: ["blue", "violet", "teal", "orange"],
+      accent: ["preset", "blue", "violet", "teal", "orange"],
     }))
       if (key in body && !(values as unknown[]).includes(body[key]))
         throw new Error("设置值不正确");

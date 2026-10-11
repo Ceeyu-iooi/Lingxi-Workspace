@@ -1,3 +1,5 @@
+export type ThemePreset = "mist" | "linen" | "jade" | "nocturne" | "wisteria" | "silver";
+
 export type Theme = "zai-light" | "zai-dark" | "light" | "dark" | "system";
 
 export interface UsageEventRecord {

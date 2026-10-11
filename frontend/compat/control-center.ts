@@ -494,12 +494,13 @@
       )
       .join(
         "",
-      )}</div><select id="appearance-theme" hidden aria-hidden="true" tabindex="-1"><option value="system">跟随系统</option><option value="zai-light">浅色</option><option value="zai-dark">深色</option></select></fieldset><div class="dsh-setting-row"><div><label for="appearance-font">界面字号</label><p>编辑内容字号单独设置</p></div><div class="dsh-font-control"><input type="number" id="appearance-font" min="12" max="18" step="2" aria-label="界面字号"><span>px</span><div class="dsh-font-arrows"><button type="button" data-font-step="2" aria-label="增大字号">⌃</button><button type="button" data-font-step="-2" aria-label="减小字号">⌄</button></div></div></div><label class="dsh-setting-row"><span>强调色</span><select id="appearance-accent"><option value="blue">蓝色</option><option value="violet">紫色</option><option value="teal">青绿色</option><option value="orange">橙色</option></select></label><label class="dsh-setting-row"><span>界面亮度 <small class="wb-muted">只调整项目界面</small></span><div><input id="appearance-brightness" type="range" min="85" max="110" step="1" aria-label="界面亮度"><output data-brightness></output></div></label><label class="wb-setting-switch"><span>减少动画<small>保留选中与加载状态，减少动态效果。</small></span><input type="checkbox" id="appearance-motion"></label><label class="dsh-setting-row"><span>界面模式</span><select id="interface-mode"><option value="office">办公</option><option value="coding">编程</option></select></label><label class="dsh-setting-row"><span>菜单语言</span><select id="menu-locale"><option value="zh-CN">简体中文</option><option value="en-US">English</option><option value="system">跟随系统</option></select></label><p class="meta dsh-preview-hint">修改即时预览，保存后保留；放弃会恢复原设置。</p><button type="button" class="btn ghost" data-appearance-reset>恢复默认草稿</button><p class="control-form-error" role="alert"></p><div class="settings-unsaved-bar" hidden><span role="status" aria-live="polite">有未保存的修改</span><div><button type="button" class="btn ghost" data-appearance-discard>放弃修改</button><button type="submit" class="btn">保存修改</button></div></div></form>`;
+      )}</div><select id="appearance-theme" hidden aria-hidden="true" tabindex="-1"><option value="system">跟随系统</option><option value="zai-light">浅色</option><option value="zai-dark">深色</option></select></fieldset><label class="dsh-setting-row"><span>浅色主题预设</span><select id="appearance-preset">${window.workbenchAppearance.presets.map(p=>'<option value="'+p.id+'">'+p.name+'</option>').join('')}</select></label><div class="dsh-setting-row"><div><label for="appearance-font">界面字号</label><p>编辑内容字号单独设置</p></div><div class="appearance-range"><input type="range" id="appearance-font" min="12" max="18" step="2" aria-label="界面字号"><output data-font-value></output></div></div><label class="dsh-setting-row"><span>强调色</span><select id="appearance-accent"><option value="preset">主题默认</option><option value="blue">蓝色</option><option value="violet">紫色</option><option value="teal">青绿色</option><option value="orange">橙色</option></select></label><label class="dsh-setting-row"><span>界面亮度 <small class="wb-muted">只调整项目界面</small></span><div><input id="appearance-brightness" type="range" min="85" max="110" step="1" aria-label="界面亮度"><output data-brightness></output></div></label><label class="wb-setting-switch"><span>减少动画<small>保留选中与加载状态，减少动态效果。</small></span><input type="checkbox" id="appearance-motion"></label><label class="dsh-setting-row"><span>界面模式</span><select id="interface-mode"><option value="office">办公</option><option value="coding">编程</option></select></label><label class="dsh-setting-row"><span>菜单语言</span><select id="menu-locale"><option value="zh-CN">简体中文</option><option value="en-US">English</option><option value="system">跟随系统</option></select></label><p class="meta dsh-preview-hint">修改即时预览，保存后保留；放弃会恢复原设置。</p><button type="button" class="btn ghost" data-appearance-reset>恢复默认草稿</button><p class="control-form-error" role="alert"></p><div class="settings-unsaved-bar" hidden><span role="status" aria-live="polite">有未保存的修改</span><div><button type="button" class="btn ghost" data-appearance-discard>放弃修改</button><button type="submit" class="btn">保存修改</button></div></div></form>`;
     const form = q("form", body),
       appearance = window.workbenchAppearance,
       identity = user.username;
     const fields = {
       theme: q("#appearance-theme", root),
+      themePreset: q("#appearance-preset", root),
       uiFontSize: q("#appearance-font", root),
       accent: q("#appearance-accent", root),
       brightness: q("#appearance-brightness", root),
@@ -509,6 +510,7 @@
     };
     let saved = {
         theme: appearance.theme,
+        themePreset: data.config.themePreset || appearance.preset,
         uiFontSize:
           parseInt(
             getComputedStyle(document.documentElement).getPropertyValue(
@@ -550,6 +552,7 @@
             Number(fields.uiFontSize.value) + Number(b.dataset.fontStep) < 12 ||
             Number(fields.uiFontSize.value) + Number(b.dataset.fontStep) > 18),
       );
+      q("[data-font-value]",form).textContent=fields.uiFontSize.value+" px";
       q("[data-brightness]", form).textContent = fields.brightness.value + "%";
       window.WorkbenchUI.refreshControls?.(form);
     };
@@ -573,6 +576,7 @@
     root._wbUnsaved = dirty;
     root._wbDispose = () => preview(saved);
     const change = (event) => {
+      if(event.target===fields.themePreset)fields.accent.value="preset";
       if (event.target.name === "appearanceTheme")
         fields.theme.value = event.target.value;
       fields.uiFontSize.value = String(
@@ -584,6 +588,7 @@
     };
     form.onchange = change;
     fields.brightness.oninput = change;
+    fields.uiFontSize.oninput = change;
     qa("[data-font-step]", form).forEach(
       (b) =>
         (b.onclick = () => {
@@ -1477,7 +1482,7 @@
           if (b.dataset.menu === "search") q("#command-trigger")?.click();
           if (b.dataset.menu === "sidebar") q("#sidebar-toggle").click();
           if (b.dataset.menu === "theme")
-            window.workbenchAppearance.setTheme(
+            window.workbenchAppearance.commitTheme(
               document.documentElement.dataset.theme === "dark"
                 ? "light"
                 : "dark",

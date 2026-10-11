@@ -109,29 +109,18 @@
         const markup=window.LingxiDesign.tooltipMarkup(text);
         if(markup!==lastMarkup){tip.innerHTML=markup;lastMarkup=markup;}
         tip.hidden = false;
-        if(host.clientWidth < tip.offsetWidth + 16){
-          tip.style.position="fixed";
-          tip.style.left=Math.max(12,Math.min(x+12,innerWidth-tip.offsetWidth-12))+"px";
-          tip.style.top=Math.max(12,Math.min(y-tip.offsetHeight-12,innerHeight-tip.offsetHeight-12))+"px";
-          return;
-        }
-        tip.style.position="absolute";
-        const rect = host.getBoundingClientRect(),
-          sx = host.clientWidth / Math.max(1, rect.width),
-          sy = host.clientHeight / Math.max(1, rect.height);
-        const left = (x - rect.left) * sx + 12,
-          top = (y - rect.top) * sy - tip.offsetHeight - 12;
-        tip.style.left =
-          Math.max(8, Math.min(left, host.clientWidth - tip.offsetWidth - 8)) +
-          "px";
-        tip.style.top =
-          Math.max(
-            8,
-            Math.min(
-              top < 8 ? (y - rect.top) * sy + 12 : top,
-              host.clientHeight - tip.offsetHeight - 8,
-            ),
-          ) + "px";
+        const portal = host.closest('dialog') || document.body;
+        if(tip.parentElement!==portal)portal.append(tip);
+        tip.style.position='fixed';
+        const scale=Number(document.documentElement.dataset.uiScale||100)/100;
+        tip.style.zoom=portal instanceof HTMLDialogElement?'1':String(scale);
+        const rect=tip.getBoundingClientRect();
+        const width=rect.width,height=rect.height,margin=12;
+        const left=Math.max(margin,Math.min(x+margin,innerWidth-width-margin));
+        const top=y+margin+height<=innerHeight-margin?y+margin:Math.max(margin,y-height-margin);
+        // Dialogs share application zoom; coordinates arrive in viewport pixels.
+        tip.style.left=(left/scale)+'px';
+        tip.style.top=(top/scale)+'px';
       },
     };
   }

@@ -54,7 +54,7 @@
       d.dataset.dialogSize="settings";
       d.setAttribute("aria-label", "设置中心");
       d.innerHTML =
-        '<header class="settings-center-head"><h2>设置中心</h2><button type="button" class="btn ghost" aria-label="关闭设置中心">×</button></header><div class="settings-center-content module-surface wb-redesign"></div>';
+        '<header class="settings-center-head"><div class="dialog-brand-title"><img class="lingxi-window-logo" src="assets/lingxi-logo.svg" alt="灵犀"><h2>设置中心</h2></div><button type="button" class="btn ghost" aria-label="关闭设置中心">×</button></header><div class="settings-center-content module-surface wb-redesign"></div>';
       d._settingsAbort = new AbortController();
       contentFor(d)._wbAbort = d._settingsAbort;
       d.addEventListener("input", (e) => {

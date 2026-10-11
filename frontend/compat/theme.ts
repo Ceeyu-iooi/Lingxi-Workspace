@@ -1,11 +1,29 @@
 // @ts-nocheck
 // Compatibility controller: retain the validated interactions during the React migration.
 /* Apply the saved appearance before styles paint, including on the login screen. */
+import {themePresets,presetPalette} from '../../src/shared/theme-presets';
+import {accentColors} from '../../src/shared/accent-colors';
 (() => {
   const media = window.matchMedia("(prefers-color-scheme: dark)");
   let preference = "zai-light",
     theme = "light",
     transition = null;
+  let preset='mist',accent='preset',lastDetails={};
+  try{preset=localStorage.getItem('wb-theme-preset')||'mist';}catch{}
+  const channel=typeof BroadcastChannel==='function'?new BroadcastChannel('lingxi-appearance'):null;
+  let receiving=false;
+  let modePending=false;
+  function palette(){
+    const p=presetPalette(preset,theme),root=document.documentElement;
+    root.dataset.themePreset=preset;
+    root.dataset.accent=theme==='dark'?'preset':accent;
+    const chosen=theme==='dark'?p.accent:({blue:'#3976f6',violet:'#8157ad',teal:'#397666',orange:'#b36632'}[accent]||p.accent);
+    ['--canvas','--bg','--color-background','--color-surface','--lingxi-body','--surface','--surface-2','--lingxi-shell','--ink','--color-text','--ink-2','--muted','--line','--accent-soft'].forEach(key=>root.style.removeProperty(key));
+    const colors=accentColors(chosen,theme),independent=accentColors(presetPalette('mist',theme).accent,theme);
+    const properties={'--lingxi-sidebar':p.sidebar,'--accent':colors.strong,'--primary':colors.strong,'--accent-soft':colors.soft,'--accent-text':colors.text,'--accent-foreground':colors.foreground,'--color-accent':colors.soft,'--independent-accent-soft':independent.soft,'--independent-accent-text':independent.text,'--independent-accent-foreground':independent.foreground};
+    Object.entries(properties).forEach(([key,value])=>root.style.setProperty(key,value));
+  }
+  function publish(saved=false){if(!receiving)channel?.postMessage({profileId:window.workbenchRuntime?.profileId,value:{...lastDetails,theme:preference,themePreset:preset,accent},saved});}
   try {
     const saved =
       localStorage.getItem("zcode-theme") || localStorage.getItem("wb-theme");
@@ -37,6 +55,7 @@
       document.documentElement.classList.toggle("dark", next === "dark");
       document.documentElement.dataset.theme = next;
       document.documentElement.style.colorScheme = next;
+      palette();
       const button = document.getElementById("theme-toggle");
       if (button) {
         button.setAttribute("aria-pressed", String(next === "dark"));
@@ -49,6 +68,7 @@
           label.textContent = next === "dark" ? "浅色模式" : "深色模式";
       }
       window.dispatchEvent(new Event("workbench:appearance"));
+      publish();
     };
     transition?.skipTransition();
     const reduced =
@@ -110,6 +130,9 @@
       .catch(() => {});
   }
   window.workbenchAppearance = {
+    get preset(){return preset;},
+    presets:themePresets,
+    previewPreset(value,origin){if(!themePresets.some(p=>p.id===value))return;preset=value;accent='preset';apply(preference,origin);},
     get theme() {
       return preference;
     },
@@ -134,6 +157,20 @@
         localStorage.setItem("wb-theme", theme);
       } catch (_) {}
     },
+    async commitTheme(value, origin) {
+      if(modePending)return;
+      const previous=preference,owner=window.workbenchRuntime?.profileId;
+      modePending=true;
+      this.setTheme(value,origin);
+      try {
+        if(!owner)return;
+        const response=await fetch('/api/control/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({theme:value})});
+        if(!response.ok)throw Error('模式保存失败');
+        if(window.workbenchRuntime?.profileId===owner){lastDetails.theme=value;publish(true);}
+      } catch(error) {
+        if(window.workbenchRuntime?.profileId===owner){this.setTheme(previous);window.workbenchNotify?.('模式保存失败，已恢复原设置',{kind:'error'});}
+      } finally {modePending=false;}
+    },
     setFontSize(size) {
       const value = Math.max(12, Math.min(18, Number(size) || 14));
       document.documentElement.style.setProperty(
@@ -145,7 +182,10 @@
       } catch (_) {}
     },
     details(value = {}) {
-      document.documentElement.dataset.accent = value.accent || "blue";
+      lastDetails={...lastDetails,...value};
+      value=lastDetails;
+      if(value.themePreset&&themePresets.some(p=>p.id===value.themePreset))preset=value.themePreset;
+      accent=value.accent||'preset';
       document.documentElement.dataset.motion = value.reduceMotion
         ? "reduced"
         : "normal";
@@ -153,14 +193,19 @@
         "--wb-brightness",
         String((value.brightness || 100) / 100),
       );
+      palette();publish();window.dispatchEvent(new Event('workbench:appearance'));
     },
     config(value = {}) {
       if (value.theme) this.setTheme(value.theme);
       if (value.uiFontSize) this.setFontSize(value.uiFontSize);
       this.details(value);
+      palette();
+      try{localStorage.setItem('wb-theme-preset',preset);}catch{}
+      publish(true);
     },
   };
   apply(preference);
+  channel?.addEventListener('message',event=>{if(!event.data.profileId||event.data.profileId!==window.workbenchRuntime?.profileId)return;receiving=true;try{if(event.data.saved)window.workbenchAppearance.config(event.data.value);else {window.workbenchAppearance.previewTheme(event.data.value.theme);window.workbenchAppearance.previewFontSize(event.data.value.uiFontSize||14);window.workbenchAppearance.details(event.data.value);palette();}}finally{receiving=false;}});
   try {
     window.workbenchAppearance.setFontSize(
       localStorage.getItem("wb-ui-font-size") || 14,
@@ -176,9 +221,11 @@
     localStorage.removeItem("wb-sidebar-width");
   } catch (_) {}
   function applySidebar() {
+    const narrow=innerWidth/(Number(document.documentElement.dataset.uiScale||100)/100)<960;
+    const collapsed=sidebarCollapsed||narrow;
     document.documentElement.classList.toggle(
       "sidebar-collapsed",
-      sidebarCollapsed,
+      sidebarCollapsed || narrow,
     );
     document.documentElement.style.setProperty(
       "--sidebar-width",
@@ -186,15 +233,19 @@
     );
     const toggle = document.getElementById("sidebar-toggle");
     if (toggle) {
-      toggle.setAttribute("aria-expanded", String(!sidebarCollapsed));
+      toggle.setAttribute("aria-expanded", String(!(sidebarCollapsed || narrow)));
       toggle.setAttribute(
         "aria-label",
-        sidebarCollapsed ? "展开侧边栏" : "收起侧边栏",
+        collapsed ? "展开侧边栏" : "收起侧边栏",
       );
-      toggle.title = sidebarCollapsed ? "展开侧边栏" : "收起侧边栏";
+      toggle.title = collapsed ? "展开侧边栏" : "收起侧边栏";
     }
   }
   applySidebar();
+  let resizeFrame=0;
+  const resizeSidebar=()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(applySidebar);};
+  window.addEventListener('resize',resizeSidebar);
+  window.addEventListener('workbench:zoom',resizeSidebar);
   onReady(() => {
     apply(preference);
     applySidebar();
@@ -251,14 +302,6 @@
       if (name)
         el.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]}</svg>`;
     });
-    document
-      .getElementById("theme-toggle")
-      ?.addEventListener("click", (event) => {
-        window.workbenchAppearance.setTheme(
-          theme === "dark" ? "light" : "dark",
-          event,
-        );
-      });
   });
   window.addEventListener("storage", (event) => {
     if (event.key === "zcode-theme") apply(event.newValue || "zai-light");

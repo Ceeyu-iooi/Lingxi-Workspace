@@ -6,6 +6,7 @@
   --canvas:var(--color-background); --surface:var(--color-card); --surface-soft:var(--color-surface);
   --line:var(--color-border); --ink:var(--color-foreground); --ink-2:var(--color-foreground-subtle); --ink-3:var(--color-foreground-subtlest);
   --accent:var(--color-icon-blue,var(--color-terminal-bright-blue)); --accent-soft:var(--color-accent);
+  --accent-text:var(--ink); --accent-foreground:#000;
   --green:var(--color-success); --green-soft:var(--color-interaction-confirmation-surface); --green-deep:var(--color-primary);
   --purple:var(--color-idle-task); --purple-soft:var(--color-idle-task-surface); --danger:var(--color-destructive);
   --summary:var(--color-card); --summary-ink:var(--color-foreground);

@@ -27,6 +27,7 @@ import { Codex } from "./codex.ts";
 import { Agents } from "./agents.ts";
 import { Sources } from "./sources.ts";
 import { UsageAccounts } from "./usage-accounts.ts";
+import {DeepseekAuthorization} from './deepseek-authorization.ts';
 import { Relay } from "./relay.ts";
 import { Pricing, ValuationTasks } from "./pricing.ts";
 import { parseUsageFile } from "./usage-import.ts";
@@ -88,6 +89,7 @@ export async function startServer(
     agents: Agents,
     sources: Sources,
     accounts: UsageAccounts,
+    deepseekAuthorization:DeepseekAuthorization,
     relay: Relay,
     pricing: Pricing,
     valuation: ValuationTasks;
@@ -122,6 +124,8 @@ export async function startServer(
     agents = new Agents(monitor);
     sources = new Sources(codex);
     accounts = new UsageAccounts(monitor, control);
+    deepseekAuthorization?.cancel();
+    deepseekAuthorization=new DeepseekAuthorization(accounts);
     relay = new Relay(accounts);
     pricing = new Pricing(monitor);
     if(!profile.db.usageStorage&&installUsageStorage(profile.db)){
@@ -429,8 +433,6 @@ export async function startServer(
       Object.entries(control.state().config).filter(([k]) =>
         [
           "codexValuationEnabled",
-          "zcodeValuationEnabled",
-          "dshValuationEnabled",
           "promptAutosave",
           "promptAIEnabled",
         ].includes(k),
@@ -441,8 +443,6 @@ export async function startServer(
     const value = body(request),
       allowed = [
         "codexValuationEnabled",
-        "zcodeValuationEnabled",
-        "dshValuationEnabled",
         "promptAutosave",
         "promptAIEnabled",
       ];
@@ -453,7 +453,7 @@ export async function startServer(
     )
       throw new Error("功能开关格式不正确");
     const tasks: JsonObject[] = [];
-    for (const scope of ["codex", "zcode", "dsh"])
+    for (const scope of ["codex"])
       if (scope + "ValuationEnabled" in value) {
         if (value[scope + "ValuationEnabled"])
           tasks.push(valuation.start(scope));
@@ -828,8 +828,7 @@ export async function startServer(
     const params = qs(request),
       scope = params.scope || "";
     params.valuation_enabled =
-      ["codex", "zcode", "dsh"].includes(scope) &&
-      control.state().config[scope + "ValuationEnabled"] === true;
+      scope === "codex" && !!valuation.status("codex").coverage;
     const result =
       scope === "api"
         ? accounts.providerSnapshot(params)
@@ -838,6 +837,7 @@ export async function startServer(
           : monitor.snapshot(params);
     return {
       ...result,
+      ...(scope==='codex'?{pricing:{...result.pricing,enabled:control.state().config.codexValuationEnabled===true,available:!!valuation.status('codex').coverage}}:{}),
       query: Object.fromEntries(
         Object.entries(params).filter(([k]) => k !== "valuation_enabled"),
       ),
@@ -851,6 +851,9 @@ export async function startServer(
   app.post('/api/codex/local-authorization',(request,reply)=>local(request)?codexLogin.authorize(body(request).authorized===true):reply.code(403).send({error:'本地凭据授权仅允许本机操作'}));
   app.get("/api/codex/account", () => codexLogin.account());
   app.get("/api/usage/connections", () => accounts.list());
+  app.post('/api/deepseek/authorization/start',(request,reply)=>local(request)?deepseekAuthorization.start(String(body(request).connectionId||'')):reply.code(403).send({error:'授权窗口仅允许在本机打开'}));
+  app.get('/api/deepseek/authorization/status',(request,reply)=>local(request)?deepseekAuthorization.state():reply.code(403).send({error:'授权状态仅允许本机查看'}));
+  app.post('/api/deepseek/authorization/cancel',(request,reply)=>local(request)?deepseekAuthorization.cancel():reply.code(403).send({error:'授权操作仅允许本机执行'}));
   app.post("/api/usage/connection", (request) => accounts.save(body(request)));
   for (const route of [
     "/api/usage/connection/sync",
@@ -906,8 +909,7 @@ export async function startServer(
     const params: JsonObject = { ...qs(request), include_all: true },
       scope = params.scope;
     params.valuation_enabled =
-      ["codex", "zcode", "dsh"].includes(scope) &&
-      control.state().config[scope + "ValuationEnabled"] === true;
+      scope === "codex" && !!valuation.status("codex").coverage;
     const result =
       scope === "api"
         ? accounts.providerSnapshot(params)
@@ -974,16 +976,19 @@ export async function startServer(
     );
   });
   app.get('/api/valuation/summary',async(request)=>{
-    const params=qs(request),scope=params.scope||'codex';if(!['codex','zcode','dsh'].includes(scope))throw new Error('计价工具不正确');
+    const params=qs(request),scope=params.scope||'codex';if(scope!=='codex')throw new Error('计价工具不正确');
     const enabled=control.state().config[scope+'ValuationEnabled']===true;
-    const values:JsonObject={};if(enabled){if(valuation.status(scope).status!=="running")await pricing.prepareRows(scope);for(const currency of ['USD','CNY']){const value=monitor.snapshot({...params,scope,source:scope,valuation_enabled:true,value_currency:currency}).valuation;values[currency]={summary:value.summary,costCurrency:currency,issues:value.summary.valueIssues};}}
-    return {enabled,values,task:valuation.status(scope),usageVersion:monitor.version(),priceVersion:pricing.version()};
+    const available=!!valuation.status(scope).coverage;const values:JsonObject={};if(available){for(const currency of ['USD','CNY']){const value=monitor.snapshot({...params,scope,source:scope,valuation_enabled:true,value_currency:currency}).valuation;values[currency]={summary:value.summary,costCurrency:currency,issues:value.summary.valueIssues};}}
+    return {enabled,available,values,task:valuation.status(scope),usageVersion:monitor.version(),priceVersion:pricing.version()};
   });
   app.get("/api/valuation/status", (request) =>
     valuation.status(qs(request).scope || "codex"),
   );
   app.post("/api/valuation/prepare", (request) =>
     valuation.start(body(request).scope || "codex"),
+  );
+  app.post("/api/valuation/refresh", (request) =>
+    valuation.start(body(request).scope || "codex", true),
   );
   app.post("/api/valuation/disable", (request) =>
     valuation.disable(body(request).scope || "codex"),
@@ -993,7 +998,7 @@ export async function startServer(
       scope = params.scope || "codex",
       metric = params.metric || "tokens";
     params.valuation_enabled =
-      control.state().config[scope + "ValuationEnabled"] === true;
+      scope === "codex" && !!valuation.status("codex").coverage;
     const snapshot =
         scope === "api"
           ? accounts.providerSnapshot({ ...params, period: "all" })
@@ -1108,6 +1113,12 @@ export async function startServer(
     }
     if (!existsSync(file) || !statSync(file).isFile())
       return reply.code(404).send({ error: "not found" });
+    const info=statSync(file),etag='W/"'+info.size.toString(16)+'-'+Math.trunc(info.mtimeMs).toString(16)+'"';
+    const immutable=/^assets\/[^/]+-[\w-]+\.(?:js|css)$/.test(name);
+    if(!['.html','.md'].includes(extname(file))){
+      reply.header('ETag',etag).header('Cache-Control',immutable?'public, max-age=31536000, immutable':'public, max-age=0, must-revalidate');
+      if(request.headers['if-none-match']===etag)return reply.code(304).send();
+    }
     const mime: JsonObject = {
       ".html": "text/html; charset=utf-8",
       ".md": "text/markdown; charset=utf-8",
@@ -1139,12 +1150,13 @@ export async function startServer(
     backgroundBusy = true;
     try {
       const config = control.state().config;
-      for (const scope of ["codex", "zcode", "dsh"])
+      deepseekAuthorization?.cancel();
+      for (const scope of ["codex"])
         if (
           config[scope + "Enabled"] &&
           (scope !== "codex" || accounts.bound())
         )
-          {await syncAgent(scope).catch(() => {});if(config[scope+"ValuationEnabled"]&&valuation.status(scope).status!=="running")valuation.start(scope,true); }
+          {await syncAgent(scope).catch(() => {}); }
       accounts.tick();
     } finally {
       backgroundBusy = false;
@@ -1174,8 +1186,9 @@ export async function startServer(
     closing = true;
     clearInterval(background);
     clearInterval(storagePacking);
+    deepseekAuthorization?.cancel();
     if (profile.meta) {
-      for (const scope of ["codex", "zcode", "dsh"])
+      for (const scope of ["codex"])
         if (valuation.status(scope).status === "running")
           valuation.disable(scope);
       while (backgroundBusy)

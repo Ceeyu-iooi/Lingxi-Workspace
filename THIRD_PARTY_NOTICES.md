@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-Personal Workbench Skills is distributed for non-commercial use under CC BY-NC 4.0. The dependencies below retain their own licenses. The original skill provenance is listed below; this application's added ZCode theme source is described in its separate notice at the end of this file.
+Lingxi Workbench is distributed under CC BY-NC 4.0. Third-party dependencies retain their own licenses. The tables below preserve the provenance of the original workbench skills; the ZCode theme sources have a separate notice below.
 
 ## Design Generation
 

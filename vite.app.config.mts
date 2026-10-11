@@ -17,6 +17,8 @@ export default defineConfig({
     {
       name: "lingxi-interaction-runtime",
       resolveId(id) {
+        if(id === "virtual:lingxi-theme-presets")return resolve(root,"src/shared/theme-presets.ts");
+        if(id === "virtual:lingxi-accent-colors")return resolve(root,"src/shared/accent-colors.ts");
         if (id === "virtual:lingxi-runtime") return "\0lingxi-runtime";
         if (id === "virtual:lingxi-standalone") return "\0lingxi-standalone";
       },
@@ -45,7 +47,7 @@ export default defineConfig({
               ).replace(/^\/\/ @ts-nocheck\s*/, "").replace(/^import .*?;\s*$/gm, ""),
             )
             .join("\n;\n");
-        return `import {marked} from "marked"; import DOMPurify from "dompurify"; export function ${standalone ? "installStandalone" : "installRuntime"}(){\nfunction onReady(callback){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',callback,{once:true});else queueMicrotask(()=>callback(new Event('DOMContentLoaded')));}\n${source}\n${standalone ? "" : "return appReady.then(()=>({render,refresh,getUser:()=>user}));"}\n}`;
+        return `import {marked} from "marked"; import DOMPurify from "dompurify"; import {themePresets,presetPalette} from "virtual:lingxi-theme-presets"; import {accentColors} from "virtual:lingxi-accent-colors"; export function ${standalone ? "installStandalone" : "installRuntime"}(){\nfunction onReady(callback){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',callback,{once:true});else queueMicrotask(()=>callback(new Event('DOMContentLoaded')));}\n${source}\n${standalone ? "" : "return appReady.then(()=>({render,refresh,getUser:()=>user}));"}\n}`;
       },
     },
   ],

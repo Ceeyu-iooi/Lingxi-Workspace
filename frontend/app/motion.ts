@@ -1,4 +1,6 @@
 // Shared presentation lifecycle; business values and persistence stay unchanged.
+import './page-zoom';
+import '../../static/refinements.css';
 const quiet = () => document.documentElement.dataset.motion === 'reduced' || matchMedia('(prefers-reduced-motion: reduce)').matches;
 const ease = 'cubic-bezier(.22,1,.36,1)';
 const nativeShow = HTMLDialogElement.prototype.showModal;
@@ -24,6 +26,8 @@ function expand(node: HTMLElement, origin: DOMRect | null, leaving = false) {
   return node.animate(leaving ? [end,start] : [start,end], { duration: leaving ? 200 : 260, easing: ease }).finished.catch(() => {});
 }
 HTMLDialogElement.prototype.showModal = function () {
+  const header=this.querySelector<HTMLElement>('.control-dialog-head,.settings-center-head,.wb-dialog-head');
+  if(header&&!header.querySelector('.lingxi-window-logo')){const logo=document.createElement('img');logo.className='lingxi-window-logo';logo.src='assets/lingxi-logo.svg';logo.alt='灵犀';header.prepend(logo);}
   if (!(this as any)._motionCancelInstalled) {
     (this as any)._motionCancelInstalled=true;
     this.addEventListener('cancel',event=>{if(!event.defaultPrevented){event.preventDefault();this.close();}});

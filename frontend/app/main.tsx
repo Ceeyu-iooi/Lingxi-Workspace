@@ -16,7 +16,10 @@ declare global {
     workbenchRuntime?: RuntimeInfo;
     workbenchDesktop?: { applicationReady?: () => Promise<void> };
     lingxiRuntime?: Runtime;
-    workbenchAppearance?: { setTheme: (value: string, origin?: Event) => void };
+    workbenchAppearance?: {
+      setTheme: (value: string, origin?: Event) => void;
+      commitTheme: (value: string, origin?: Event) => Promise<void>;
+    };
     workbenchNotify?: (message: string) => void;
   }
 }
@@ -99,7 +102,7 @@ function Menus() {
     if (value === "search") (window as any).WorkbenchCommands?.open();
     if (value === "sidebar") document.getElementById("sidebar-toggle")?.click();
     if (value === "theme")
-      window.workbenchAppearance?.setTheme(
+      window.workbenchAppearance?.commitTheme(
         document.documentElement.dataset.theme === "dark" ? "light" : "dark",
         event.nativeEvent,
       );
@@ -220,6 +223,10 @@ function App() {
           className="theme-toggle"
           type="button"
           aria-pressed="false"
+          onClick={(event) => window.workbenchAppearance?.commitTheme(
+            document.documentElement.dataset.theme === "dark" ? "light" : "dark",
+            event.nativeEvent,
+          )}
         >
           <span className="theme-symbol" aria-hidden="true">
             ◐

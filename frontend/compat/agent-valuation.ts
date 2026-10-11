@@ -3,7 +3,7 @@
 /* Account-specific preparation barrier; all ordinary filtering stays local. */
 (() => {
   const U = window.WorkbenchUI,
-    names = { codex: "Codex", zcode: "ZCode", dsh: "DeepSeek Harness" },
+    names = { codex: "Codex" },
     states = new WeakMap();
   let modal = null;
   const signalFeatures = (features) =>
@@ -205,6 +205,15 @@
         );
     }
     panel.dataset.scope = scope;
+    if (!panel.querySelector('[data-value-refresh]')) {
+      const refresh = U.el('button', {type:'button',class:'btn ghost valuation-refresh','data-value-refresh':'','aria-label':'更新价格并增量计算',title:'更新价格并增量计算'}, '↻');
+      panel.querySelector('[data-slide]').before(refresh);
+      refresh.onclick = async () => {
+        refresh.disabled=true;
+        try { const task=await U.request('POST','/api/valuation/refresh',{scope}); if(task.status!=='complete')await preparation(scope,task); signalFeatures(await U.request('GET','/api/features')); }
+        catch(error){U.notify(error.message,{kind:'error'});} finally {if(refresh.isConnected)refresh.disabled=false;}
+      };
+    }
     panel.querySelector("h3").textContent =
       scope === "codex"
         ? "API等效参考价值"
@@ -225,11 +234,13 @@
     if (
       state.scope !== scope ||
       state.enabled !== enabled ||
-      state.compatible !== compatible
+      state.compatible !== compatible ||
+      state.slideHost !== panel.querySelector('[data-slide]')
     ) {
       state.scope = scope;
       state.enabled = enabled;
       state.compatible = compatible;
+      state.slideHost=panel.querySelector('[data-slide]');
       window.WorkbenchReact.slideCommit(panel.querySelector("[data-slide]"), {
         enabled,
         compact: scope === "codex",
@@ -272,7 +283,7 @@
     if (compatible && !state.resumed) {
       state.resumed = true;
       Promise.all(
-        ["codex", "zcode", "dsh"].map((x) =>
+        ["codex"].map((x) =>
           U.request("GET", "/api/valuation/status?scope=" + x),
         ),
       )

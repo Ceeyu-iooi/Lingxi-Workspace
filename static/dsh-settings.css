@@ -4,8 +4,8 @@
 :is(.settings-center-modal,.usage-supplier-manager,.usage-lmu-auth){--dsh-panel:var(--color-card);--dsh-module:var(--surface-soft);--dsh-border:var(--line);--dsh-muted:var(--ink-2);--dsh-selected:var(--color-selected);color:var(--ink)}
 :is(.settings-center-modal,.usage-supplier-manager){width:min(800px,calc(100vw - 48px));height:min(800px,calc(100dvh - 48px));max-height:calc(100dvh - 48px);padding:0!important;border:1px solid var(--dsh-border);border-radius:20px;overflow:hidden;background:var(--dsh-panel);box-shadow:0 20px 70px #0003}
 :is(.settings-center-modal,.usage-supplier-manager)::backdrop{background:#0004;backdrop-filter:blur(2px)}
-.settings-center-modal .settings-center-head{position:absolute;top:14px;right:14px;padding:0;border:0;z-index:4;pointer-events:none}
-.settings-center-head h2{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+
+
 .settings-center-modal .settings-center-head button,.usage-supplier-manager>[data-manager-close]{pointer-events:auto;display:grid;place-items:center;min-height:28px!important;width:28px;height:28px;padding:0!important;border:0!important;border-radius:8px;background:transparent;font-size:20px;line-height:1;box-shadow:none}
 .settings-center-modal .settings-center-head button:hover,.usage-supplier-manager>[data-manager-close]:hover{background:var(--dsh-module)}
 .settings-center-content{height:100%;overflow:hidden;min-height:0}

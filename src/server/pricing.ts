@@ -186,15 +186,16 @@ export class Pricing {
       `CREATE TABLE IF NOT EXISTS radar_days(day TEXT PRIMARY KEY,body TEXT,digest TEXT,source TEXT,observed TEXT);CREATE TABLE IF NOT EXISTS radar_meta(id INTEGER PRIMARY KEY,version INTEGER);INSERT OR IGNORE INTO radar_meta VALUES(1,0);CREATE TABLE IF NOT EXISTS radar_fetches(url TEXT PRIMARY KEY,etag TEXT,attempt REAL,success REAL,failures INTEGER,error TEXT);CREATE TABLE IF NOT EXISTS value_fx(day TEXT PRIMARY KEY,usd_cad TEXT,cny_cad TEXT,source TEXT,observed TEXT,digest TEXT);CREATE TABLE IF NOT EXISTS radar_values(owner TEXT,id TEXT,currency TEXT,fingerprint TEXT,result TEXT,PRIMARY KEY(owner,id,currency));CREATE TABLE IF NOT EXISTS radar_observations(url TEXT,digest TEXT,body TEXT,observed TEXT,PRIMARY KEY(url,digest));CREATE TABLE IF NOT EXISTS evidence_blobs(digest TEXT PRIMARY KEY,codec TEXT NOT NULL,raw_size INTEGER NOT NULL,body BLOB NOT NULL);`,
     );
     const db=monitor.profile.db;db.exec("CREATE TABLE IF NOT EXISTS valuation_dirty(owner TEXT,id TEXT,PRIMARY KEY(owner,id));CREATE TABLE IF NOT EXISTS valuation_rule(owner TEXT PRIMARY KEY,rule TEXT);");
-    for(const op of ['INSERT','UPDATE']){db.exec(`CREATE TRIGGER IF NOT EXISTS value_event_${op.toLowerCase()} AFTER ${op} ON events WHEN NEW.source IN ('codex','zcode','dsh') BEGIN INSERT OR IGNORE INTO valuation_dirty VALUES(NEW.owner,NEW.id); END;`);}
-    for(const table of ['codex_evidence','agent_evidence'])for(const op of ['INSERT','UPDATE','DELETE']){const row=op==='DELETE'?'OLD':'NEW';db.exec(`CREATE TRIGGER IF NOT EXISTS value_${table}_${op.toLowerCase()} AFTER ${op} ON ${table} BEGIN INSERT OR IGNORE INTO valuation_dirty VALUES(${row}.owner,${row}.id); END;`);}
+    for(const op of ['INSERT','UPDATE']){db.exec('DROP TRIGGER IF EXISTS value_event_'+op.toLowerCase());db.exec(`CREATE TRIGGER IF NOT EXISTS value_event_${op.toLowerCase()} AFTER ${op} ON events WHEN NEW.source IN ('codex') BEGIN INSERT OR IGNORE INTO valuation_dirty VALUES(NEW.owner,NEW.id); END;`);}
+    for(const op of ['INSERT','UPDATE','DELETE'])db.exec('DROP TRIGGER IF EXISTS value_agent_evidence_'+op.toLowerCase());
+    for(const table of ['codex_evidence'])for(const op of ['INSERT','UPDATE','DELETE']){const row=op==='DELETE'?'OLD':'NEW';db.exec(`CREATE TRIGGER IF NOT EXISTS value_${table}_${op.toLowerCase()} AFTER ${op} ON ${table} BEGIN INSERT OR IGNORE INTO valuation_dirty VALUES(${row}.owner,${row}.id); END;`);}
     for(const table of ['radar_days','value_fx'])for(const op of ['INSERT','UPDATE']){
       const condition=table==='radar_days'?"e.at>=NEW.day||'T00:00:00' AND e.at<date(NEW.day,'+2 days')||'T00:00:00'":"e.at>=date(NEW.day,'-1 day')||'T16:00:00' AND e.at<date(NEW.day,'+7 days')||'T16:00:00'";
-      const name=`value_${table}_${op.toLowerCase()}`,sql=`CREATE TRIGGER ${name} AFTER ${op} ON ${table} BEGIN INSERT OR IGNORE INTO valuation_dirty SELECT e.owner,e.id FROM usage_versions u CROSS JOIN events e ON e.owner=u.owner WHERE e.source IN ('codex','zcode','dsh') AND ${condition}; END`;
+      const name=`value_${table}_${op.toLowerCase()}`,sql=`CREATE TRIGGER ${name} AFTER ${op} ON ${table} BEGIN INSERT OR IGNORE INTO valuation_dirty SELECT e.owner,e.id FROM usage_versions u CROSS JOIN events e ON e.owner=u.owner WHERE e.source IN ('codex') AND ${condition}; END`;
       const old=db.prepare("SELECT sql FROM sqlite_schema WHERE type='trigger' AND name=?").get(name);
       if(old?.sql!==sql){db.exec('DROP TRIGGER IF EXISTS '+name);db.exec(sql);}
     }
-    const rule=db.prepare('SELECT rule FROM valuation_rule WHERE owner=?').get(monitor.profile.owner) as JsonObject|undefined;if(rule?.rule!=='incremental-v2'){db.prepare("INSERT OR IGNORE INTO valuation_dirty SELECT owner,id FROM events WHERE owner=? AND source IN ('codex','zcode','dsh')").run(monitor.profile.owner);db.prepare('INSERT OR REPLACE INTO valuation_rule VALUES(?,?)').run(monitor.profile.owner,'incremental-v2');}
+    const rule=db.prepare('SELECT rule FROM valuation_rule WHERE owner=?').get(monitor.profile.owner) as JsonObject|undefined;if(rule?.rule!=='incremental-codex-v3'){monitor.profile.transaction(()=>{db.prepare("DELETE FROM radar_values WHERE owner=? AND id IN (SELECT id FROM events WHERE owner=? AND source IN ('zcode','dsh'))").run(monitor.profile.owner,monitor.profile.owner);db.prepare("DELETE FROM valuation_dirty WHERE owner=? AND id IN (SELECT id FROM events WHERE owner=? AND source IN ('zcode','dsh'))").run(monitor.profile.owner,monitor.profile.owner);});db.prepare("INSERT OR IGNORE INTO valuation_dirty SELECT owner,id FROM events WHERE owner=? AND source IN ('codex')").run(monitor.profile.owner);db.prepare('INSERT OR REPLACE INTO valuation_rule VALUES(?,?)').run(monitor.profile.owner,'incremental-v2');}
   }
   store(body: string) {
     const cached=this.proofCache.get(body);if(cached)return cached;
@@ -730,7 +731,7 @@ export class Pricing {
     return result;
   }
   requirements(scope='') {
-    const p=this.monitor.profile,where=scope?' AND source=?':'';return p.db.prepare("SELECT DISTINCT substr(at,1,10) AS day,model FROM events WHERE owner=? AND source IN ('codex','zcode','dsh')"+where+" ORDER BY day").all(...(scope?[p.owner,scope]:[p.owner])).map((row:JsonObject)=>({at:row.day+'T00:00:00Z',model:row.model}));
+    const p=this.monitor.profile,where=scope?' AND source=?':'';return p.db.prepare("SELECT DISTINCT substr(at,1,10) AS day,model FROM events WHERE owner=? AND source IN ('codex')"+where+" ORDER BY day").all(...(scope?[p.owner,scope]:[p.owner])).map((row:JsonObject)=>({at:row.day+'T00:00:00Z',model:row.model}));
   }
   async prepareRows(scope:string,check:()=>void=()=>{},progress?:(v:JsonObject)=>void){
     const p=this.monitor.profile,db=p.db,where=scope?' AND e.source=?':'';
@@ -873,7 +874,7 @@ export class ValuationTasks {
     readonly syncAgent: (scope: string) => Promise<unknown>,
   ) {}
   private flag(scope: string) {
-    if (!["codex", "zcode", "dsh"].includes(scope))
+    if (scope !== "codex")
       throw new Error("计价工具不正确");
     return scope + "ValuationEnabled";
   }
@@ -916,7 +917,7 @@ export class ValuationTasks {
     const current = this.status(scope);
     if (current.status === "running") return current;
     const p = this.control.profile;
-    if(!background&&current.coverage&&current.versions?.usage===String(this.pricing.monitor.version())&&current.versions?.priceAndFx===this.pricing.version()){this.control.saveConfig({[this.flag(scope)]:true});queueMicrotask(()=>this.start(scope,true));return {...current,status:'complete'};}
+    if(!background && current.coverage){this.control.saveConfig({[this.flag(scope)]:true});return {...current,status:'complete'};}
     const id = uid(),
       owner = p.owner,
       state: JsonObject = {
@@ -933,6 +934,7 @@ export class ValuationTasks {
       };
     this.live.add(id);
     if(!background)this.control.saveConfig({ [this.flag(scope)]: false });
+    const enableAfter = !background || this.control.state().config[this.flag(scope)] === true;
     p.write("valuation-" + scope, state);
     const check = () => {
         const saved = p.read<JsonObject>("valuation-" + scope, {});
@@ -948,7 +950,6 @@ export class ValuationTasks {
       };
     Promise.resolve()
       .then(async () => {
-        await this.syncAgent(scope);
         check();
         const rows = this.pricing.requirements(scope),
           dates = rows
@@ -959,7 +960,7 @@ export class ValuationTasks {
         const result = await this.pricing.sync(
           dates[0] || today,
           dates.at(-1) || today,
-          { rows, scope, force: false, progress: update, check },
+          { rows, scope, force: background, progress: update, check },
         );
         if (result.errors.length)
           throw new Error("价格或汇率网络同步失败；缓存保留，请重试或取消");
@@ -1010,7 +1011,7 @@ export class ValuationTasks {
           finished: Date.now() / 1000,
         });
         p.transaction(() => {
-          this.control.saveConfig({ [this.flag(scope)]: true });
+          this.control.saveConfig({ [this.flag(scope)]: enableAfter });
           p.write("valuation-" + scope, state);
         });
       })

@@ -25578,5 +25578,25 @@
       ],
       "failures": []
     }
-  ]
+  ],
+  "version": "0.1.2",
+  "refinements": {
+    "themePresets": 6,
+    "carouselSchemes": [
+      "stack",
+      "rail"
+    ],
+    "sharedAppearance": true,
+    "sidebar": "240/64-left",
+    "pageZoom": "whole-application",
+    "harnessReader": "zstd-all-frames",
+    "deepseekAuthorization": "one-click-local-browser",
+    "nativeReview": "pending",
+    "themeScope": "six light main-shell presets; one default mist dark mode",
+    "tableMetricInset": "18px; narrow layout flows right below heading",
+    "independentTheme": "light/dark only; navigation follows mode",
+    "windowTitle": "left logo plus purpose label",
+    "accentRoles": "strong fill, soft surface, readable accent text, contrasting solid foreground",
+    "legacyColorAccent": "soft surface"
+  }
 }

@@ -353,7 +353,8 @@ const layoutPrefs = {
 function setPageZoom(value) {
   const zoom = Math.min(160, Math.max(60, Number(value) || 100));
   document.documentElement.style.removeProperty("zoom");
-  document.documentElement.style.setProperty("--ui-scale", String(zoom / 100));
+  window.WorkbenchPageZoom?.set(zoom);
+  document.documentElement.style.setProperty("--ui-scale", "1");
   document.documentElement.dataset.uiScale = String(zoom);
   document.documentElement.style.setProperty(
     "--page-zoom-scale",
