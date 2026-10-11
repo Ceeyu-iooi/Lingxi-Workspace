@@ -115,3 +115,11 @@ html[data-profile-required=true] .side,html[data-profile-required=true] .tabbar,
 .lingxi-release-notes{line-height:1.8;overflow-wrap:anywhere;padding:4px 0 16px}.lingxi-release-notes h2{font-size:20px;margin:24px 0 12px}.lingxi-release-notes h3{font-size:16px;margin:20px 0 10px}.lingxi-release-notes ul,.lingxi-release-notes ol{padding-left:22px;margin:10px 0 20px}.lingxi-release-notes li{margin:6px 0}.lingxi-release-notes p{margin:12px 0}.lingxi-release-notes code{font-size:.9em;overflow-wrap:anywhere}
 
 .lingxi-module-bar .usage-tabs .usage-manage-button{margin-left:auto!important;flex:none!important;border:0!important;box-shadow:none!important;background:transparent!important;border-radius:0;padding:8px 0 8px 16px;min-width:0;height:auto;color:var(--ink-2)}.lingxi-module-bar .usage-tabs .usage-manage-button:hover{color:var(--accent);background:transparent!important}
+/* Quiet layers: a readable canvas, content surfaces and compact supporting cards. */
+.main-shell :is(.card,.ob-panel,.sum-card,.wb-library-card,.account-quota-window){border-radius:16px;border:1px solid var(--line);box-shadow:0 10px 28px -26px color-mix(in srgb,var(--ink) 34%,transparent)}
+.main-shell :is(.usage-lifetime,.usage-summary){padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--surface-soft);gap:12px}
+.main-shell :is(.usage-lifetime,.usage-summary)>div{border-radius:10px;background:var(--surface);padding:14px 16px;min-width:0}
+.main-shell .resource-row{border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:var(--surface)}
+.usage-key-editor{border:1px solid var(--line);border-radius:16px;padding:20px;background:var(--surface);box-shadow:0 14px 32px -28px #0005}.usage-key-editor .control-field input{height:38px;min-height:38px;padding:8px 12px}.usage-key-editor .control-field{margin-bottom:12px}.usage-key-editor .meta{line-height:1.7;margin:8px 0 14px}.usage-key-editor .usage-platform-import{margin-block:14px}
+@media(max-width:719px){.main-shell :is(.usage-lifetime,.usage-summary){padding:8px;gap:8px}.main-shell :is(.usage-lifetime,.usage-summary)>div{padding:10px}}
+[data-codex-error][data-pending=true]{color:var(--ink-2)}

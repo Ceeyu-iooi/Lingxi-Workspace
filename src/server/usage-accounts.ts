@@ -11,6 +11,7 @@ import {
   providerJSON,
   platformJSON,
   readPreset,
+  normalizeUsageQueryURL,
 } from "./provider-network.ts";
 import {
   normalizeGLM,
@@ -224,9 +225,9 @@ export class UsageAccounts {
           Object.entries(PRESETS).map(([k, v]) => [k, v.url]),
         ),
       },
-      apiUrl = String(
+      apiUrl = normalizeUsageQueryURL(kind,String(
         body.apiUrl ?? previous?.apiUrl ?? defaults[kind] ?? "",
-      ).replace(/\/+$/, "");
+      ));
     if (PRESETS[kind]) validateURL(apiUrl, kind);
     else if (["deepseek", "glm"].includes(kind)) {
       const url = validateURL(apiUrl),
@@ -316,6 +317,7 @@ export class UsageAccounts {
       kind === "deepseek" &&
       (key || previousKey) &&
       !tracking &&
+      platform &&
       !body.clearPlatformToken
     ) {
       const matched = await this.matchDeepseek(key || previousKey, platform);
@@ -486,17 +488,10 @@ export class UsageAccounts {
       }
       return out;
     });
-    let models: string[] = [];
-    try {
-      models = (await get("/models")).data
-        .filter((r: JsonObject) => r?.id)
-        .map((r: JsonObject) => String(r.id).slice(0, 180))
-        .slice(0, 100);
-    } catch {}
     return {
       balances,
       available: data.is_available,
-      models,
+      models: [],
       coverage:
         "仅来自 DeepSeek 官方 API；公开余额接口未提供历史 Token、模型用量或请求明细，不读取本机日志。",
       unavailable: { tokens: "DeepSeek 公开 API 尚未提供历史 Token 查询接口" },
@@ -871,7 +866,12 @@ export class UsageAccounts {
             const credential =
               row.kind === "deepseek" ? keys["platform:" + id] : key;
             if (!credential) throw new Error("历史查询凭据未配置，请编辑连接");
-            snapshot = await this.history(row, credential);
+            try { snapshot = await this.history(row, credential); }
+            catch (error) {
+              if (row.kind !== "deepseek" || !key) throw error;
+              snapshot = await this.deepseek(key);
+              snapshot.unavailable.history = error instanceof Error ? error.message : "历史授权暂不可用";
+            }
           } else {
             if (!key) throw new Error("密钥未配置，请编辑连接");
             if (row.kind === "glm" && !row.apiUrl.includes("api.z.ai"))

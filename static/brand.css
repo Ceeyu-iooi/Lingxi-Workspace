@@ -28,3 +28,17 @@
 :root[data-motion=reduced] .lingxi-mark *{animation:none!important}
 :root[data-motion=reduced] .lingxi-progress-fill{transition:none}
 @media(prefers-reduced-motion:reduce){.lingxi-mark *{animation:none!important}.lingxi-progress-fill{transition:none}}
+/* Six additional identity studies: always retain the original connecting mark. */
+.brand-ripple circle{stroke:currentColor;stroke-width:1;opacity:.2;transform-origin:60px 60px;animation:lingxi-ripple 4.8s ease-out infinite}.brand-ripple circle+circle{animation-delay:-2.4s}
+.brand-stars path{stroke:currentColor;stroke-width:.6;opacity:.15}.brand-stars circle{fill:currentColor;opacity:.35;animation:lingxi-star 5.4s ease-in-out infinite}.brand-stars circle:nth-child(3){animation-delay:-.9s}.brand-stars circle:nth-child(4){animation-delay:-1.8s}.brand-stars circle:nth-child(5){animation-delay:-2.7s}.brand-stars circle:nth-child(6){animation-delay:-3.6s}.brand-stars circle:nth-child(7){animation-delay:-4.5s}
+.brand-ribbons path{stroke:currentColor;stroke-width:1;opacity:.3;stroke-dasharray:40 60;animation:lingxi-ribbon 5s linear infinite}.brand-ribbons path+path{animation-direction:reverse;animation-delay:-2.5s;opacity:.2}
+.brand-beacons path{stroke:currentColor;stroke-width:1.5;stroke-linecap:round;opacity:.25;animation:lingxi-beacon 4s ease-in-out infinite}[data-brand-motion=beacon] .lingxi-mark-body{transform-origin:60px 60px;animation:lingxi-soft-heart 4s ease-in-out infinite}
+.brand-portals path{stroke:currentColor;stroke-width:1;opacity:.3;transform-origin:60px 60px;animation:lingxi-portal 5.2s ease-in-out infinite}.brand-portals path+path{animation-delay:-2.6s}
+.brand-duet circle{stroke:currentColor;stroke-width:1;stroke-dasharray:12 88;opacity:.4;transform-origin:60px 60px;animation:lingxi-orbit 6s linear infinite}.brand-duet circle+circle{stroke-dasharray:18 82;opacity:.2;animation-direction:reverse;animation-duration:8s}
+@keyframes lingxi-ripple{0%{opacity:0;transform:scale(.86)}18%{opacity:.32}100%{opacity:0;transform:scale(1.22)}}
+@keyframes lingxi-star{0%,100%{opacity:.2}45%{opacity:.8}}
+@keyframes lingxi-ribbon{to{stroke-dashoffset:-100}}
+@keyframes lingxi-beacon{0%,100%{opacity:.15}45%{opacity:.6}}
+@keyframes lingxi-soft-heart{0%,100%{opacity:1;transform:scale(1)}45%{opacity:.82;transform:scale(.975)}}
+@keyframes lingxi-portal{0%,100%{opacity:.2;transform:scaleX(.94)}50%{opacity:.5;transform:scaleX(1.04)}}
+.brand-candidate-stage[data-offscreen=true] .lingxi-mark *{animation-play-state:paused!important}

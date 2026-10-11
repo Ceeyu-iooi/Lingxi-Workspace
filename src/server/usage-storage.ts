@@ -269,6 +269,58 @@ export function writeCompactValuationBatch(db:SQLite,owner:string,rows:any[]){
   for(const row of rows)writeCompactValuationPair(db,owner,row.id,row.usd,row.cny,row.keys,payloads.get(row));
 }
 
+/** Bounded Codex ingestion writes the same physical rows and fires the same
+ * audit/version/valuation triggers, without a compatibility view per field.
+ * Flush before conflict retirement so later evidence sees earlier events.
+ */
+export class CompactCodexWriter {
+  private pending:{e:any;event:any;path:string;delta:string}[]=[];
+  private bytes=2;
+  private strings=new Map<string,number|bigint>();
+  constructor(private db:SQLite,private owner:string){}
+  add(e:any,event:any,path:string){
+    const delta=JSON.stringify(tables.codex_evidence.cold!.map(field=>e[field])),size=Buffer.byteLength(delta)+1;
+    if(size>4*1024*1024)throw Error('Codex最小证据超过封块限制');
+    let imported=0;
+    if(this.pending.length&&(this.pending.length>=128||this.bytes+size>256*1024||this.pending.some(row=>row.e.id===e.id)))imported=this.flush();
+    this.pending.push({e,event,path,delta});this.bytes+=size;return imported;
+  }
+  flush(){
+    if(!this.pending.length)return 0;
+    if(!this.db.usageStorage||!this.db.inTransaction)throw Error('Codex封块必须在资料事务中执行');
+    const db=this.db,batch=this.pending;
+    this.pending=[];this.bytes=2;
+    const values=new Set<string>([this.owner]);
+    for(const row of batch){
+      values.add(row.path);
+      for(const field of tables.codex_evidence.columns)if(dictionaryColumns.has(field)&&row.e[field]!=null)values.add(row.e[field]);
+      if(row.event)for(const field of tables.events.columns)if(dictionaryColumns.has(field)&&row.event[field]!=null)values.add(row.event[field]);
+    }
+    if(this.strings.size>4096)this.strings.clear();
+    const missing=[...values].filter(value=>!this.strings.has(value));
+    if(missing.length){
+      db.prepare('INSERT OR IGNORE INTO usage_strings(value) VALUES '+missing.map(()=>'(?)').join(',')).run(...missing);
+      for(const row of db.prepare('SELECT k,value FROM usage_strings WHERE value IN ('+missing.map(()=>'?').join(',')+')').all(...missing))this.strings.set(row.value,row.k);
+    }
+    const ids=[...new Set(batch.map(row=>row.e.id))];
+    db.prepare('INSERT OR IGNORE INTO usage_ids(value) VALUES '+ids.map(()=>'(lingxi_pack_id(?))').join(',')).run(...ids);
+    const identity=new Map(db.prepare('SELECT k,lingxi_id(value) AS id FROM usage_ids WHERE lingxi_id(value) IN ('+ids.map(()=>'?').join(',')+')').all(...ids).map(row=>[row.id,row.k]));
+    const owner=this.strings.get(this.owner)!;
+    db.prepare('DELETE FROM usage_payloads WHERE k IN (SELECT payload FROM compact_codex_evidence WHERE owner=? AND id IN ('+ids.map(()=>'?').join(',')+'))').run(owner,...ids.map(id=>identity.get(id)));
+    const raw=Buffer.from('['+batch.map(row=>row.delta).join(',')+']'),body=zstdCompressSync(raw,{params:{[constants.ZSTD_c_compressionLevel]:1,[constants.ZSTD_c_checksumFlag]:1}});
+    const pack=db.prepare('INSERT INTO usage_packs(format,raw_size,digest,body) VALUES(2,?,?,?)').run(raw.length,hash(raw),body).lastInsertRowid;
+    const payloads=new Map(db.prepare('INSERT INTO usage_payloads(pack,ordinal,raw_size) VALUES '+batch.map(()=>'(?,?,?)').join(',')+' RETURNING k,ordinal').all(...batch.flatMap((row,i)=>[pack,i,Buffer.byteLength(row.delta)])).map(row=>[row.ordinal,row.k]));
+    const encodeField=(field:string,value:any)=>field==='id'?identity.get(value):dictionaryColumns.has(field)&&value!=null?this.strings.get(value):value;
+    const hot=tables.codex_evidence.columns.filter(field=>!tables.codex_evidence.cold!.includes(field)),columns=[...hot,'payload'];
+    db.prepare('INSERT INTO compact_codex_evidence('+columns.map(q).join(',')+') VALUES '+batch.map(()=> '('+columns.map(()=>'?').join(',')+')').join(',')+' ON CONFLICT(owner,id) DO UPDATE SET '+columns.filter(field=>!['owner','id'].includes(field)).map(field=>q(field)+'=excluded.'+q(field)).join(',')).run(...batch.flatMap((row,i)=>[...hot.map(field=>encodeField(field,row.e[field])),payloads.get(i)]));
+    db.prepare('INSERT OR IGNORE INTO compact_codex_links(owner,path,id) VALUES '+batch.map(()=>'(?,?,?)').join(',')).run(...batch.flatMap(row=>[owner,this.strings.get(row.path),identity.get(row.e.id)]));
+    const events=batch.filter(row=>row.event);
+    if(!events.length)return 0;
+    const fields=tables.events.columns;
+    return db.prepare('INSERT OR IGNORE INTO compact_events('+fields.map(q).join(',')+') VALUES '+events.map(()=> '('+fields.map(()=>'?').join(',')+')').join(',')).run(...events.flatMap(row=>fields.map(field=>encodeField(field,row.event[field])))).changes;
+  }
+}
+
 function mergeValuationCurrencies(db:SQLite){
   const fields=['cost','reason','input','cached','write','output'];
   const currencies=['usd','cny'];

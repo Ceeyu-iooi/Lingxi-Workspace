@@ -25,7 +25,9 @@ export function canonical(value: any): string {
         .join(",") +
       "}"
     );
-  return encode(value);
+  // A scalar does not need JSON's recursive replacer. Keep BigInt's exact
+  // decimal representation; every other scalar has the same JSON encoding.
+  return typeof value === "bigint" ? value.toString() : JSON.stringify(value);
 }
 const pick = (value: JsonObject, keys: string[], fallback: any = null) => {
   for (const key of keys) if (key in value) return value[key];
@@ -180,7 +182,7 @@ export class Monitor {
         );
       }
   }
-  record(
+  formatEvent(
     usage: any = null,
     meta: JsonObject = {},
     countsOverride?: JsonObject | null,
@@ -229,6 +231,10 @@ export class Monitor {
     row.duration_ms = Math.max(0, Math.trunc(Number(meta.duration_ms) || 0));
     row.cost = "imported_cost" in meta ? meta.imported_cost : cost;
     row.currency = String(meta.currency || rates.currency || "CNY").slice(0, 8);
+    return row;
+  }
+  record(usage:any=null,meta:JsonObject={},countsOverride?:JsonObject|null) {
+    const row=this.formatEvent(usage,meta,countsOverride);
     if(this.profile.db.usageStorage&&this.profile.db.prepare('SELECT 1 FROM events WHERE owner=? AND id=?').get(row.owner,row.id))return 0;
     const fields = Object.keys(row),
       result = this.profile.db

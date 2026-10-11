@@ -288,7 +288,7 @@
       state.root.querySelector('[data-codex-login]').onclick=()=>{const windowShell=window.WorkbenchDialogs.open({title:'连接 Codex',size:'medium',body:'<div data-codex-authorization></div>',actions:[{id:'done',label:'关闭'}]});window.LingxiDesign.login(windowShell.body.querySelector('[data-codex-authorization]'),()=>{grid.querySelector('[data-codex-refresh]')?.click();});};
       grid.querySelector('[data-codex-refresh]').onclick=async()=>{
         if(state.accountPending)return;state.accountPending=true;
-        try{state.liveAccount=await call('GET','/api/codex/account');if(grid.isConnected)patchInline(state);}catch(error){if(state.root.isConnected)state.root.querySelector('[data-codex-error]').textContent=error.message;}finally{state.accountPending=false;}
+        try{state.liveAccount=await call('GET','/api/codex/account');if(grid.isConnected)patchInline(state);}catch(error){if(state.root.isConnected)state.root.querySelector('[data-codex-error]').textContent=error.message;}finally{state.accountPending=false;if(grid.isConnected&&(state.liveAccount?.pending||state.liveAccount?.refreshing)){clearTimeout(state.accountPoll);state.accountPoll=setTimeout(()=>{if(grid.isConnected)grid.querySelector("[data-codex-refresh]")?.click();},600);}}
       };
       grid.querySelectorAll('[data-quota-slot]').forEach(bindQuota);
       window.WorkbenchReact.slideCommit(grid.querySelector('[data-slide]'),{enabled:false,compact:true,onConfirm:async()=>{const features=await call('GET','/api/features');return window.AgentValuation.toggle('codex',features.codexValuationEnabled===true);}});
@@ -301,7 +301,8 @@
     const balance=credits?.balance,text=credits?.unlimited?'不限额':balance!=null&&balance!==''&&Number.isFinite(Number(balance))?Number(balance).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}):'--';
     const credit=grid.querySelector('[data-credit]');if(credit.textContent!==text||state.animateEntry){window.workbenchDesign?.number(credit,text,state.animateEntry);}
     const resetSignature=JSON.stringify(resets||null);if(state.resetSignature!==resetSignature){state.resetSignature=resetSignature;state.paintReset=window.LingxiDesign.resetBatteries(grid.querySelector('[data-reset-card-host]'),resets);}
-    state.root.querySelector('[data-codex-error]').textContent=account.unavailable?.quota || (account.stale?'账户刷新失败，显示上次读取结果':account.credentialSource==='local-codex-cache'?'已读取本机 Codex 登录':'');
+    state.root.querySelector('[data-codex-error]').dataset.pending=String(!!(account.pending||account.refreshing));
+    state.root.querySelector('[data-codex-error]').textContent=account.pending?'正在读取账户…':account.refreshing?'正在刷新，先显示上次结果':account.unavailable?.quota || (account.stale?'账户刷新失败，显示上次读取结果':account.credentialSource==='local-codex-cache'?'已读取本机 Codex 登录':'');
   }
   function patchQuota(row, w, animate = true) {
     setAttribute(row,"data-quota-window",w.minutes);setAttribute(row,"data-quota-label",w.label);setText(row.querySelector(".quota-bar-area>span"),w.label);
@@ -446,10 +447,13 @@
       kind = c.kind || "custom",
       preset = window.usageProviders?.[kind],
       d = document.createElement("section");
+    const apiBase=String(c.apiUrl || {deepseek:"https://api.deepseek.com",glm:"https://open.bigmodel.cn/api/paas/v4",lmu:"https://api.lmuai.ai"}[kind] || preset?.url || "").replace(/\/+$/, ""),tails={deepseek:"/user/balance",glm:"/api/monitor/usage/model-usage",lmu:"/api/v1/usage",openrouter:"/key",siliconflow:"/user/info",moonshot:"/users/me/balance",newapi:"/api/usage/token/",sub2api:"/api/v1/auth/me"};
+    if(kind==="newapi"&&c.credentialMode==="account")tails.newapi="/api/user/self";
+    const requestURL=apiBase&&tails[kind]?(apiBase.endsWith(tails[kind].replace(/\/+$/, ""))?apiBase:["deepseek","glm","lmu","newapi","sub2api"].includes(kind)?new URL(apiBase).origin+tails[kind]:apiBase+tails[kind]):apiBase;
     d.className = "usage-key-editor";
     d.setAttribute("role", "region");
     d.setAttribute("aria-label", c.id ? "编辑 APIKey" : "导入 APIKey");
-    d.innerHTML = `<form><div class="control-dialog-head"><h3>${c.id ? "编辑 APIKey" : "导入 APIKey"}</h3><button type="button" class="btn ghost" data-close aria-label="关闭">×</button></div>${kind === "custom" ? `<label class="control-field">供应商名称<input name="supplierName" required maxlength="60" value="${escape(c.supplierName || "")}"></label><label class="control-field">历史用量接口<input name="apiUrl" type="url" required value="${escape(c.apiUrl || "")}" placeholder="https://…"></label>` : ["newapi", "sub2api", "custom_balance"].includes(kind) ? `<label class="control-field">供应商 API 地址<input name="apiUrl" type="url" required value="${escape(c.apiUrl || "")}" placeholder="https://…"></label>` : ""}<label class="control-field">名称<input name="name" maxlength="80" required value="${escape(c.name || (kind === "deepseek" ? "DeepSeek" : kind === "glm" ? "GLM" : kind === "lmu" ? "LMU" : preset?.name || "API") + " Key")}"></label><label class="control-field">${kind === "sub2api" ? "账户访问凭据" : c.id ? "APIKey" : "APIKey · 每行一个"}${c.id ? '<input type="password" name="apiKey" autocomplete="new-password" placeholder="留空保留现有 Key">' : '<textarea name="apiKeys" required rows="4" autocomplete="off" spellcheck="false" placeholder="粘贴 Key，也可填写：名称 | Key"></textarea>'}</label><p class="meta">${kind === "lmu" ? "添加 Key 后，授权 LMU 平台查询历史。" : kind === "glm" ? "粘贴 Key 后导入，即可查询每日用量和费用。" : kind === "deepseek" ? "已连接的平台会自动复用历史授权。" : preset ? "查询可用余额或额度；Token 仅来自真实用量响应。" : "接口需返回日期、模型、Token；可同时返回费用。"}</p>${kind === "deepseek" ? `<details class="usage-platform-import"><summary>首次授权或登录过期</summary><p class="meta">官方用量页 → 网络 → 用量请求 → 复制为 cURL，粘贴导入。</p><a href="https://platform.deepseek.com/usage" target="_blank" rel="noopener noreferrer">官方用量页 ↗</a><label class="control-field">平台请求<textarea name="platformImport" rows="3" autocomplete="off" spellcheck="false" placeholder="粘贴完整请求，无需查找登录字段"></textarea></label></details>` : ["newapi", "custom_balance", "minimax"].includes(kind) ? `<details class="usage-platform-import"><summary>查询配置</summary><p class="meta">填写 JSON。New API 可设 credentialMode、userId；MiniMax 订阅 Key 设 credentialMode=subscription；自定义余额设 balanceMapping，明确币种和字段。</p><textarea name="adapterOptions" rows="3" autocomplete="off" spellcheck="false">${escape(JSON.stringify({ credentialMode: c.credentialMode || "key", ...(c.userId !== undefined ? { userId: c.userId } : {}), ...(c.quotaCurrency ? { quotaCurrency: c.quotaCurrency } : {}), ...(c.balanceMapping ? { balanceMapping: c.balanceMapping } : {}) }))}</textarea></details>` : ""}<label class="control-check"><input name="enabled" type="checkbox" ${c.enabled !== false ? "checked" : ""}>自动同步</label><p class="control-form-error" role="alert"></p><div class="control-dialog-actions"><button type="button" class="btn ghost" data-close>取消</button><button type="submit" class="btn">${c.id ? "保存" : "导入"}</button></div></form>`;
+    d.innerHTML = `<form><div class="control-dialog-head"><h3>${c.id ? "编辑 APIKey" : "导入 APIKey"}</h3><button type="button" class="btn ghost" data-close aria-label="关闭">×</button></div>${kind === "custom" ? `<label class="control-field">供应商名称<input name="supplierName" required maxlength="60" value="${escape(c.supplierName || "")}"></label>` : ""}<label class="control-field">API 用量请求地址<input name="apiUrl" type="url" required value="${escape(requestURL)}" placeholder="https://…" autocomplete="url"></label><label class="control-field">名称<input name="name" maxlength="80" required value="${escape(c.name || (kind === "deepseek" ? "DeepSeek" : kind === "glm" ? "GLM" : kind === "lmu" ? "LMU" : preset?.name || "API") + " Key")}"></label><label class="control-field">${kind === "sub2api" ? "账户访问凭据" : "API Key"}<input type="password" name="apiKey" ${c.id ? "" : "required"} maxlength="4096" autocomplete="new-password" spellcheck="false" placeholder="${c.id ? "留空保留现有 Key" : "每次导入一个 API Key"}"></label><p class="meta">${kind === "lmu" ? "添加 Key 后，授权 LMU 平台查询历史。" : kind === "glm" ? "粘贴 Key 后导入，即可查询每日用量和费用。" : kind === "deepseek" ? "API Key 可直接查询余额；历史 Token 需平台提供相应查询权限。" : preset ? "查询可用余额或额度；Token 仅来自真实用量响应。" : "接口需返回日期、模型、Token；可同时返回费用。"}</p>${kind === "deepseek" ? `<details class="usage-platform-import"><summary>历史用量授权（可选）</summary><p class="meta">基础余额查询不需要额外信息。仅在需要平台历史账单时填写平台访问凭据。</p><a href="https://platform.deepseek.com/usage" target="_blank" rel="noopener noreferrer">官方用量页 ↗</a><label class="control-field">平台访问凭据<input type="password" name="platformToken" autocomplete="new-password" placeholder="可选，留空保留已有授权"></label></details>` : ["newapi", "custom_balance", "minimax"].includes(kind) ? `<details class="usage-platform-import"><summary>查询配置</summary><p class="meta">填写 JSON。New API 可设 credentialMode、userId；MiniMax 订阅 Key 设 credentialMode=subscription；自定义余额设 balanceMapping，明确币种和字段。</p><textarea name="adapterOptions" rows="3" autocomplete="off" spellcheck="false">${escape(JSON.stringify({ credentialMode: c.credentialMode || "key", ...(c.userId !== undefined ? { userId: c.userId } : {}), ...(c.quotaCurrency ? { quotaCurrency: c.quotaCurrency } : {}), ...(c.balanceMapping ? { balanceMapping: c.balanceMapping } : {}) }))}</textarea></details>` : ""}<label class="control-check"><input name="enabled" type="checkbox" ${c.enabled !== false ? "checked" : ""}>自动同步</label><p class="control-form-error" role="alert"></p><div class="control-dialog-actions"><button type="button" class="btn ghost" data-close>取消</button><button type="submit" class="btn">${c.id ? "保存" : "导入"}</button></div></form>`;
     const editor = {
       node: d,
       id: c.id,
@@ -503,37 +507,21 @@
         d.querySelector("[role=alert]").textContent = "查询配置必须是有效 JSON";
         return;
       }
-      const entries = c.id
-        ? [{ name: values.name, key: values.apiKey || "" }]
-        : String(values.apiKeys || "")
-            .split(/\r?\n/)
-            .map((x) => x.trim())
-            .filter(Boolean)
-            .map((x, i) => {
-              const split = x.indexOf("|");
-              return {
-                name:
-                  split >= 0
-                    ? x.slice(0, split).trim()
-                    : values.name + (i ? " " + (i + 1) : ""),
-                key: (split >= 0 ? x.slice(split + 1) : x).trim(),
-                line: x,
-              };
-            });
+      const entries = [{name: String(values.name || "").trim(), key: String(values.apiKey || "").trim()}];
       const message = d.querySelector("[role=alert]");
       if (
         !entries.length ||
-        entries.length > 20 ||
+        entries.length !== 1 ||
         entries.some(
           (r) =>
             !r.name ||
             r.name.length > 80 ||
             (!c.id && !r.key) ||
             r.key.length > 4096 ||
-            /\s/.test(r.key),
+            /[\s|]/.test(r.key),
         )
       ) {
-        message.textContent = "每行填写一个有效 Key，最多 20 个";
+        message.textContent = "每次只导入一个有效 API Key";
         return;
       }
       editor.busy = true;
@@ -558,7 +546,7 @@
               name: entry.name,
               apiKey: entry.key,
               apiUrl:
-                values.apiUrl ||
+                (values.apiUrl===requestURL&&c.apiUrl?c.apiUrl:values.apiUrl) ||
                 c.apiUrl ||
                 {
                   deepseek: "https://api.deepseek.com",
@@ -567,7 +555,7 @@
                 }[kind] ||
                 preset?.url,
               supplierName: values.supplierName || c.supplierName,
-              platformImport: values.platformImport || "",
+              platformToken: values.platformToken || "",
               enabled: form.elements.enabled.checked,
             },
             { signal: editor.abort.signal },
@@ -624,6 +612,7 @@
         }
       }
     };
+    d.querySelector("[name=apiKey]")?.addEventListener("paste", ev => {const value=(ev.clipboardData?.getData("text") || "").trim();if(/[\r\n]/.test(value)){ev.preventDefault();d.querySelector("[role=alert]").textContent="每次只导入一个 API Key";}});
     d.querySelector("input,textarea")?.focus({ preventScroll: true });
     d.scrollIntoView({ block: "nearest" });
     return d;

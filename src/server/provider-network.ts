@@ -43,6 +43,13 @@ export const RELAY_KINDS = [
   "moonshot",
   "minimax",
 ];
+/** Accept the displayed query endpoint while retaining adapter base-URL semantics. */
+export function normalizeUsageQueryURL(kind:string,value:string){
+  const clean=value.replace(/\/+$/,''),tails:Record<string,string>={deepseek:'/user/balance',glm:'/api/monitor/usage/model-usage',lmu:'/api/v1/usage',openrouter:'/key',siliconflow:'/user/info',moonshot:'/users/me/balance',newapi:'/api/usage/token',sub2api:'/api/v1/auth/me'};
+  if(kind==='newapi'&&clean.endsWith('/api/user/self'))return clean.slice(0,-'/api/user/self'.length);
+  const tail=tails[kind];if(!tail||!clean.endsWith(tail))return clean;
+  const base=clean.slice(0,-tail.length);return kind==='glm'?base+'/api/paas/v4':base;
+}
 const internalAddresses = new BlockList(), proxyFakeAddresses = new BlockList();
 for(const [address,prefix] of [
   ['0.0.0.0',8],['10.0.0.0',8],['127.0.0.0',8],['169.254.0.0',16],

@@ -1,9 +1,9 @@
 {
-  "version": "0.1.0",
+  "version": "0.1.1",
   "files": [
     {
       "file": "README.md",
-      "sha256": "78718535620dd91f296c903d25df2f9aad769566a7f596774f105255328d6f5b"
+      "sha256": "c611f57391a504ae77ad4b5265ae2971a8df06e930afd6f49c18525b610d4588"
     },
     {
       "file": "LICENSE",
@@ -15,15 +15,15 @@
     },
     {
       "file": "TOKEN_ACCOUNTING.md",
-      "sha256": "e18f5ae81dc3e07d51b98ae3120901e982df0c281523f8cc4d382a76935bebd3"
+      "sha256": "e1bb0141faa8393567ec2c8960b9c884d21c491309a6272d498ff79f6a79b46d"
     },
     {
       "file": "VERSION",
-      "sha256": "e9dd8507f4bf0c6f42458e41aea833ad0bd3f6127272335eee9bf4d58541ed67"
+      "sha256": "80447316529fc62014fbaa047fb67c51ac30e32830cda370405349d8d66d196c"
     },
     {
       "file": "design.md",
-      "sha256": "8d153431e83a760f4488f4b3f780397665902d1992e376da927742387f76927a"
+      "sha256": "32094f2ac2bd88bb771fa0cd25b32373e954a11f1e4d5ccccc84751f4d6713da"
     },
     {
       "file": "start.bat",
@@ -67,15 +67,27 @@
     },
     {
       "file": "src/server/codex-account.ts",
-      "sha256": "74c72ef3ffd2e5ed8320b9770e3772898aae28ea11735ddeb047ed3d1cf049d3"
+      "sha256": "a6a5c581f43b9a8275361773b06b0a7d59d105f49e53872a107a14faca3007df"
     },
     {
       "file": "src/server/codex-login.ts",
-      "sha256": "237d020b9c29591f26c2dbf6ac2f53762f79918a084b65f28bf1533c8d913578"
+      "sha256": "9342b31fdd63b4ecb9109552541a1377971726a1c9b1719c83034cf6a21c0087"
+    },
+    {
+      "file": "src/server/codex-reader-pool.ts",
+      "sha256": "bb73f2058279bc2fb4d2a78245f6d5bcc2e7782ef5203883de68f59988ca52bd"
+    },
+    {
+      "file": "src/server/codex-reader-worker.ts",
+      "sha256": "cba4ab7cde3714afaf62ef8c743af9223ab10139f1db6bd06a4d79609b51ad2d"
+    },
+    {
+      "file": "src/server/codex-reader.ts",
+      "sha256": "e7377ba42456d5235026401f91c5429f050f4f526412097ed22d8d9aaf96624b"
     },
     {
       "file": "src/server/codex.ts",
-      "sha256": "b66dc12b1a7386b4ca468d11d6e585c4a7208809ba6038e5e4b9be90a9ecf493"
+      "sha256": "1a227baf5343714aab62e3b2cb9fa0a60d44ea4f9816c02b0bd7f137e3bfdec5"
     },
     {
       "file": "src/server/compressed-text.ts",
@@ -99,7 +111,7 @@
     },
     {
       "file": "src/server/log-readers.ts",
-      "sha256": "8f20cc9f8a56e2773b39c1cd90b40924e4a0b513d42d8335d585d7acc8231006"
+      "sha256": "f2ad0080d448b79d7b1087b15eba7b10f344ce7cd4049ffc340ed7eed9110363"
     },
     {
       "file": "src/server/main.ts",
@@ -119,7 +131,7 @@
     },
     {
       "file": "src/server/monitor.ts",
-      "sha256": "b1b8d5a93e9c359bfc557fcf16d6c7b974a56353fa04f78d6dcbb3b03180b10d"
+      "sha256": "51cd1b261120901d6ac1c4c9cc2dfd8ce7855e960cf3fcf0971ec6680a74fc62"
     },
     {
       "file": "src/server/news.ts",
@@ -151,7 +163,7 @@
     },
     {
       "file": "src/server/provider-network.ts",
-      "sha256": "b04ad53abdb4aaa718a574029d5e4c4cf87e3391ef8552aea1e25fec5b086aa5"
+      "sha256": "5c7cda5920d95701647fea88d3826ea2d3108aab5cfb8b2bca66e29fcb1e1789"
     },
     {
       "file": "src/server/relay.ts",
@@ -179,7 +191,7 @@
     },
     {
       "file": "src/server/usage-accounts.ts",
-      "sha256": "c60b7558f683d6f67b3d8b7d36f91343afd064ff01433dfcc3918b1eb76e2bb2"
+      "sha256": "7fe3b5ab0c11305fe239cca4d2e596f977408aa8315cc51fac1f342650cbc9a3"
     },
     {
       "file": "src/server/usage-cube.ts",
@@ -191,7 +203,7 @@
     },
     {
       "file": "src/server/usage-storage.ts",
-      "sha256": "9005b773e8afabeb371c8c620e87c3db4fa0043b8dca21599eef2962fc709639"
+      "sha256": "52709ee74346707a303bee65561780c015711133541e37c2d827ff52a7c08c4e"
     },
     {
       "file": "src/server/usage-summary.ts",
@@ -210,12 +222,20 @@
       "sha256": "15deafbd0cbd5236dd24b745875a00c15fea816a6ecf0bf01fe22533a2da2881"
     },
     {
+      "file": "frontend/app/brand-suites.ts",
+      "sha256": "ce36371c70caa436ae44eb9cf8875be4bb1ad5f4be1ef97dc764d879d7e66481"
+    },
+    {
       "file": "frontend/app/brand.ts",
-      "sha256": "ccc4f10329342fd1a75e549f6d5b7299e374aaa10dda16489ad057bc7de8c5cb"
+      "sha256": "c5489b7ad8d073bd316d5d1fab0cb1e70d6d5305b9f155e2a65df26648dd3db5"
     },
     {
       "file": "frontend/app/controller-order.json",
       "sha256": "c08e91f7d56d3e96449b7f7cced562fb06abbf5a0186dddb2acd520899bb2781"
+    },
+    {
+      "file": "frontend/app/design-themes.ts",
+      "sha256": "0b84e54cf270b448452f8e0a4e02d8d5556b75c1c6020b73e82ccf8c20e3884d"
     },
     {
       "file": "frontend/app/index.html",
@@ -239,7 +259,7 @@
     },
     {
       "file": "frontend/app/preview.ts",
-      "sha256": "04f72023a70b25a26737ab8ca8789a4071c4e67b041a45439b684c047fec3274"
+      "sha256": "ef69da983c6fcd86e90dbb4add254ea4c5fbe12953519e9a362a8bd37b95b16f"
     },
     {
       "file": "frontend/app/prices.html",
@@ -347,7 +367,7 @@
     },
     {
       "file": "frontend/compat/usage-accounts.ts",
-      "sha256": "e136331845fb94d28fb4f317a068f11420dd516771c8e62ca51d64973a78587a"
+      "sha256": "e0f32b9842a538d13b6a7b2c3812be6aa5f564f1820a5c91d856100324bf763e"
     },
     {
       "file": "frontend/compat/usage-charts.ts",
@@ -386,8 +406,20 @@
       "sha256": "b8540d7430c4e2e3e1455df63e7e5f07f6b88a4b91e1441124ff065e8e017324"
     },
     {
+      "file": "static/assets/brand/lingxi-beacon.svg",
+      "sha256": "1b59989b2fd8c596394b23af16f26b7e2fae3cfe9dc8e1ffeb98d694ba775645"
+    },
+    {
+      "file": "static/assets/brand/lingxi-constellation.svg",
+      "sha256": "1ec6f21684cd5fa40422833d67de3ed96f59946f74a5e81ae3607b897ef8493e"
+    },
+    {
       "file": "static/assets/brand/lingxi-dark.svg",
       "sha256": "375838cc1ff5a196330fefe04adeb41b2c28416174645ae3de93ec68413cf0b2"
+    },
+    {
+      "file": "static/assets/brand/lingxi-duet.svg",
+      "sha256": "59cc3396d1fb1b77cbd3614e84a34fc758e345e866828a5bd36b3b4a1f899318"
     },
     {
       "file": "static/assets/brand/lingxi-idle.svg",
@@ -400,6 +432,18 @@
     {
       "file": "static/assets/brand/lingxi-mono.svg",
       "sha256": "c0d0c989b807448dfd7b07d0cc8b2190d1f3363829f85ddf82ddf010cd90bb11"
+    },
+    {
+      "file": "static/assets/brand/lingxi-portal.svg",
+      "sha256": "7dd8744e5c4c77876c51e44ae6927dead6b449335004964a01fc37d3db1a3130"
+    },
+    {
+      "file": "static/assets/brand/lingxi-ribbon.svg",
+      "sha256": "4cb7b0d7c84ade6ba2007929f43b8db1a5cdc03800e03c71aabc1cb747a73b34"
+    },
+    {
+      "file": "static/assets/brand/lingxi-ripple.svg",
+      "sha256": "37229cd9a8b4c101a26b8db5170b82e8e3ead769554bb9c99da5225699d6eeac"
     },
     {
       "file": "static/assets/brand/lingxi-wordmark.svg",
@@ -447,7 +491,7 @@
     },
     {
       "file": "static/brand.css",
-      "sha256": "f4616e173024be2f32cfc1734f95ae9eef4dfae1513a476ace480f5c488aae84"
+      "sha256": "0fcf6f3f11d77262c8a1daaf2bb0a5a1667d39b32b3c9e0a49f0ac41003bfcde"
     },
     {
       "file": "static/control-center.css",
@@ -455,7 +499,7 @@
     },
     {
       "file": "static/design-preview.css",
-      "sha256": "5b1b4befebc7e4c11841d2b762827124c45cfea4a74a6c3e0f382627305540e4"
+      "sha256": "9bffab2e13fd8623f9cf5633d9cc0f2da9f89cfbd3e2930dd1b0839217bcc5eb"
     },
     {
       "file": "static/dialogs.css",
@@ -471,7 +515,7 @@
     },
     {
       "file": "static/lingxi-design.css",
-      "sha256": "3ec8d49ff92e5c99cccec060498dc85197ca3b4d25a958b1288c0f496b46167b"
+      "sha256": "f503cbc20a2dfc9102da28c2538a8786e8a4ac4bd131e813fca62324c6288cc7"
     },
     {
       "file": "static/news-board.css",
@@ -659,7 +703,7 @@
     },
     {
       "file": "scripts/build_server.cjs",
-      "sha256": "12c1a3a233e8448090e9a00ec19b3e0f9a51ec4a73d4bca960f1dfceedf16e76"
+      "sha256": "decfbfe72d488545a1ef704621e96379a7575bd6e3704b7132503d2690793f0f"
     },
     {
       "file": "scripts/web_launcher.mjs",

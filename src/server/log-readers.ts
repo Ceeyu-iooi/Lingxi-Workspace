@@ -18,9 +18,10 @@ export async function* records(
     maxBytes?: number;
     allowLargeResponse?: boolean;
     state?: { offset: number };
+    codexUsageOnly?: boolean;
   } = {},
 ) {
-  let stream: any = createReadStream(file, { highWaterMark: 128 * 1024 }),
+  let stream: any = createReadStream(file, { highWaterMark: (options.codexUsageOnly ? 1024 : 128) * 1024 }),
     decoder: any = null;
   if (options.compressed) {
     if (statSync(file).size > 128 * 1024 * 1024)
@@ -44,25 +45,54 @@ export async function* records(
     total = 0,
     skipping = false,
     offset = 0;
+  // Codex's canonical envelope identifies chat-only response items before
+  // their potentially huge payload. Noncanonical ordering falls back to JSON.
+  const chatOnly = (parts:Buffer[]) => {
+    const first=parts[0];
+    let text:string;
+    if(parts.length===1||first.length>=384)text=first.toString('utf8',0,Math.min(first.length,384));
+    else {
+    let remaining=384;const head:Buffer[]=[];
+    for(const part of parts){if(!remaining)break;const n=Math.min(remaining,part.length);head.push(part.subarray(0,n));remaining-=n;}
+    text=Buffer.concat(head).toString('utf8');
+    }
+    const envelope=/^\s*\{\s*"timestamp"\s*:\s*"[0-9T:.+\-Z]+"\s*,\s*"type"\s*:\s*"([^"\\]+)"\s*,\s*"payload"\s*:/.exec(text);
+    if(!envelope)return false;
+    if(!['session_meta','turn_context','event_msg'].includes(envelope[1]))return true;
+    if(envelope[1]!=='event_msg')return false;
+    const kind=/^\s*\{\s*"type"\s*:\s*"([^"\\]+)"\s*[,}]/.exec(text.slice(envelope[0].length));
+    return !!kind&&kind[1]!=='token_count';
+  };
   try {
     for await (const chunk of stream as AsyncIterable<Buffer>) {
       total += chunk.length;
       if (total > (options.maxBytes ?? Infinity))
         throw new Error("解压或读取数据超过单次限制");
       let start = 0;
-      for (let i = 0; i < chunk.length; i++)
-        if (chunk[i] === 10) {
+      for (let i = chunk.indexOf(10); i !== -1; i = chunk.indexOf(10, i + 1)) {
           const part = chunk.subarray(start, i);
           offset += part.length + 1;
           if (!skipping) {
             chunks.push(part);
             length += part.length;
+            if(options.codexUsageOnly&&chatOnly(chunks))skipping=true;
+            if(!skipping){
             if (length > 8 * 1024 * 1024)
               throw new Error("单条用量或元数据记录超过 8 MB");
-            const line = Buffer.concat(chunks).toString("utf8").trim();
+            const line = (chunks.length===1?chunks[0]:Buffer.concat(chunks)).toString("utf8").trim();
             if (line) {
               try {
-                yield parseExact(line);
+                if (options.codexUsageOnly) {
+                  // Inspect only record kind using the native parser. Exact-number
+                  // revival remains mandatory for every retained usage record.
+                  const header = JSON.parse(line);
+                  if (['session_meta','turn_context'].includes(header?.type)) yield header;
+                  else if (header?.type === 'event_msg' && header.payload?.type === 'token_count') {
+                    // Any unsafe integer must have at least sixteen digits.
+                    // False positives inside strings only use the exact fallback.
+                    yield /\d{16,}/.test(line) ? parseExact(line) : header;
+                  }
+                } else yield parseExact(line);
               } catch (error) {
                 if (
                   line.slice(0, 500).includes('"token_count"') ||
@@ -70,6 +100,7 @@ export async function* records(
                 )
                   throw new Error("用量记录 JSON 损坏");
               }
+            }
             }
           }
           if (options.state) options.state.offset = offset;
@@ -84,6 +115,7 @@ export async function* records(
         if (!skipping) {
           chunks.push(part);
           length += part.length;
+          if(options.codexUsageOnly&&length>=128&&chatOnly(chunks)){skipping=true;chunks=[];length=0;}
           if (length > 8 * 1024 * 1024) {
             const head = Buffer.concat(chunks)
               .subarray(0, 2048)

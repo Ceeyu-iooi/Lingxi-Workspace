@@ -159,9 +159,10 @@ export async function readCodexAccount(home?: string, options: {includeActivity?
   const own=existsSync(join(home,'auth.json'));
   if(!own && !options.allowLocal)throw new Error('请先授权读取本机 Codex 登录凭据');
   const authHome=own?home:process.env.CODEX_HOME || join(homedir(),'.codex');
+  const activity=options.includeActivity!==false?activityHTTP(authHome).then(value=>({value}),()=>({value:null})):null;
   const result:JsonObject=await quotaHTTP(authHome);
   result.credentialSource=own?'profile':'local-codex-cache';
-  if(options.includeActivity!==false)try{result.tokenActivity=await activityHTTP(authHome);delete result.unavailable.tokenActivity;}catch{result.unavailable.tokenActivity='官方账户活动暂不可用，本机统计不受影响';}
+  if(activity){const extra=await activity;if(extra.value){result.tokenActivity=extra.value;delete result.unavailable.tokenActivity;}else result.unavailable.tokenActivity='官方账户活动暂不可用，本机统计不受影响';}
   return result;
 }
 export function activitySnapshot(
