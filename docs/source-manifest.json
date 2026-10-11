@@ -407,11 +407,11 @@
     },
     {
       "file": "static/assets/brand/lingxi-beacon.svg",
-      "sha256": "1b59989b2fd8c596394b23af16f26b7e2fae3cfe9dc8e1ffeb98d694ba775645"
+      "sha256": "19c6f95b61596db172a9adaf4e0d1760a1992572eb591096f56adeb37ea74cbb"
     },
     {
       "file": "static/assets/brand/lingxi-constellation.svg",
-      "sha256": "1ec6f21684cd5fa40422833d67de3ed96f59946f74a5e81ae3607b897ef8493e"
+      "sha256": "25089e87501ec1e448832f59c7d6af263260859c9360bc9475ac24eb91021207"
     },
     {
       "file": "static/assets/brand/lingxi-dark.svg",
@@ -419,7 +419,7 @@
     },
     {
       "file": "static/assets/brand/lingxi-duet.svg",
-      "sha256": "59cc3396d1fb1b77cbd3614e84a34fc758e345e866828a5bd36b3b4a1f899318"
+      "sha256": "79b2a3d54cae22c58bb7caf03039f6fe2697db04d1b46196cc1997fe2600d55a"
     },
     {
       "file": "static/assets/brand/lingxi-idle.svg",
@@ -435,15 +435,15 @@
     },
     {
       "file": "static/assets/brand/lingxi-portal.svg",
-      "sha256": "7dd8744e5c4c77876c51e44ae6927dead6b449335004964a01fc37d3db1a3130"
+      "sha256": "665f37961f183d12ee9f5ee4defcf8a411fa34616c9a5c9416a45680cd796be4"
     },
     {
       "file": "static/assets/brand/lingxi-ribbon.svg",
-      "sha256": "4cb7b0d7c84ade6ba2007929f43b8db1a5cdc03800e03c71aabc1cb747a73b34"
+      "sha256": "f002b4b822e2fe74500c84bad28f0cd872807767d0c38eec9039e29a02ac15ae"
     },
     {
       "file": "static/assets/brand/lingxi-ripple.svg",
-      "sha256": "37229cd9a8b4c101a26b8db5170b82e8e3ead769554bb9c99da5225699d6eeac"
+      "sha256": "dbb24b1d3b8817aea202ccfab3be5d8508d7fa81dddad1ed2340a31feb2a096c"
     },
     {
       "file": "static/assets/brand/lingxi-wordmark.svg",
