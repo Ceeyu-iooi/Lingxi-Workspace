@@ -305,7 +305,8 @@ function render() {
       return;
     window.workbenchDesign?.finish(target);
     target.classList.add("wb-fixed-layout");
-    setPageZoom(Number(layoutStorage.getItem(layoutPrefs.zoomKey)) || 100);
+    // Route changes must never rehydrate a stale durable preference over live zoom.
+    setPageZoom(window.WorkbenchPageZoom?.get() || Number(layoutStorage.getItem(layoutPrefs.zoomKey)) || 100);
 
     window.dispatchEvent(
       new CustomEvent("workbench:state", {
@@ -356,10 +357,6 @@ function setPageZoom(value) {
   window.WorkbenchPageZoom?.set(zoom);
   document.documentElement.style.setProperty("--ui-scale", "1");
   document.documentElement.dataset.uiScale = String(zoom);
-  document.documentElement.style.setProperty(
-    "--page-zoom-scale",
-    "1",
-  );
   layoutStorage.setItem(layoutPrefs.zoomKey, String(zoom));
   const output = $("#page-zoom-value");
   if (output) output.textContent = `${zoom}%`;

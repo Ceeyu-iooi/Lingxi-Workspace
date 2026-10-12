@@ -523,7 +523,8 @@
           q("[data-value-status]", dialog).textContent =
             "后台同步中，当前筛选继续使用本地证据";
           const poll = async () => {
-            if (!dialog.isConnected) return;
+            if (!dialog.isConnected || !dialog.open) return;
+            if(document.hidden){state.valuePoll=setTimeout(poll,1000);return;}
             try {
               const next = await api("GET", "/api/usage/value");
               if (next.refreshing) {

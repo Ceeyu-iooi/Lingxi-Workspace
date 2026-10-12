@@ -62,15 +62,6 @@
       popup.className = "wb-select-popover";
       popup.setAttribute("role", "listbox");
       popup.setAttribute("aria-label", button.getAttribute("aria-label"));
-      const rect = button.getBoundingClientRect();
-      popup.style.width = Math.max(150, rect.width) + "px";
-      popup.style.left =
-        Math.max(
-          8,
-          Math.min(rect.left, innerWidth - Math.max(150, rect.width) - 8),
-        ) + "px";
-      popup.style.top =
-        Math.max(8, Math.min(rect.bottom + 5, innerHeight - 290)) + "px";
       [...select.options].forEach((option, index) => {
         const item = document.createElement("button");
         item.type = "button";
@@ -85,32 +76,9 @@
         };
         popup.append(item);
       });
-      const container = select.closest("dialog[open]") || document.body,
-        scale =
-          Number(
-            getComputedStyle(document.documentElement).getPropertyValue(
-              "--page-zoom-scale",
-            ),
-          ) || 1,
-        origin =
-          container.tagName === "DIALOG"
-            ? container.getBoundingClientRect()
-            : { left: 0, top: 0 };
-      popup.style.width = Math.max(150, rect.width) / scale + "px";
-      popup.style.left =
-        (Math.max(
-          8,
-          Math.min(rect.left, innerWidth - Math.max(150, rect.width) - 8),
-        ) -
-          origin.left) /
-          scale +
-        "px";
-      popup.style.top =
-        (Math.max(8, Math.min(rect.bottom + 5, innerHeight - 290)) -
-          origin.top) /
-          scale +
-        "px";
+      const container=select.closest('dialog[open]')||document.body;
       container.append(popup);
+      window.WorkbenchOverlay.place(popup,button);
       popup.querySelector("[aria-selected=true]:not(:disabled)")?.focus();
       popup.onkeydown = (e) => {
         const items = [...popup.querySelectorAll("button:not(:disabled)")],
@@ -164,6 +132,7 @@
     if (e.key === "Escape") close(true);
   });
   window.addEventListener("resize", () => close());
+  window.addEventListener("workbench:zoom", () => close());
   window.addEventListener(
     "scroll",
     (event) => {

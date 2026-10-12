@@ -97,6 +97,7 @@
         if (value === null) delete values[key];
         else values[key] = value;
       });
+      window.WorkbenchPageZoom?.set(Number(values['wb-page-zoom'])||100,false);
       persist();
       await flush();
     },

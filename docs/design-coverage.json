@@ -1,5 +1,5 @@
 {
-  "version": "0.1.2",
+  "version": "0.1.3",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
@@ -102,5 +102,17 @@
     "windowTitle": "left logo plus purpose label",
     "accentRoles": "strong fill, soft surface, readable accent text, contrasting solid foreground",
     "legacyColorAccent": "soft surface"
-  }
+  },
+  "sharedContracts": [
+    "cold-start-sidebar",
+    "profile-page-zoom",
+    "popup-coordinates",
+    "control-selection",
+    "white-jellyradio",
+    "native-toc-scroll",
+    "rail-carousel",
+    "startup-updates",
+    "resource-manager",
+    "system-browser-ds-bridge"
+  ]
 }

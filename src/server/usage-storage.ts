@@ -84,6 +84,7 @@ export function installUsageStorage(db:SQLite,allowIdUpgrade=true){
   if(!present)return false; // The first Monitor creates its initial schema.
   const migrated=present.type==='view';
   const cache=new Map<number,{body:any[];bytes:number}>();let bytes=0;
+  db.usageCacheStats=()=>({cacheBytes:bytes,budgetBytes:2*1024*1024});
   const unpack=(delta:any,body:any,size:any,digest:any,pack:any,ordinal:any,field:any,format=1)=>{
     if(delta!==null){const value=JSON.parse(String(delta));return value[Number(field)]??null;}
     if(body===null||pack===null)throw Error('用量证据块不存在');
@@ -354,7 +355,7 @@ export function rewriteUsageDDL(sql:string){
 
 export function packPendingUsage(db:SQLite,limit=1000){
   if(!db.usageStorage)return {packed:0};let completed=0;
-  while(completed<limit){let rows=db.prepare('SELECT k,delta FROM usage_payloads WHERE delta IS NOT NULL ORDER BY k LIMIT 256').all();if(!rows.length)rows=db.prepare('SELECT d.k,d.delta FROM usage_deltas d JOIN usage_payloads p ON p.k=d.k ORDER BY d.k LIMIT 256').all();if(!rows.length)break;
+  while(completed<limit){let rows=db.prepare('SELECT k,delta FROM usage_payloads WHERE delta IS NOT NULL ORDER BY k LIMIT ?').all(Math.min(256,Math.max(1,Math.trunc(limit-completed))));if(!rows.length)rows=db.prepare('SELECT d.k,d.delta FROM usage_deltas d JOIN usage_payloads p ON p.k=d.k ORDER BY d.k LIMIT ?').all(Math.min(256,Math.max(1,Math.trunc(limit-completed))));if(!rows.length)break;
     const batch:any[]=[];let size=2;for(const row of rows){const length=Buffer.byteLength(row.delta)+1;if(batch.length&&size+length>256*1024)break;batch.push(row);size+=length;}
     const raw=Buffer.from('['+batch.map(r=>r.delta).join(',')+']');if(raw.length>4*1024*1024)throw Error('用量证据块超过限制');const body=zstdCompressSync(raw,{params:{[constants.ZSTD_c_compressionLevel]:1,[constants.ZSTD_c_checksumFlag]:1}});
     const nested=db.inTransaction;db.exec(nested?'SAVEPOINT lingxi_pack':'BEGIN IMMEDIATE');try{const pack=db.prepare('INSERT INTO usage_packs(format,raw_size,digest,body) VALUES(2,?,?,?)').run(raw.length,hash(raw),body).lastInsertRowid;const update=db.prepare('UPDATE usage_payloads SET pack=?,ordinal=?,raw_size=?,delta=NULL WHERE k=?'),remove=db.prepare('DELETE FROM usage_deltas WHERE k=?');batch.forEach((r,i)=>{update.run(pack,i,Buffer.byteLength(r.delta),r.k);remove.run(r.k);});db.exec(nested?'RELEASE lingxi_pack':'COMMIT');}catch(e){db.exec(nested?'ROLLBACK TO lingxi_pack; RELEASE lingxi_pack':'ROLLBACK');throw e;}completed+=batch.length;

@@ -21,7 +21,7 @@
   --summary:var(--color-card); --summary-ink:var(--color-foreground);
 }
 body { font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei UI",sans-serif; font-size:var(--text-ui-base); overflow:hidden; }
-.layout { background:var(--color-background-win-alt); padding:4px; gap:4px; height:calc(100dvh / var(--page-zoom-scale,1)); }
+.layout { background:var(--color-background-win-alt); padding:4px; gap:4px; height:calc(100dvh / var(--page-scale,1)); }
 .main-shell { background:var(--color-panel); border-radius:12px; overflow:hidden; border:1px solid var(--color-border); }
 .side { background:var(--color-sidebar); border:0; border-radius:12px; padding:12px 8px; overflow-y:auto; }
 .sidebar-resize { right:0; width:8px; }
@@ -84,7 +84,7 @@ input:focus,textarea:focus,select:focus { border-color:var(--color-input-border-
 .finance-stats>div,.workspace-files,.workspace-main { border-radius:12px; }
 .finance-stats strong { font-size:var(--text-ui-xl); font-weight:500; }
 .trend-wrap svg polyline { stroke:var(--color-usage-chart-1); }
-.workspace-shell { height:calc(100dvh / var(--page-zoom-scale,1) - 220px); min-height:480px; }
+.workspace-shell { height:calc(100dvh / var(--page-scale,1) - 220px); min-height:480px; }
 .ws-files-head,.ws-file,.ws-editor-head { font-size:var(--text-ui-base); }
 .ai-panel,.ws-proposal { background:var(--color-surface); border-radius:8px; }
 .bill-dialog { background:var(--color-popover); color:var(--color-popover-foreground); border-color:var(--color-popover-border); border-radius:16px; }

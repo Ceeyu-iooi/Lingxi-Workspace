@@ -1312,13 +1312,14 @@ export class UsageAccounts {
       await new Promise((resolve) => setTimeout(resolve, 25));
   }
   tick() {
-    for (const row of this.rows())
+    let credentials:Record<string,string>|undefined;
+    for (const row of this.rows().sort((a,b)=>(a.lastAttemptEpoch||0)-(b.lastAttemptEpoch||0)))
       if (
         row.enabled &&
         (row.kind === "codex" ||
-          this.control.profile.credentials()["usage:" + row.id]) &&
+          (credentials??=this.control.profile.credentials())["usage:" + row.id]) &&
         Date.now() / 1000 - (row.lastAttemptEpoch || 0) >= 300
       )
-        this.sync(row.id, false).catch(() => {});
+        {if(this.busy.size>=2)break;this.sync(row.id, false).catch(() => {});}
   }
 }

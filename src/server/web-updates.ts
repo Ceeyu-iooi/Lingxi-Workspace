@@ -19,11 +19,15 @@ async function fetchAsset(url:string,signal:AbortSignal){
 }
 /** Browser builds can check and retrieve verified installers without an install bridge. */
 export class WebUpdates {
+ private checkJob:Promise<any>|null=null;
+ private startupJob:Promise<any>|null=null;
  private current:any; private release:any; private controller?:AbortController;
  constructor(private profileRoot:string,private version:string){this.current={status:"idle",version,progress:0,canInstall:false};}
  state(){return {...this.current};}
- async check(){
-  if(this.current.status==="downloading")return this.state();
+ startup(){if(!this.startupJob)this.startupJob=this.check();return this.startupJob.then(()=>this.state());}
+ check(){if(!this.checkJob)this.checkJob=this.performCheck().finally(()=>this.checkJob=null);return this.checkJob;}
+ private async performCheck(){
+  if(['downloading','downloaded'].includes(this.current.status))return this.state();
   this.current={...this.current,status:"checking",error:""};
   try{
    const r=await fetchAsset(repo+"/releases?per_page=100",AbortSignal.timeout(20000)),list=await r.json() as any[];
@@ -34,23 +38,25 @@ export class WebUpdates {
   return this.state();
  }
  download(){
-  if(this.current.status!=="available")return this.state();
-  this.controller=new AbortController();this.current={...this.current,status:"downloading",progress:0,error:""};
-  void this.receive(this.controller.signal).catch(error=>{this.current={...this.current,status:"error",error:error instanceof Error?error.message:"下载失败"};});
+  if(!["available","cancelled"].includes(this.current.status))return this.state();
+  this.controller=new AbortController();this.current={...this.current,status:"downloading",progress:0,transferred:0,total:0,error:""};
+  void this.receive(this.controller.signal).catch(error=>{if(this.current.status==="cancelled")return;this.current={...this.current,status:"error",error:error instanceof Error?error.message:"下载失败"};});
   return this.state();
  }
  private async receive(signal:AbortSignal){
   const name=`Lingxi-Workbench-${this.current.availableVersion}-x64-Setup.exe`,asset=this.release.assets.find((a:any)=>a.name===name),sumAsset=this.release.assets.find((a:any)=>a.name==="SHA256SUMS.txt");
+  this.current.total=asset.size;
   const sums=await (await fetchAsset(sumAsset.browser_download_url,signal)).text();
   const expected=sums.split(/\r?\n/).map(s=>s.trim().split(/\s+/)).find(s=>s[1]===name)?.[0];
   if(!expected||! /^[a-f\d]{64}$/i.test(expected))throw new Error("安装包缺少有效校验摘要");
   const directory=join(this.profileRoot,"updates","web");mkdirSync(directory,{recursive:true});const target=join(directory,name),part=target+".part",hash=createHash("sha256");let bytes=0;
   const response=await fetchAsset(asset.browser_download_url,signal);if(!response.body)throw new Error("安装包响应为空");
-  const meter=new Transform({transform:(chunk,_,done)=>{bytes+=chunk.length;if(bytes>1024*1024*1024)return done(new Error("安装包超过允许大小"));hash.update(chunk);this.current.progress=Math.min(99,bytes/Math.max(1,asset.size)*100);done(null,chunk);}});
+  const meter=new Transform({transform:(chunk,_,done)=>{bytes+=chunk.length;if(bytes>1024*1024*1024)return done(new Error("安装包超过允许大小"));hash.update(chunk);this.current.transferred=bytes;this.current.total=asset.size;this.current.progress=Math.min(100,bytes/Math.max(1,asset.size)*100);done(null,chunk);}});
   try{await pipeline(Readable.fromWeb(response.body as any),meter,createWriteStream(part),{signal});if(bytes!==asset.size||hash.digest("hex")!==expected.toLowerCase())throw new Error("安装包完整性校验失败");await rename(part,target);this.current={...this.current,status:"downloaded",progress:100,file:name};}
   catch(error){await unlink(part).catch(()=>{});throw error;}
  }
  file(){if(this.current.status!=="downloaded"||!this.current.file)throw new Error("请先下载并校验安装包");const path=join(this.profileRoot,"updates","web",this.current.file);if(!existsSync(path))throw new Error("安装包已移除，请重新下载");return {name:this.current.file,stream:createReadStream(path)};}
  async delivered(name:string){if(this.current.file!==name)return;await unlink(join(this.profileRoot,"updates","web",name)).catch(()=>{});this.current={...this.current,status:"available",progress:0,file:undefined};}
+ cancel(){if(this.current.status==="downloading"){this.current={...this.current,status:"cancelled",error:""};this.controller?.abort();}return this.state();}
  close(){this.controller?.abort();}
 }

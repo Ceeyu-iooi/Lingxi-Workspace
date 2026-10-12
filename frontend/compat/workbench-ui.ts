@@ -370,6 +370,6 @@
       Number(document.documentElement.dataset.uiScale) ||
       100;
     if (typeof setPageZoom === "function")
-      setPageZoom(reset ? 100 : zoom + (plus ? 5 : -5));
+      window.WorkbenchPageZoom?.set(reset ? 100 : window.WorkbenchPageZoom.get() + (plus ? 10 : -10));
   });
 })();

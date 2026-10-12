@@ -125,7 +125,7 @@ export async function startServer(
     sources = new Sources(codex);
     accounts = new UsageAccounts(monitor, control);
     deepseekAuthorization?.cancel();
-    deepseekAuthorization=new DeepseekAuthorization(accounts);
+    deepseekAuthorization=new DeepseekAuthorization(accounts,()=>{const address=app.server.address();if(!address||typeof address==='string')throw Error('本机服务未就绪');return 'http://127.0.0.1:'+address.port;});
     relay = new Relay(accounts);
     pricing = new Pricing(monitor);
     if(!profile.db.usageStorage&&installUsageStorage(profile.db)){
@@ -269,7 +269,10 @@ export async function startServer(
     )
       return reply.code(410).send({ error: "此独立功能已停用" });
   });
+  const recentResources=new Map<string,{lastRefresh:string;elapsedMs:number}>();
   app.addHook("onResponse", (request, _reply, done) => {
+    const resource=request.url.split('?')[0].split("/")[2];
+    if(["usage","valuation","updates","skills","deepseek"].includes(resource)&&!request.url.includes("/status"))recentResources.set(resource,{lastRefresh:new Date().toISOString(),elapsedMs:Math.round(_reply.elapsedTime)});
     if (request.url.startsWith("/api/")) apiRequests--;
     done();
   });
@@ -843,8 +846,33 @@ export async function startServer(
       ),
     };
   });
+  app.get('/api/runtime/resources',(request,reply)=>{
+    if(!local(request))return reply.code(403).send({error:'资源统计仅允许本机读取'});
+    const memory=process.memoryUsage();return {sampledAt:new Date().toISOString(),processes:[{name:'后台服务',pid:process.pid,memoryBytes:memory.rss,heapBytes:memory.heapUsed}],modules:[
+      {name:'用量响应缓存',...recentResources.get('usage'),cacheBytes:monitor?.responseCache.bytes??0,budgetBytes:8*1024*1024,running:!!codex?.running||!!agents?.running},
+      {name:'价格与计价缓存',...recentResources.get('valuation'),...pricing?.resources(),running:!!valuation?.running},
+      {name:'证据解压缓存（估算）',...profile.db.usageCacheStats?.(),running:false},
+      {name:'供应商同步',...recentResources.get('usage'),cacheBytes:null,running:!!accounts?.running},
+      {name:'技能与维护任务',...recentResources.get('skills'),cacheBytes:null,running:!!jobs?.running},
+      {name:'更新检查',...recentResources.get('updates'),cacheBytes:null,running:webUpdates.state().status==='checking'||webUpdates.state().status==='downloading'},
+      {name:'DS授权',...recentResources.get('deepseek'),cacheBytes:null,running:['waiting','needs_extension','syncing'].includes(deepseekAuthorization?.state().status||'')}
+    ]};
+  });
+  const bridgeAllowed=(request:any)=>local(request)&&/^127\.0\.0\.1(?::\d+)?$/.test(String(request.headers.host||''))&&(!request.headers.origin||/^chrome-extension:\/\/[a-p]{32}$/.test(String(request.headers.origin)));
+  app.get('/bridge/deepseek',(request,reply)=>{
+    if(!bridgeAllowed(request))return reply.code(403).send('仅允许本机配对');
+    return reply.header('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'").type('text/html; charset=utf-8').send('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>灵犀 DS 授权</title><style>body{font:16px/1.7 system-ui;background:#eef7f8;padding:8vh 8vw}main{max-width:640px;background:white;border-radius:18px;padding:32px}a{color:#2563eb}</style><main><h1>连接 DeepSeek 官方登录</h1><p data-bridge-status>等待灵犀授权桥。请先安装扩展；已安装时会自动打开官方页面。</p><p>登录只在系统默认浏览器进行，灵犀不创建浏览器缓存。</p><a href="/extensions/deepseek-bridge.zip">下载 Edge / Chrome 授权桥</a><p>在浏览器扩展页面开启开发者模式，解压后选择“加载解压缩的扩展”。安装完成后回到灵犀重新获取。</p></main></html>');
+  });
+  app.options('/bridge/deepseek/:action',(request,reply)=>{if(!bridgeAllowed(request))return reply.code(403).send();return reply.header('Access-Control-Allow-Origin',String(request.headers.origin||'null')).header('Access-Control-Allow-Methods','POST').header('Access-Control-Allow-Headers','Content-Type').send();});
+  for(const action of ['handshake','receive','status'])app.post('/bridge/deepseek/'+action,{bodyLimit:8192},async(request,reply)=>{
+    if(!bridgeAllowed(request))return reply.code(403).send({error:'授权来源不正确'});
+    if(request.headers.origin)reply.header('Access-Control-Allow-Origin',String(request.headers.origin));
+    const value=body(request);return action==='status'?deepseekAuthorization.pairedState(String(value.id||''),String(value.pairToken||'')):action==='handshake'?deepseekAuthorization.handshake(String(value.id||''),String(value.pairToken||'')):deepseekAuthorization.receive(String(value.id||''),String(value.pairToken||''),String(value.credential||''));
+  });
   app.get("/api/updates/state", () => webUpdates.state());
+  app.post("/api/updates/startup", (request,reply) => local(request)?webUpdates.startup():reply.code(403).send({error:"更新操作仅允许本机访问"}));
   app.post("/api/updates/check", (request,reply) => local(request)?webUpdates.check():reply.code(403).send({error:"更新操作仅允许本机访问"}));
+  app.post("/api/updates/cancel", (request,reply) => local(request)?webUpdates.cancel():reply.code(403).send({error:"更新操作仅允许本机访问"}));
   app.post("/api/updates/download", (request,reply) => local(request)?webUpdates.download():reply.code(403).send({error:"更新操作仅允许本机访问"}));
   app.get("/api/updates/file", (request,reply) => {if(!local(request))return reply.code(403).send({error:"安装包仅允许本机获取"});const file=webUpdates.file();reply.raw.once('finish',()=>{void webUpdates.delivered(file.name);});return reply.header("Content-Disposition",'attachment; filename="'+file.name+'"').type("application/octet-stream").send(file.stream);});
   app.get('/api/codex/local-authorization',()=>codexLogin.state());
@@ -1150,7 +1178,6 @@ export async function startServer(
     backgroundBusy = true;
     try {
       const config = control.state().config;
-      deepseekAuthorization?.cancel();
       for (const scope of ["codex"])
         if (
           config[scope + "Enabled"] &&
@@ -1166,7 +1193,7 @@ export async function startServer(
   const storagePacking=setInterval(()=>{
     if(closing||!profile.meta||backgroundBusy||backups?.busy||valuation?.running)return;
     try{
-      packPendingUsage(profile.db,1000);
+      if(profile.db.usageStorage){const pending=profile.db.prepare('SELECT 1 FROM usage_payloads WHERE delta IS NOT NULL LIMIT 1').get()||profile.db.prepare('SELECT 1 FROM usage_deltas LIMIT 1').get()||profile.db.prepare('SELECT 1 FROM usage_pack_gc LIMIT 1').get();if(pending)packPendingUsage(profile.db,128);}
       if(profile.db.pragma('auto_vacuum',{simple:true})===2&&Number(profile.db.pragma('freelist_count',{simple:true}))>64)profile.db.pragma('incremental_vacuum(64)');
       // Do not wait for an external reader during quiet maintenance. Retry on
       // a later tick; a pinned reader must never stall the interactive server.

@@ -114,13 +114,7 @@
         tip.style.position='fixed';
         const scale=Number(document.documentElement.dataset.uiScale||100)/100;
         tip.style.zoom=portal instanceof HTMLDialogElement?'1':String(scale);
-        const rect=tip.getBoundingClientRect();
-        const width=rect.width,height=rect.height,margin=12;
-        const left=Math.max(margin,Math.min(x+margin,innerWidth-width-margin));
-        const top=y+margin+height<=innerHeight-margin?y+margin:Math.max(margin,y-height-margin);
-        // Dialogs share application zoom; coordinates arrive in viewport pixels.
-        tip.style.left=(left/scale)+'px';
-        tip.style.top=(top/scale)+'px';
+        window.WorkbenchOverlay.point(tip,x,y,12);
       },
     };
   }

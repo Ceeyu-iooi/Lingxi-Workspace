@@ -407,4 +407,4 @@ body { font-family:"Segoe UI Variable","Microsoft YaHei UI","Microsoft YaHei",sa
 .bill-page-controls span{text-align:center;white-space:normal;}
 @media(max-width:600px){.bill-dialog{padding:16px;width:calc(100% - 24px);max-width:calc(100vw - 24px);}.bill-rows{max-height:45dvh;}.bill-rows>div{gap:6px;}}
 
-.bill-dialog{max-width:min(680px,calc((100vw - 24px)/var(--page-zoom-scale,1)));max-height:calc((100dvh - 32px)/var(--page-zoom-scale,1));}
+.bill-dialog{max-width:min(680px,calc((100vw - 24px)/var(--page-scale,1)));max-height:calc((100dvh - 32px)/var(--page-scale,1));}

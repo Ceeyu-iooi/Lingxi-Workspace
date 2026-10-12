@@ -1,6 +1,9 @@
 import "./motion";
 import "./brand";
 import "./surfaces";
+import "./overlay";
+import "./updates";
+import "./resources";
 import React, { useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 import { installRuntime } from "virtual:lingxi-runtime";
@@ -107,9 +110,7 @@ function Menus() {
         event.nativeEvent,
       );
     if (value === "zoom-reset") {
-      document.documentElement.style.removeProperty("zoom");
-  document.documentElement.style.setProperty("--ui-scale", "1");
-      document.documentElement.style.setProperty("--page-zoom-scale", "1");
+      (window as any).WorkbenchPageZoom?.set(100);
     }
     event.currentTarget.closest("details")?.removeAttribute("open");
   };
@@ -121,7 +122,7 @@ function Menus() {
           <strong>文件</strong><a href="#/prompts">提示词库</a><a href="#/settings/data">数据与备份</a>
           <strong>编辑</strong><button onClick={(e)=>action('search',e)}>搜索与跳转</button>
           <strong>视图</strong><button onClick={(e)=>action('sidebar',e)}>收起 / 展开侧边栏</button><button onClick={(e)=>action('theme',e)}>切换主题</button><button onClick={(e)=>action('zoom-reset',e)}>实际大小</button>
-          <strong>帮助</strong><a href="#/settings/shortcuts">快捷键</a><a href="preview.html">设计预览</a>
+          <strong>帮助</strong><a href="#/settings/shortcuts">快捷键</a><button type="button" data-resource-manager>任务管理器</button><a href="preview.html">设计预览</a>
         </div>
       </details>
       <details name="lingxi-title-menu">
@@ -155,7 +156,7 @@ function Menus() {
         <summary>帮助</summary>
         <div className="workbench-menu">
           <a href="#/settings/shortcuts">快捷键</a>
-          <a href="preview.html">设计预览</a>
+          <button type="button" data-resource-manager>任务管理器</button><a href="preview.html">设计预览</a>
         </div>
       </details>
     </div>
@@ -296,23 +297,6 @@ function App() {
           <PageView ready={ready} />
         </main>
       </div>
-      <nav className="tabbar" id="tabbar">
-        {routes.map(([view, label, icon]) => (
-          <a
-            href={"#/" + view}
-            data-view={view}
-            className={"ph-tab" + (route === view ? " on" : "")}
-            key={view}
-          >
-            <span className={"ico ico-" + icon} />
-            {view === "projects" ? "项目" : label}
-          </a>
-        ))}
-        <a href="#/settings" data-view="settings" className="ph-tab">
-          <span className="ico ico-gear" />
-          我的
-        </a>
-      </nav>
       <div id="toast" className="toast" role="status" aria-live="polite" />
     </div>
   );

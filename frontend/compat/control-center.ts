@@ -494,7 +494,7 @@
       )
       .join(
         "",
-      )}</div><select id="appearance-theme" hidden aria-hidden="true" tabindex="-1"><option value="system">跟随系统</option><option value="zai-light">浅色</option><option value="zai-dark">深色</option></select></fieldset><label class="dsh-setting-row"><span>浅色主题预设</span><select id="appearance-preset">${window.workbenchAppearance.presets.map(p=>'<option value="'+p.id+'">'+p.name+'</option>').join('')}</select></label><div class="dsh-setting-row"><div><label for="appearance-font">界面字号</label><p>编辑内容字号单独设置</p></div><div class="appearance-range"><input type="range" id="appearance-font" min="12" max="18" step="2" aria-label="界面字号"><output data-font-value></output></div></div><label class="dsh-setting-row"><span>强调色</span><select id="appearance-accent"><option value="preset">主题默认</option><option value="blue">蓝色</option><option value="violet">紫色</option><option value="teal">青绿色</option><option value="orange">橙色</option></select></label><label class="dsh-setting-row"><span>界面亮度 <small class="wb-muted">只调整项目界面</small></span><div><input id="appearance-brightness" type="range" min="85" max="110" step="1" aria-label="界面亮度"><output data-brightness></output></div></label><label class="wb-setting-switch"><span>减少动画<small>保留选中与加载状态，减少动态效果。</small></span><input type="checkbox" id="appearance-motion"></label><label class="dsh-setting-row"><span>界面模式</span><select id="interface-mode"><option value="office">办公</option><option value="coding">编程</option></select></label><label class="dsh-setting-row"><span>菜单语言</span><select id="menu-locale"><option value="zh-CN">简体中文</option><option value="en-US">English</option><option value="system">跟随系统</option></select></label><p class="meta dsh-preview-hint">修改即时预览，保存后保留；放弃会恢复原设置。</p><button type="button" class="btn ghost" data-appearance-reset>恢复默认草稿</button><p class="control-form-error" role="alert"></p><div class="settings-unsaved-bar" hidden><span role="status" aria-live="polite">有未保存的修改</span><div><button type="button" class="btn ghost" data-appearance-discard>放弃修改</button><button type="submit" class="btn">保存修改</button></div></div></form>`;
+      )}</div><select id="appearance-theme" hidden aria-hidden="true" tabindex="-1"><option value="system">跟随系统</option><option value="zai-light">浅色</option><option value="zai-dark">深色</option></select></fieldset><label class="dsh-setting-row"><span>浅色主题预设</span><select id="appearance-preset">${window.workbenchAppearance.presets.map(p=>'<option value="'+p.id+'">'+p.name+'</option>').join('')}</select></label><div class="dsh-setting-row"><div><label for="appearance-font">界面字号</label><p>编辑内容字号单独设置</p></div><div class="appearance-range"><input type="range" id="appearance-font" min="12" max="18" step="2" aria-label="界面字号"><output data-font-value></output></div></div><div class="dsh-setting-row"><div><label for="page-zoom">页面缩放</label><p>即时保存，切换模块保持比例</p></div><div class="appearance-range"><input type="range" id="page-zoom" min="60" max="160" step="5" aria-label="页面缩放"><output id="page-zoom-value"></output><button type="button" class="btn ghost" data-zoom-reset>100%</button></div></div><label class="dsh-setting-row"><span>强调色</span><select id="appearance-accent"><option value="preset">主题默认</option><option value="blue">蓝色</option><option value="violet">紫色</option><option value="teal">青绿色</option><option value="orange">橙色</option></select></label><label class="dsh-setting-row"><span>界面亮度 <small class="wb-muted">只调整项目界面</small></span><div><input id="appearance-brightness" type="range" min="85" max="110" step="1" aria-label="界面亮度"><output data-brightness></output></div></label><label class="wb-setting-switch"><span>减少动画<small>保留选中与加载状态，减少动态效果。</small></span><input type="checkbox" id="appearance-motion"></label><label class="dsh-setting-row"><span>界面模式</span><select id="interface-mode"><option value="office">办公</option><option value="coding">编程</option></select></label><label class="dsh-setting-row"><span>菜单语言</span><select id="menu-locale"><option value="zh-CN">简体中文</option><option value="en-US">English</option><option value="system">跟随系统</option></select></label><p class="meta dsh-preview-hint">修改即时预览，保存后保留；放弃会恢复原设置。</p><button type="button" class="btn ghost" data-appearance-reset>恢复默认草稿</button><p class="control-form-error" role="alert"></p><div class="settings-unsaved-bar" hidden><span role="status" aria-live="polite">有未保存的修改</span><div><button type="button" class="btn ghost" data-appearance-discard>放弃修改</button><button type="submit" class="btn">保存修改</button></div></div></form>`;
     const form = q("form", body),
       appearance = window.workbenchAppearance,
       identity = user.username;
@@ -573,8 +573,13 @@
         : "有未保存的修改";
     };
     show(saved);
+    const zoomInput=q('#page-zoom',form), zoomOutput=q('#page-zoom-value',form);
+    const paintZoom=()=>{zoomInput.value=String(window.WorkbenchPageZoom.get());zoomOutput.textContent=zoomInput.value+'%';};
+    zoomInput.oninput=()=>window.WorkbenchPageZoom.set(Number(zoomInput.value));
+    q('[data-zoom-reset]',form).onclick=()=>window.WorkbenchPageZoom.set(100);
+    window.addEventListener('workbench:zoom',paintZoom,{signal:root._wbAbort?.signal});paintZoom();
     root._wbUnsaved = dirty;
-    root._wbDispose = () => preview(saved);
+    root._wbDispose = () => {window.removeEventListener('workbench:zoom',paintZoom);preview(saved);};
     const change = (event) => {
       if(event.target===fields.themePreset)fields.accent.value="preset";
       if (event.target.name === "appearanceTheme")
@@ -1387,6 +1392,7 @@
         clearTimeout(scheduled);
         return;
       }
+      if(document.hidden || !body.closest("dialog[open]"))return;
       action(async () => {
         const local = scope;
         cache.clear();
@@ -1474,7 +1480,7 @@
     const menus = document.createElement("div");
     menus.className = "workbench-menubar";
     menus.innerHTML =
-      '<details><summary>文件</summary><div class="workbench-menu"><a href="#/prompts">提示词库</a><a href="#/settings/data">导入 / 导出 / 备份</a></div></details><details><summary>编辑</summary><div class="workbench-menu"><button data-menu="search">搜索与跳转</button><a href="#/skills">本地技能</a></div></details><details><summary>视图</summary><div class="workbench-menu"><button data-menu="sidebar">收起 / 展开侧边栏</button><button data-menu="theme">切换主题</button><button data-menu="zoom-reset">实际大小</button><a href="#/settings/appearance">界面设置</a></div></details><details><summary>帮助</summary><div class="workbench-menu"><a href="#/settings/shortcuts">快捷键</a><a href="preview.html">设计预览</a></div></details>';
+      '<details><summary>文件</summary><div class="workbench-menu"><a href="#/prompts">提示词库</a><a href="#/settings/data">导入 / 导出 / 备份</a></div></details><details><summary>编辑</summary><div class="workbench-menu"><button data-menu="search">搜索与跳转</button><a href="#/skills">本地技能</a></div></details><details><summary>视图</summary><div class="workbench-menu"><button data-menu="sidebar">收起 / 展开侧边栏</button><button data-menu="theme">切换主题</button><button data-menu="zoom-reset">实际大小</button><a href="#/settings/appearance">界面设置</a></div></details><details><summary>帮助</summary><div class="workbench-menu"><a href="#/settings/shortcuts">快捷键</a><button type="button" data-resource-manager>任务管理器</button><a href="preview.html">设计预览</a></div></details>';
     q(".shell-bar").insertBefore(menus, q("#theme-toggle"));
     qa("[data-menu]", menus).forEach(
       (b) =>

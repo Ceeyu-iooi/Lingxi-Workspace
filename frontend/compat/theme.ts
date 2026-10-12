@@ -20,7 +20,7 @@ import {accentColors} from '../../src/shared/accent-colors';
     const chosen=theme==='dark'?p.accent:({blue:'#3976f6',violet:'#8157ad',teal:'#397666',orange:'#b36632'}[accent]||p.accent);
     ['--canvas','--bg','--color-background','--color-surface','--lingxi-body','--surface','--surface-2','--lingxi-shell','--ink','--color-text','--ink-2','--muted','--line','--accent-soft'].forEach(key=>root.style.removeProperty(key));
     const colors=accentColors(chosen,theme),independent=accentColors(presetPalette('mist',theme).accent,theme);
-    const properties={'--lingxi-sidebar':p.sidebar,'--accent':colors.strong,'--primary':colors.strong,'--accent-soft':colors.soft,'--accent-text':colors.text,'--accent-foreground':colors.foreground,'--color-accent':colors.soft,'--independent-accent-soft':independent.soft,'--independent-accent-text':independent.text,'--independent-accent-foreground':independent.foreground};
+    const properties={'--lingxi-sidebar':p.sidebar,'--lingxi-shell':p.sidebar,'--shell-edge':p.sidebar,'--accent':colors.strong,'--primary':colors.strong,'--accent-soft':colors.soft,'--accent-text':colors.text,'--accent-foreground':colors.foreground,'--color-accent':colors.soft,'--independent-accent-soft':independent.soft,'--independent-accent-text':independent.text,'--independent-accent-foreground':independent.foreground};
     Object.entries(properties).forEach(([key,value])=>root.style.setProperty(key,value));
   }
   function publish(saved=false){if(!receiving)channel?.postMessage({profileId:window.workbenchRuntime?.profileId,value:{...lastDetails,theme:preference,themePreset:preset,accent},saved});}
@@ -217,8 +217,10 @@ import {accentColors} from '../../src/shared/accent-colors';
   let sidebarCollapsed = false,
     sidebarWidth = 240;
   try {
-    sidebarCollapsed = localStorage.getItem("wb-sidebar-collapsed") === "1";
+    // A cold launch starts expanded; overlays and routes retain this live state.
+    sidebarCollapsed = false;
     localStorage.removeItem("wb-sidebar-width");
+    localStorage.removeItem("wb-sidebar-collapsed");
   } catch (_) {}
   function applySidebar() {
     const narrow=innerWidth/(Number(document.documentElement.dataset.uiScale||100)/100)<960;
@@ -246,6 +248,7 @@ import {accentColors} from '../../src/shared/accent-colors';
   const resizeSidebar=()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(applySidebar);};
   window.addEventListener('resize',resizeSidebar);
   window.addEventListener('workbench:zoom',resizeSidebar);
+  window.addEventListener('workbench:state',event=>{if(event.detail?.user&&!document.documentElement.dataset.shellReady)requestAnimationFrame(()=>requestAnimationFrame(()=>document.documentElement.dataset.shellReady='true'));});
   onReady(() => {
     apply(preference);
     applySidebar();
@@ -272,15 +275,10 @@ import {accentColors} from '../../src/shared/accent-colors';
       main.style.overflowAnchor='none';
       restoreSidebarAnchor=()=>{main.style.overflowAnchor=previous;restoreSidebarAnchor=null;};
       const start=performance.now();
-      const preserve=()=>{if(visible?.isConnected&&main.isConnected){const delta=visible.getBoundingClientRect().top-offset;if(Math.abs(delta)>.1)main.scrollTop+=delta;}if(performance.now()-start<360)sidebarFrame=requestAnimationFrame(preserve);else restoreSidebarAnchor?.();};
+      const preserve=()=>{if(visible?.isConnected&&main.isConnected){const delta=visible.getBoundingClientRect().top-offset;if(Math.abs(delta)>.1)main.scrollTop+=delta/(Number(document.documentElement.dataset.uiScale||100)/100);}if(performance.now()-start<360)sidebarFrame=requestAnimationFrame(preserve);else restoreSidebarAnchor?.();};
       sidebarCollapsed = !sidebarCollapsed;
       applySidebar();
-      try {
-        localStorage.setItem(
-          "wb-sidebar-collapsed",
-          sidebarCollapsed ? "1" : "0",
-        );
-      } catch (_) {}
+
       if(document.documentElement.dataset.motion==='reduced'||matchMedia('(prefers-reduced-motion: reduce)').matches){preserve();cancelAnimationFrame(sidebarFrame);restoreSidebarAnchor?.();}else sidebarFrame=requestAnimationFrame(preserve);
     };
     window.addEventListener('pagehide',()=>{cancelAnimationFrame(sidebarFrame);restoreSidebarAnchor?.();},{once:true});

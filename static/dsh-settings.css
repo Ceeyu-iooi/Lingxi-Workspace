@@ -3,7 +3,7 @@
  * Scoped to settings and provider management; workbench theme tokens stay authoritative. */
 :is(.settings-center-modal,.usage-supplier-manager,.usage-lmu-auth){--dsh-panel:var(--color-card);--dsh-module:var(--surface-soft);--dsh-border:var(--line);--dsh-muted:var(--ink-2);--dsh-selected:var(--color-selected);color:var(--ink)}
 :is(.settings-center-modal,.usage-supplier-manager){width:min(800px,calc(100vw - 48px));height:min(800px,calc(100dvh - 48px));max-height:calc(100dvh - 48px);padding:0!important;border:1px solid var(--dsh-border);border-radius:20px;overflow:hidden;background:var(--dsh-panel);box-shadow:0 20px 70px #0003}
-:is(.settings-center-modal,.usage-supplier-manager)::backdrop{background:#0004;backdrop-filter:blur(2px)}
+:is(.settings-center-modal,.usage-supplier-manager)::backdrop{background:#0004;backdrop-filter:none}
 
 
 .settings-center-modal .settings-center-head button,.usage-supplier-manager>[data-manager-close]{pointer-events:auto;display:grid;place-items:center;min-height:28px!important;width:28px;height:28px;padding:0!important;border:0!important;border-radius:8px;background:transparent;font-size:20px;line-height:1;box-shadow:none}

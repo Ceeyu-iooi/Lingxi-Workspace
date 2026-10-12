@@ -14,6 +14,7 @@ class Statement {
 }
 export default class SQLite {
   usageStorage=false;
+  usageCacheStats?:()=>{cacheBytes:number;budgetBytes:number};
   get inTransaction(){return this.db.isTransaction;}
   private db:DatabaseSync;
   private statements=new Map<string,StatementSync>();

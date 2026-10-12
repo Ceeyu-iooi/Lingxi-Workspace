@@ -93,31 +93,7 @@
     (target.closest("dialog[open]") || document.body).append(d);
     menu = d;
     d.show();
-    const parent = target.closest("dialog[open]"),
-      bounds = parent?.getBoundingClientRect() || {
-        left: 0,
-        top: 0,
-        right: innerWidth,
-        bottom: innerHeight,
-      },
-      rect = d.getBoundingClientRect();
-    const scale =
-        Number(
-          getComputedStyle(document.documentElement).getPropertyValue(
-            "--page-zoom-scale",
-          ),
-        ) || 1,
-      origin = parent ? bounds : { left: 0, top: 0 };
-    d.style.left =
-      (Math.max(bounds.left + 8, Math.min(x, bounds.right - rect.width - 8)) -
-        origin.left) /
-        scale +
-      "px";
-    d.style.top =
-      (Math.max(bounds.top + 8, Math.min(y, bounds.bottom - rect.height - 8)) -
-        origin.top) /
-        scale +
-      "px";
+    window.WorkbenchOverlay.point(d,x,y,0);
     d.querySelector("button:not(:disabled)")?.focus({ preventScroll: true });
     d.onkeydown = (e) => {
       const buttons = [...d.querySelectorAll("button:not(:disabled)")],

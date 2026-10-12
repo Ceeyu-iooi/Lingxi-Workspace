@@ -1,5 +1,6 @@
 // Shared presentation lifecycle; business values and persistence stay unchanged.
 import './page-zoom';
+import './overlay';
 import '../../static/refinements.css';
 const quiet = () => document.documentElement.dataset.motion === 'reduced' || matchMedia('(prefers-reduced-motion: reduce)').matches;
 const ease = 'cubic-bezier(.22,1,.36,1)';
@@ -48,8 +49,8 @@ HTMLDialogElement.prototype.close = function (value?: string) {
 };
 function rows(root: HTMLElement, scrolling = false) {
   if (quiet()) return () => {};
-  const selector = '[data-motion-row],.preview-card,.preview-swatch,.wb-library-toolbar,.library-toolbar,.wb-library-head,.wb-empty,.empty,.usage-toolbar,.preview-type-row,.preview-section>h2,.preview-section>.preview-lead,.card,.hot-card,.ob-panel,.ob-stats>article,.control-section,.sum-card,.wb-library-card,.resource-row,.workspace-browser,.workspace-files,.dsh-setting-row,.wb-setting-switch,.usage-summary>article,.usage-lifetime>article,.lingxi-account-details>section,.account-quota-window';
-  const selected = [...root.querySelectorAll<HTMLElement>(selector)].filter(node=>node.offsetHeight && !(node.matches('.control-section')&&node.querySelector('.dsh-setting-row,.wb-setting-switch')));
+  const selector = '.lingxi-carousel,[data-motion-row],.preview-card,.preview-swatch,.wb-library-toolbar,.library-toolbar,.wb-library-head,.wb-empty,.empty,.usage-toolbar,.preview-type-row,.preview-section>h2,.preview-section>.preview-lead,.card,.hot-card,.ob-panel,.ob-stats>article,.control-section,.sum-card,.wb-library-card,.resource-row,.workspace-browser,.workspace-files,.dsh-setting-row,.wb-setting-switch,.usage-summary>article,.usage-lifetime>article,.lingxi-account-details>section,.account-quota-window';
+  const selected = [...root.querySelectorAll<HTMLElement>(selector)].filter(node=>node.offsetHeight && !node.parentElement?.closest('.lingxi-carousel') && !(node.matches('.control-section')&&node.querySelector('.dsh-setting-row,.wb-setting-switch')));
   const ancestors=new Set(selected);
   const candidates=selected.filter(node=>{for(let parent=node.parentElement;parent&&parent!==root;parent=parent.parentElement)if(ancestors.has(parent))return false;return true;});
   const grouped = candidates.map(node => ({node, top:node.getBoundingClientRect().top})).sort((a,b) => a.top-b.top);
