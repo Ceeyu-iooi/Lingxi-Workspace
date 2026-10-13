@@ -36,7 +36,7 @@ body { font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Seg
 .side-foot { background:transparent; border:0; border-top:1px solid var(--color-border); border-radius:0; padding:12px 8px 4px; font-size:var(--text-ui-sm); }
 .sidebar-collapsed .side { width:48px; padding:8px 4px; }
 .sidebar-collapsed .side .brand { padding:4px; }
-.sidebar-collapsed .side nav { margin-top:16px; }
+
 .sidebar-collapsed .nav-item { padding:8px; min-height:32px; }
 .shell-bar { height:36px; background:var(--color-header); padding:0 12px; }
 .shell-heading { gap:8px; }

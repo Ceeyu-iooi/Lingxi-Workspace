@@ -1,4 +1,7 @@
 import Fastify from "fastify";
+import {RuntimeResources} from "./runtime-resources.ts";
+import {AgentScheduler} from "./agent-scheduler.ts";
+import {timingSafeEqual} from "node:crypto";
 import { WebUpdates } from "./web-updates.ts";
 import { CodexLogin } from "./codex-login.ts";
 import { existsSync, readFileSync, statSync } from "node:fs";
@@ -93,7 +96,8 @@ export async function startServer(
     relay: Relay,
     pricing: Pricing,
     valuation: ValuationTasks;
-  const syncAgent = async (scope: string) => {
+  let resourceManager:RuntimeResources;let scheduler:AgentScheduler;
+  const collectAgent = async (scope: string) => {
     const config = control.state().config,
       pub = control.public();
     if (scope === "codex") {
@@ -107,7 +111,9 @@ export async function startServer(
     accounts.claim(scope, path);
     return agents.sync(scope, path);
   };
+  const syncAgent=(scope:string)=>scheduler.run(scope as any);
   const initialize = () => {
+    scheduler?.close();resourceManager?.close();
     initializeUsageStorage(profile);
     business = new Business(profile);
     control = new Control(profile);
@@ -120,12 +126,14 @@ export async function startServer(
     market = new Market(prompts, jobs, assets);
     news = new News(business);
     monitor = new Monitor(profile);
-    codex = new Codex(monitor);
-    agents = new Agents(monitor);
+    codex = new Codex(monitor,()=>!closing&&control.state().config.codexEnabled===true);
+    agents = new Agents(monitor,scope=>!closing&&control.state().config[scope+"Enabled"]===true);
     sources = new Sources(codex);
     accounts = new UsageAccounts(monitor, control);
     deepseekAuthorization?.cancel();
-    deepseekAuthorization=new DeepseekAuthorization(accounts,()=>{const address=app.server.address();if(!address||typeof address==='string')throw Error('本机服务未就绪');return 'http://127.0.0.1:'+address.port;});
+    deepseekAuthorization=new DeepseekAuthorization(accounts);
+    scheduler=new AgentScheduler(scope=>!closing&&!!control.state().config[scope+"Enabled"],collectAgent,scope=>String(control.state().config[scope+"Path"]||""));
+    resourceManager=new RuntimeResources(profile,desktop?process.env.WORKBENCH_PROGRAM_ROOT||root:assets,()=>["downloading","downloaded"].includes(webUpdates.state().status));
     relay = new Relay(accounts);
     pricing = new Pricing(monitor);
     if(!profile.db.usageStorage&&installUsageStorage(profile.db)){
@@ -141,6 +149,7 @@ export async function startServer(
         : ["zcode", "dsh"].includes(scope)
           ? agents.coverage(scope)
           : { incomplete: false, message: "仅统计实际采集和导入的用量" };
+    queueMicrotask(()=>{if(!options.preview&&process.env.WORKBENCH_PREVIEW!=="1")scheduler.trigger();});
     control.onResponse = (cfg, response, payload, elapsed, status) => {
       const id = response.id || uid();
       monitor.record(response.usage, {
@@ -272,6 +281,7 @@ export async function startServer(
   const recentResources=new Map<string,{lastRefresh:string;elapsedMs:number}>();
   app.addHook("onResponse", (request, _reply, done) => {
     const resource=request.url.split('?')[0].split("/")[2];
+    if(!request.url.startsWith('/api/runtime/resources'))resourceManager?.record({source:'应用请求',pid:process.pid,method:request.method,url:'http://127.0.0.1'+request.url,status:_reply.statusCode,elapsedMs:Math.round(_reply.elapsedTime)});
     if(["usage","valuation","updates","skills","deepseek"].includes(resource)&&!request.url.includes("/status"))recentResources.set(resource,{lastRefresh:new Date().toISOString(),elapsedMs:Math.round(_reply.elapsedTime)});
     if (request.url.startsWith("/api/")) apiRequests--;
     done();
@@ -423,7 +433,7 @@ export async function startServer(
       )
     )
       throw new Error("请通过滑动确认准备历史计价后开启");
-    return control.saveConfig(value);
+    const result=control.saveConfig(value);if(Object.keys(value).some(k=>/^(codex|zcode|dsh)(Enabled|Path)$/.test(k)))scheduler.trigger();return result;
   });
   app.post("/api/control/provider", (request) =>
     control.provider(body(request)),
@@ -848,27 +858,25 @@ export async function startServer(
   });
   app.get('/api/runtime/resources',(request,reply)=>{
     if(!local(request))return reply.code(403).send({error:'资源统计仅允许本机读取'});
-    const memory=process.memoryUsage();return {sampledAt:new Date().toISOString(),processes:[{name:'后台服务',pid:process.pid,memoryBytes:memory.rss,heapBytes:memory.heapUsed}],modules:[
+    if(qs(request).session)resourceManager.touch(String(qs(request).session));return {...resourceManager.snapshot(),collection:scheduler.state(),modules:[
       {name:'用量响应缓存',...recentResources.get('usage'),cacheBytes:monitor?.responseCache.bytes??0,budgetBytes:8*1024*1024,running:!!codex?.running||!!agents?.running},
       {name:'价格与计价缓存',...recentResources.get('valuation'),...pricing?.resources(),running:!!valuation?.running},
       {name:'证据解压缓存（估算）',...profile.db.usageCacheStats?.(),running:false},
       {name:'供应商同步',...recentResources.get('usage'),cacheBytes:null,running:!!accounts?.running},
       {name:'技能与维护任务',...recentResources.get('skills'),cacheBytes:null,running:!!jobs?.running},
       {name:'更新检查',...recentResources.get('updates'),cacheBytes:null,running:webUpdates.state().status==='checking'||webUpdates.state().status==='downloading'},
-      {name:'DS授权',...recentResources.get('deepseek'),cacheBytes:null,running:['waiting','needs_extension','syncing'].includes(deepseekAuthorization?.state().status||'')}
+      {name:'DS授权',...recentResources.get('deepseek'),cacheBytes:null,running:['waiting','syncing'].includes(deepseekAuthorization?.state().status||'')}
     ]};
   });
-  const bridgeAllowed=(request:any)=>local(request)&&/^127\.0\.0\.1(?::\d+)?$/.test(String(request.headers.host||''))&&(!request.headers.origin||/^chrome-extension:\/\/[a-p]{32}$/.test(String(request.headers.origin)));
-  app.get('/bridge/deepseek',(request,reply)=>{
-    if(!bridgeAllowed(request))return reply.code(403).send('仅允许本机配对');
-    return reply.header('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'").type('text/html; charset=utf-8').send('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>灵犀 DS 授权</title><style>body{font:16px/1.7 system-ui;background:#eef7f8;padding:8vh 8vw}main{max-width:640px;background:white;border-radius:18px;padding:32px}a{color:#2563eb}</style><main><h1>连接 DeepSeek 官方登录</h1><p data-bridge-status>等待灵犀授权桥。请先安装扩展；已安装时会自动打开官方页面。</p><p>登录只在系统默认浏览器进行，灵犀不创建浏览器缓存。</p><a href="/extensions/deepseek-bridge.zip">下载 Edge / Chrome 授权桥</a><p>在浏览器扩展页面开启开发者模式，解压后选择“加载解压缩的扩展”。安装完成后回到灵犀重新获取。</p></main></html>');
+  const desktopBridge=(request:any)=>{const secret=process.env.WORKBENCH_DESKTOP_BRIDGE_SECRET||'',candidate=String(request.headers['x-lingxi-desktop-bridge']||'');return desktop&&local(request)&&secret.length===64&&candidate.length===64&&timingSafeEqual(Buffer.from(secret),Buffer.from(candidate));};
+  app.post('/api/runtime/resources/network/record',{bodyLimit:4096},(request,reply)=>{if(!desktopBridge(request))return reply.code(403).send({error:'仅限桌面采集通道'});const v=body(request);resourceManager.record({source:'桌面网络',pid:Number.isSafeInteger(v.pid)?v.pid:null,method:String(v.method||'GET').slice(0,16),url:String(v.url||'').slice(0,2048),status:Number.isInteger(v.status)?v.status:null,elapsedMs:Number.isFinite(v.elapsedMs)?Math.max(0,Math.round(v.elapsedMs)):null});return {ok:true};});
+  app.get('/api/deepseek/authorization/internal',(request,reply)=>desktopBridge(request)?deepseekAuthorization.internalState():reply.code(403).send({error:'仅限桌面授权通道'}));
+  app.post('/api/deepseek/authorization/receive',{bodyLimit:8192},async(request,reply)=>desktopBridge(request)?deepseekAuthorization.receive(String(body(request).id||''),String(body(request).pairToken||''),String(body(request).credential||'')):reply.code(403).send({error:'仅限桌面授权通道'}));
+  for(const route of ['/api/runtime/resources/session','/api/runtime/resources/storage/start','/api/runtime/resources/storage/cancel','/api/runtime/resources/storage/preview','/api/runtime/resources/storage/clean','/api/runtime/resources/network/clear'])app.post(route,async(request,reply)=>{
+    if(!local(request))return reply.code(403).send({error:'资源操作仅限本机'});const v=body(request);if(route.endsWith('/session'))return resourceManager.session(v.active===true,v.id);resourceManager.touch(String(v.session||''));if(route.endsWith('/storage/start'))return resourceManager.startScan();if(route.endsWith('/storage/cancel'))return resourceManager.cancelScan();if(route.endsWith('/storage/preview'))return resourceManager.preview(String(v.scanId),String(v.category));if(route.endsWith('/storage/clean'))return resourceManager.clean(String(v.scanId),String(v.category));return resourceManager.clearNetwork(String(v.session));
   });
-  app.options('/bridge/deepseek/:action',(request,reply)=>{if(!bridgeAllowed(request))return reply.code(403).send();return reply.header('Access-Control-Allow-Origin',String(request.headers.origin||'null')).header('Access-Control-Allow-Methods','POST').header('Access-Control-Allow-Headers','Content-Type').send();});
-  for(const action of ['handshake','receive','status'])app.post('/bridge/deepseek/'+action,{bodyLimit:8192},async(request,reply)=>{
-    if(!bridgeAllowed(request))return reply.code(403).send({error:'授权来源不正确'});
-    if(request.headers.origin)reply.header('Access-Control-Allow-Origin',String(request.headers.origin));
-    const value=body(request);return action==='status'?deepseekAuthorization.pairedState(String(value.id||''),String(value.pairToken||'')):action==='handshake'?deepseekAuthorization.handshake(String(value.id||''),String(value.pairToken||'')):deepseekAuthorization.receive(String(value.id||''),String(value.pairToken||''),String(value.credential||''));
-  });
+  for(const route of ['/api/runtime/resources/storage','/api/runtime/resources/storage/details','/api/runtime/resources/network'])app.get(route,(request,reply)=>{if(!local(request))return reply.code(403).send({error:'资源操作仅限本机'});const v=qs(request);resourceManager.touch(String(v.session||''));if(route.endsWith('/details'))return resourceManager.details(String(v.scanId),String(v.category),Number(v.page));if(route.endsWith('/network'))return resourceManager.network(String(v.session||''),String(v.filter||''),Number(v.page));return resourceManager.storage();});
+  app.get('/api/usage/collection',()=>scheduler.state());
   app.get("/api/updates/state", () => webUpdates.state());
   app.post("/api/updates/startup", (request,reply) => local(request)?webUpdates.startup():reply.code(403).send({error:"更新操作仅允许本机访问"}));
   app.post("/api/updates/check", (request,reply) => local(request)?webUpdates.check():reply.code(403).send({error:"更新操作仅允许本机访问"}));
@@ -879,7 +887,7 @@ export async function startServer(
   app.post('/api/codex/local-authorization',(request,reply)=>local(request)?codexLogin.authorize(body(request).authorized===true):reply.code(403).send({error:'本地凭据授权仅允许本机操作'}));
   app.get("/api/codex/account", () => codexLogin.account());
   app.get("/api/usage/connections", () => accounts.list());
-  app.post('/api/deepseek/authorization/start',(request,reply)=>local(request)?deepseekAuthorization.start(String(body(request).connectionId||'')):reply.code(403).send({error:'授权窗口仅允许在本机打开'}));
+  app.post('/api/deepseek/authorization/start',(request,reply)=>local(request)?deepseekAuthorization.start(String(body(request).connectionId||''),body(request).allowLogin===true&&desktopBridge(request)):reply.code(403).send({error:'授权窗口仅允许在本机打开'}));
   app.get('/api/deepseek/authorization/status',(request,reply)=>local(request)?deepseekAuthorization.state():reply.code(403).send({error:'授权状态仅允许本机查看'}));
   app.post('/api/deepseek/authorization/cancel',(request,reply)=>local(request)?deepseekAuthorization.cancel():reply.code(403).send({error:'授权操作仅允许本机执行'}));
   app.post("/api/usage/connection", (request) => accounts.save(body(request)));
@@ -1178,27 +1186,25 @@ export async function startServer(
     backgroundBusy = true;
     try {
       const config = control.state().config;
-      for (const scope of ["codex"])
-        if (
-          config[scope + "Enabled"] &&
-          (scope !== "codex" || accounts.bound())
-        )
-          {await syncAgent(scope).catch(() => {}); }
+      scheduler.trigger();
       accounts.tick();
     } finally {
       backgroundBusy = false;
     }
   }, 30000);
   background.unref();
+  let packedChanges=-1,packedProfile='';
   const storagePacking=setInterval(()=>{
     if(closing||!profile.meta||backgroundBusy||backups?.busy||valuation?.running)return;
     try{
-      if(profile.db.usageStorage){const pending=profile.db.prepare('SELECT 1 FROM usage_payloads WHERE delta IS NOT NULL LIMIT 1').get()||profile.db.prepare('SELECT 1 FROM usage_deltas LIMIT 1').get()||profile.db.prepare('SELECT 1 FROM usage_pack_gc LIMIT 1').get();if(pending)packPendingUsage(profile.db,128);}
+      const changed=Number((profile.db.prepare('SELECT total_changes() n').get() as any).n);if(packedChanges===changed&&packedProfile===profile.meta.profileId)return;
+      let more=false;
+      if(profile.db.usageStorage){const pending=profile.db.prepare('SELECT 1 FROM usage_payloads WHERE delta IS NOT NULL LIMIT 1').get()||profile.db.prepare('SELECT 1 FROM usage_deltas LIMIT 1').get()||profile.db.prepare('SELECT 1 FROM usage_pack_gc LIMIT 1').get();if(pending){packPendingUsage(profile.db,128);more=!!(profile.db.prepare('SELECT 1 FROM usage_payloads WHERE delta IS NOT NULL LIMIT 1').get()||profile.db.prepare('SELECT 1 FROM usage_deltas LIMIT 1').get()||profile.db.prepare('SELECT 1 FROM usage_pack_gc LIMIT 1').get());}}
       if(profile.db.pragma('auto_vacuum',{simple:true})===2&&Number(profile.db.pragma('freelist_count',{simple:true}))>64)profile.db.pragma('incremental_vacuum(64)');
       // Do not wait for an external reader during quiet maintenance. Retry on
       // a later tick; a pinned reader must never stall the interactive server.
       profile.db.pragma('busy_timeout=0');
-      try{profile.db.pragma('wal_checkpoint(TRUNCATE)');}finally{profile.db.pragma('busy_timeout=15000');}
+      try{const checkpoint=profile.db.pragma('wal_checkpoint(TRUNCATE)') as any[];if(!more&&!checkpoint.some(row=>Number(row.busy)>0)){packedChanges=Number((profile.db.prepare('SELECT total_changes() n').get() as any).n);packedProfile=profile.meta.profileId;}}finally{profile.db.pragma('busy_timeout=15000');}
     }catch(error){app.log.error({err:error},'用量证据整理失败');}
   },5000);storagePacking.unref();
   const cliOwned=!!(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url));
@@ -1211,7 +1217,7 @@ export async function startServer(
   app.addHook("onClose", async () => {
     if(parentWatch)clearInterval(parentWatch);
     closing = true;
-    clearInterval(background);
+    clearInterval(background);scheduler?.close();resourceManager?.close();
     clearInterval(storagePacking);
     deepseekAuthorization?.cancel();
     if (profile.meta) {
@@ -1230,7 +1236,7 @@ export async function startServer(
     }
     codexLogin?.close();
     webUpdates.close();
-    if(profile.meta){packPendingUsage(profile.db,Infinity);profile.db.pragma('wal_checkpoint(TRUNCATE)');}
+    if(profile.meta){packPendingUsage(profile.db,128);profile.db.pragma('wal_checkpoint(TRUNCATE)');}
     profile.close();
     if(cliOwned){process.stdin.destroy();setImmediate(()=>process.exit(0));}
   });

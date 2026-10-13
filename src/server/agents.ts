@@ -22,8 +22,9 @@ import { records, listFiles } from "./log-readers.ts";
 type ReadState = [string, JsonObject];
 export class Agents {
   private tasks = new Map<string, Promise<JsonObject>>();
-  constructor(readonly monitor: Monitor) {}
+  constructor(readonly monitor: Monitor,private allowed=(source:string)=>true) {}
   private store(source: string, items: JsonObject[], reads: ReadState[]) {
+    if(!this.allowed(source))throw Error('日志监测已停止');
     const p = this.monitor.profile,
       db = p.db,
       owner = p.owner;
@@ -122,14 +123,8 @@ export class Agents {
     await Promise.allSettled(this.tasks.values());
   }
   sync(source: string, root: string) {
-    const old = this.tasks.get(source),
-      task = (old ? old.catch(() => undefined) : Promise.resolve()).then(() =>
-        source === "dsh"
-          ? this.scanDSH(root)
-          : source === "zcode"
-            ? this.scanZcode(root)
-            : Promise.reject(new Error("来源不正确")),
-      );
+    const old=this.tasks.get(source);if(old)return old;
+    const task=Promise.resolve().then(()=>source==='dsh'?this.scanDSH(root):source==='zcode'?this.scanZcode(root):Promise.reject(Error('来源不正确')));
     this.tasks.set(source, task);
     task
       .finally(() => {
@@ -342,13 +337,14 @@ export class Agents {
             .all(owner) as JsonObject[]
         ).map((r) => [r.path, parseExact(r.state)]),
       ),
-      files = await listFiles(root, (n) => /^session.*\.jsonl/.test(n)),
+      files = (await listFiles(root, (n) => /^session.*\.jsonl/.test(n))).sort().reverse(),
       items: JsonObject[] = [],
       reads: ReadState[] = [],
       errors: JsonObject[] = [];
     let scanned = 0,
       pending = 0;
     for (const file of files) {
+      if(!this.allowed("dsh"))throw Error("日志监测已停止");
       const stat = statSync(file, { bigint: true }),
         fingerprint: JsonObject = {
           size: Number(stat.size),
@@ -362,7 +358,7 @@ export class Agents {
         !prior.error
       )
         continue;
-      if (reads.length >= 3000) {
+      if (reads.length >= (known.size?128:32)) {
         pending++;
         continue;
       }
@@ -637,7 +633,7 @@ export class Agents {
           databaseMode: existsSync(database) ? databaseIdentity : null,
         };
       if (canonical(known.get(file)) === canonical(state)) continue;
-      if (reads.length >= 3000) {
+      if (reads.length >= (known.size?128:32)) {
         pending++;
         continue;
       }

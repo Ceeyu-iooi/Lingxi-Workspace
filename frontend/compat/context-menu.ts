@@ -61,20 +61,11 @@
       event.preventDefault();
       return;
     }
-    add({
-      label: "搜索与跳转",
-      action: () => document.querySelector("#command-trigger")?.click(),
-    });
-    add({
-      label: "设置中心",
-      action: () => {
-        location.hash = "#/settings";
-      },
-    });
-    add({
-      label: "切换主题",
-      action: () => document.querySelector("#theme-toggle")?.click(),
-    });
+    const data=target.closest('[data-resource-row],.resource-table td,.usage-stat,.usage-value,[data-copy-value]');
+    if(data){const value=data.dataset.copyValue||data.textContent.trim();if(value)add({label:'复制当前数据',action:()=>copy(value)});}
+    const object=target.closest('[data-project],.project-card,.ob-project,[data-account],.usage-managed-key');
+    if(object){const edit=object.querySelector('[data-edit],[data-project-edit]');const sync=object.querySelector('[data-sync]');if(edit&&!edit.disabled)add({label:object.hasAttribute('data-account')?'编辑此Key':'编辑当前项目',action:()=>edit.click()});if(sync&&!sync.disabled)add({label:'同步此Key',action:()=>sync.click()});}
+    if(link&&!link.href.startsWith(location.origin+'/#'))add({label:'打开链接',action:()=>link.click()});
     if (!items.length) return;
     event.preventDefault();
     close();

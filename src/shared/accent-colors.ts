@@ -12,11 +12,12 @@ const ratio=(a:RGB,b:RGB)=>{const x=luminance(a),y=luminance(b);return (Math.max
 
 /** Keep the strong fill, soft surface and their text roles independent. */
 export function accentColors(accent:string,mode:string){
-  const strong=rgb(accent),ink=rgb(mode==='dark'?'#f0f4f8':'#151517');
+  const original=rgb(accent),white=rgb('#ffffff');let strong=original;
+  for(let step=1;ratio(white,strong)<4.5&&step<=20;step++)strong=mix(original,[0,0,0],1-step/20);
+  const ink=rgb(mode==='dark'?'#f0f4f8':'#151517');
   const soft=mix(strong,rgb(mode==='dark'?'#151c22':'#ffffff'),mode==='dark'?.16:.10);
   let text=strong;
   for(let step=1;ratio(text,soft)<4.5&&step<=10;step++)text=mix(strong,ink,1-step/10);
-  const white=rgb('#ffffff'),black=rgb('#000000');
-  const foreground=ratio(white,strong)>=ratio(black,strong)?white:black;
+  const foreground=white;
   return {strong:hex(strong),soft:hex(soft),text:hex(text),foreground:hex(foreground)};
 }

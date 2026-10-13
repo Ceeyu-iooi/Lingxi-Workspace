@@ -1,9 +1,9 @@
 {
-  "version": "0.1.3",
+  "version": "0.1.4",
   "files": [
     {
       "file": "README.md",
-      "sha256": "4e66a10789c16729e0cc942da552b6495ffe31c8197027173fb1a4b080cb6f68"
+      "sha256": "c1705d3384d1c1c5bd61690b3b318bea95d02d74be34834bde75710f172f0e32"
     },
     {
       "file": "LICENSE",
@@ -15,15 +15,15 @@
     },
     {
       "file": "TOKEN_ACCOUNTING.md",
-      "sha256": "9a2c1d52de1d46f8c845dd33c45cecc0fe1bd4962f040ba94a3d372c854f101f"
+      "sha256": "c91ab6ba2c808445ad7be1373748f84e823b7441742a172e6d1ca5cffb7f0430"
     },
     {
       "file": "VERSION",
-      "sha256": "2d2454ef0edeb462a6ce8b25d387aaa74df08093d5cea0428a10ce55510c6326"
+      "sha256": "8a3dad16d348c163566a456fcf650d85d7aeeda5e53d01ee1fa8dc15212915a7"
     },
     {
       "file": "design.md",
-      "sha256": "306cbb4e328487644f330966a4136044077d13e044ed8c4f51bfea6047d0a572"
+      "sha256": "422ee362f0dfe873e9edfd6062410919a9166a9581cf70dbf1f81fcd53cd9414"
     },
     {
       "file": "start.bat",
@@ -46,8 +46,12 @@
       "sha256": "d1078d0eb11ede2cd701c7728371008d8a993e78fd1e23ed0bb7c6e062e5e585"
     },
     {
+      "file": "src/server/agent-scheduler.ts",
+      "sha256": "8d84ee62b78a463ff5d0fbc8325fda451487eb515fb5aad37733716974e128dc"
+    },
+    {
       "file": "src/server/agents.ts",
-      "sha256": "ca6d5b2228ee814778ecdb5a047a79a7a29f404437b44158030ff6ae20d6f405"
+      "sha256": "7fb6c336aff5f171cf4e853bdcbc6979da0f8c4c667fc19198a406a9b3d266ee"
     },
     {
       "file": "src/server/avatar-worker.ts",
@@ -87,7 +91,7 @@
     },
     {
       "file": "src/server/codex.ts",
-      "sha256": "1a227baf5343714aab62e3b2cb9fa0a60d44ea4f9816c02b0bd7f137e3bfdec5"
+      "sha256": "250569bdcb53a020e55de38e4cea4cc56250bdd29ceb9da211820a68d766231c"
     },
     {
       "file": "src/server/compressed-text.ts",
@@ -99,7 +103,7 @@
     },
     {
       "file": "src/server/deepseek-authorization.ts",
-      "sha256": "6204bbe7cb793524fdba73778b3e7138f38863bb60418be43cd2e24c4fad0fb5"
+      "sha256": "d975185c46e1305ccc0c5c0dae8a6d4e77969065c3584246e49d56df6c5901b3"
     },
     {
       "file": "src/server/exact-sum.ts",
@@ -123,7 +127,7 @@
     },
     {
       "file": "src/server/main.ts",
-      "sha256": "159c01a613d00b2c81d3c5b5bb438fd1adf4176b41fff49c02621fdf0b1a37fa"
+      "sha256": "cd77d0ca8faedf71f0043550b8f32ae86a318b3ce8c7c478056273a7fd88f225"
     },
     {
       "file": "src/server/maintain.ts",
@@ -147,7 +151,7 @@
     },
     {
       "file": "src/server/package.json",
-      "sha256": "051a16db6cec1aee804ae044b7737a326078779798969433c28f82f40402cae9"
+      "sha256": "518b8aba352918ddeecc79d3dee27175b06e61610d6fad2152858e75ec724bfe"
     },
     {
       "file": "src/server/parsers.ts",
@@ -186,6 +190,10 @@
       "sha256": "0f7f797cc688077a35d9c428a7dcb84518ac34bba6a2b9a17751a6af9e7f81a4"
     },
     {
+      "file": "src/server/runtime-resources.ts",
+      "sha256": "0b54f467b64f178e69a7274818937ec547972a117d6ab5d0c55d1bd4d103f795"
+    },
+    {
       "file": "src/server/skills.ts",
       "sha256": "57ae33fe5bcf9d43fc4a42d3d7591e461c5ab4a71e77b0c0ff3e642316900bb1"
     },
@@ -199,7 +207,7 @@
     },
     {
       "file": "src/server/usage-accounts.ts",
-      "sha256": "ebd5b78fef65dc71a561ac02831c5df447fbe81e45632afce32d609208a2f1dd"
+      "sha256": "a2ce9fa58df116aab8784553586897d2cf2318065d52d757f1f58ed32d72cd8c"
     },
     {
       "file": "src/server/usage-cube.ts",
@@ -223,7 +231,7 @@
     },
     {
       "file": "src/shared/accent-colors.ts",
-      "sha256": "a7139ae4ff86bb1a99466f1c1852007b5d67fe15c88976057278b297bd0be36a"
+      "sha256": "641287a6e7e8c988e99edf6211880b9152bcfd5eff86a8faaf7280a79cde3400"
     },
     {
       "file": "src/shared/contracts.ts",
@@ -236,30 +244,6 @@
     {
       "file": "src/shared/theme-presets.ts",
       "sha256": "10b41d142f9640ac54dff817fbe357eebe1a5238676307d25974be4b6cd84d3f"
-    },
-    {
-      "file": "browser-extension/deepseek/background.js",
-      "sha256": "98be83980c1ff0d48a2eccc05c4124b707fbfa1efeac978e55429647e3027306"
-    },
-    {
-      "file": "browser-extension/deepseek/capture.js",
-      "sha256": "c5839c7b047cc55e66c5372e346acf81bf7a7626f78352be10db8948d776a1a1"
-    },
-    {
-      "file": "browser-extension/deepseek/manifest.json",
-      "sha256": "01d88dd6bc7e75792486c410e89922f8b2bd69e41b69d82b4d485b2ddbda2fad"
-    },
-    {
-      "file": "browser-extension/deepseek/official.js",
-      "sha256": "c5893491715877cb8e9bf7d4529221921f05db7cd001a73e7b53c2c66565cc7d"
-    },
-    {
-      "file": "browser-extension/deepseek/pair.js",
-      "sha256": "f33749574dbeb388e467c35751f48fa3bf4ff24ce1f24d78aae19ae190ac30ca"
-    },
-    {
-      "file": "browser-extension/deepseek/README.md",
-      "sha256": "19fd65e29a2b2a81f146937324ae52ef601f740b29377f61cc783f131e2c4306"
     },
     {
       "file": "frontend/app/brand-suites.ts",
@@ -283,7 +267,7 @@
     },
     {
       "file": "frontend/app/index.html",
-      "sha256": "6e90b64cb37db0104a50da4f2f322a073c6a09cb8c3b90ad2c0badf46a974756"
+      "sha256": "9069a78eae2496a98edbf14c41a1166e490490f2ed514c271dc832b5c737901e"
     },
     {
       "file": "frontend/app/main.tsx",
@@ -291,7 +275,7 @@
     },
     {
       "file": "frontend/app/motion.ts",
-      "sha256": "5a011708b8e54e9a07a8094bc380a0e2cf16a813afb4aa0a252e1fcce963622d"
+      "sha256": "d55d7353618c905c6211449c8760bcc424824ba3b9d1b8e52d6bd07905004c1c"
     },
     {
       "file": "frontend/app/overlay.ts",
@@ -303,15 +287,15 @@
     },
     {
       "file": "frontend/app/preview-dark.html",
-      "sha256": "ed7981a2a78a8a83b1f8105bd620f5cfdfca4e1d37cb5473aeebbeed8db5c8e8"
+      "sha256": "c227f37de0133fba30403d9d1cf0966d7ac54efd9abbbcbd57501fbf71f23071"
     },
     {
       "file": "frontend/app/preview.html",
-      "sha256": "97546e6b8bbec11411945cdf5b40d0f1978c74e09756dbea689d41f141c2fd8f"
+      "sha256": "5c023a59789fbb807804ba14ebfa62c0e5bd650a02746dde5ca3b88c9d09ccf0"
     },
     {
       "file": "frontend/app/preview.ts",
-      "sha256": "688dc2e2dd1135fc09e843e2f3388bdd9d621744ad45d5a4f2d755ffa5f7d545"
+      "sha256": "667f04ca1809ea7c24dbfe1eae6268c9b801d95e3446870560ef59ba9022b7d0"
     },
     {
       "file": "frontend/app/prices.html",
@@ -319,7 +303,7 @@
     },
     {
       "file": "frontend/app/resources.ts",
-      "sha256": "4148d81612d33016cff268bf8658f269d281a79c873ecf442d94fd267a7f164f"
+      "sha256": "89ea6d38807c32203fdf3bb2271f498cfa6ad64eb92fc7fa4f912ab6b7c3dd9f"
     },
     {
       "file": "frontend/app/runtime.d.ts",
@@ -355,15 +339,15 @@
     },
     {
       "file": "frontend/compat/context-menu.ts",
-      "sha256": "52811ed5ab36d6ccdbcbd3c53859fc9468b983aff24015155f508030e029b292"
+      "sha256": "1a6f873c6e1855448a01c284278a5fe391e3d287f89325dd8617f84ea37af606"
     },
     {
       "file": "frontend/compat/control-center.ts",
-      "sha256": "f976826cb0ceb8e472f16344f84b40247d981db73f46faa97d2966346e346504"
+      "sha256": "93ee4d4ff976e10c0221d60374fd8601ae6445d884af181520b17b401c248d50"
     },
     {
       "file": "frontend/compat/dialogs.ts",
-      "sha256": "c44fadb3c586ee7af8125fc7c4b314ef09592cf9dcc2d627dc6d68899fb45695"
+      "sha256": "7b79a2fb1c8d5b943858c235349ad299a8735207629a736a3b19355e9994ca30"
     },
     {
       "file": "frontend/compat/layout-storage.ts",
@@ -427,7 +411,7 @@
     },
     {
       "file": "frontend/compat/usage-accounts.ts",
-      "sha256": "3989d0fc22a7060e77ef5bed468279278d325a3d0f288353c04b66ec15800561"
+      "sha256": "b269f3a0ded27bfb42332ef0f37a8fd0108daf20b16ad3216d8003571df62646"
     },
     {
       "file": "frontend/compat/usage-charts.ts",
@@ -570,12 +554,12 @@
       "sha256": "a2dd105f5793b6754f06a78185e946f3c07c6301088e4e32c12cba3dfd62e325"
     },
     {
-      "file": "static/extensions/deepseek-bridge.zip",
-      "sha256": "752969424988eb2d6e1c07e546c12f804d044944ba32150eb5a8e8ace73cb340"
-    },
-    {
       "file": "static/index.html",
       "sha256": "cf5fb675fbe8426e2bc2a037209e1b74a1d7fa48ea6e493b15576b5fe1421fa5"
+    },
+    {
+      "file": "static/interaction-surfaces.css",
+      "sha256": "6afc022c95ea813cdd897fe3bc51bb4e81506f018928fca110576401c1a11e45"
     },
     {
       "file": "static/lingxi-design.css",
@@ -627,7 +611,7 @@
     },
     {
       "file": "static/theme.css",
-      "sha256": "faf981fd0485856232d6d39467fcdcad8f3452720a764a9bf5894127d4f9f98e"
+      "sha256": "4ea8ca8450d6a4f9f97e75b3057a5dc68b0337397036de63c5781084bfb1653f"
     },
     {
       "file": "static/ui-kit.html",
@@ -711,11 +695,11 @@
     },
     {
       "file": "static/workbench-design.css",
-      "sha256": "61492b52c3a4572148bda33b46cb4a06bbfb189489a23e9d03f2227d21ab4ebc"
+      "sha256": "f2fb3d8d30917109685008527aa40a3a66feace887870e62a988a0247605618e"
     },
     {
       "file": "static/workbench-ui.css",
-      "sha256": "13d53ca6a02b5a39a041607f64c74d05530be25ab6abaa80e3a16b19a3e662fe"
+      "sha256": "35c2ceea0358af72459b5e1f36d8ee78a3ea7edcfb0ac4d146022b29f262e203"
     },
     {
       "file": "static/zcode-tokens.css",
@@ -723,15 +707,15 @@
     },
     {
       "file": "static/zcode.css",
-      "sha256": "505c316509dd1d4ccfd63bfcd85eab37de925160ecf3576dadabbf25bc681fb6"
+      "sha256": "59dbbe1419586801990ab26988efadcb93fb0179cf4c8436063001c010cb2281"
     },
     {
       "file": "docs/ARCHITECTURE.md",
-      "sha256": "46f1be741f3b8eb2498c456dac6bfc4ffa1a7ad2dfe5310ea1bc00a9fcb2cc4b"
+      "sha256": "ac617981934a5e02c5d670789d1d20761a33a8766afd5ae84d6f8cc22d5fad52"
     },
     {
       "file": "docs/design-coverage.json",
-      "sha256": "515d3e5a7c94783b633724e2a1ff3364d8b8479e4559adf0e35fcd19a65446ed"
+      "sha256": "43530da3d38dd5627c3d3d6275ea7678083ae86d6a0fa686a1e8ca64706622fb"
     },
     {
       "file": "docs/design-reference-audit.json",
@@ -759,19 +743,15 @@
     },
     {
       "file": "docs/UI_DESIGN.md",
-      "sha256": "d78bcf237268859c4285f315411138964e1f7131dc7c62967693ca57a1ad6312"
+      "sha256": "e8827bd30ec0adb2461e30934bbf3909516c6964d2f7196fa48559b5ac1b251a"
     },
     {
       "file": "docs/USAGE.md",
       "sha256": "ec733a4f25203e1cab6291631d3a4e21276df58e4563268a7ba010dbc6a925ef"
     },
     {
-      "file": "scripts/package_browser_bridge.cjs",
-      "sha256": "1b7b9e4444078e8dbc62f07f695a163ed02b427ff2501f3ec4c9ea5af9979598"
-    },
-    {
       "file": "scripts/build_app.cjs",
-      "sha256": "2f55eaceb20ffe897c9ac10386c20b77698f68423dfc83c4dc2fbe68e3fbada5"
+      "sha256": "8982c262c497bf79482918e7dec1a574541abc44e99450b286f6e8abba48bfa1"
     },
     {
       "file": "scripts/build_server.cjs",

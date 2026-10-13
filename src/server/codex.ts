@@ -10,7 +10,7 @@ import { CompactCodexWriter } from "./usage-storage.ts";
 export class Codex {
   private scanning: Promise<JsonObject> | null = null;
   private rootJobs = new Map<string,Promise<JsonObject>>();
-  constructor(readonly monitor: Monitor) {}
+  constructor(readonly monitor: Monitor,private allowed=()=>true) {}
   parse(file:string){return parseCodexFile(file);}
   get running() {
     return !!this.scanning;
@@ -60,7 +60,7 @@ export class Codex {
             )
           ).flat(),
         ),
-      ].sort(),
+      ].sort().reverse(),
       profile = this.monitor.profile,
       owner = profile.owner,
       db = profile.db,
@@ -77,6 +77,7 @@ export class Codex {
     const discovered=performance.now();
     const changed:string[]=[];
     for (const file of files) {
+      if(!this.allowed())throw Error('日志监测已停止');
       const stat = statSync(file, { bigint: true }),
         prior = cursors.get(file),
         state = prior ? parseExact(prior.state) : {};
@@ -87,7 +88,7 @@ export class Codex {
         state.scannerVersion === 4
       )
         continue;
-      if (changed.length >= 3000) {
+      if (changed.length >= (cursors.size?256:32)) {
         pending++;
         continue;
       }
@@ -105,6 +106,7 @@ export class Codex {
       }
     }
     if (owner !== profile.owner) throw new Error("Profile 已切换");
+    if(!this.allowed())throw Error('日志监测已停止');
     const parsedAt=performance.now();
     // Nothing changed: previously reconciled evidence cannot acquire a new
     // ancestor or conflict. Avoid decoding the entire retained history again.

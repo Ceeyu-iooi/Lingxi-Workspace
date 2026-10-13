@@ -27,7 +27,7 @@
 .wb-redesign .ob-top{margin-bottom:24px;font-size:var(--text-ui-lg)}
 .wb-redesign .ob-top>span{font-size:calc(var(--text-ui-xl) + 4px);font-weight:650}
 .wb-redesign .ob-top i{display:none}
-.wb-redesign .ob-top .ob-dark-button{background:var(--accent);border-radius:10px}
+.wb-redesign .ob-top .ob-dark-button{background:var(--accent);color:var(--accent-foreground)!important;border-radius:10px}
 .wb-redesign .ob-stats{gap:16px;margin-bottom:20px}
 .wb-redesign .ob-stats article{border:1px solid var(--line);border-radius:12px;padding:18px;background:var(--surface)}
 .wb-redesign .ob-stats strong{font-size:calc(var(--text-ui-xl) + 8px);font-weight:650;font-variant-numeric:tabular-nums}

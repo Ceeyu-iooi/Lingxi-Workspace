@@ -51,7 +51,7 @@ button.workbench-brand:hover { background:var(--color-hover); }
 }
 .sidebar-collapsed .side .workbench-brand { justify-content:center; gap:0; padding:4px; }
 .sidebar-collapsed .side .workbench-brand .brand-name { display:none; }
-.sidebar-collapsed .side nav { margin-top:0; }
+
 .sidebar-collapsed .side .side-foot { display:grid; grid-template-columns:1fr; gap:4px; padding:10px 0 0; }
 .sidebar-collapsed .side-foot #control-profile { justify-content:center; padding:4px; font-size:var(--text-ui-base); }
 .sidebar-collapsed .account-name { display:none; }

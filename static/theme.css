@@ -31,8 +31,8 @@ body { font-family:"Segoe UI Variable","Microsoft YaHei UI",system-ui,sans-serif
 #sidebar-toggle:hover { background:var(--accent-soft); color:var(--accent-text); }
 .sidebar-collapsed .side { width:72px; padding-left:12px; padding-right:12px; }
 .sidebar-collapsed .side .brand { font-size:0; justify-content:center; gap:0; }
-.sidebar-collapsed .side .hello,.sidebar-collapsed .nav-label,.sidebar-collapsed .side-foot { display:none; }
-.sidebar-collapsed .side nav { margin-top:32px; }
+.side .hello { display:none; }
+
 .sidebar-collapsed .nav-item { justify-content:center; padding:12px; }
 .sidebar-collapsed .nav-item.active::before { left:-12px; }
 .sidebar-resize { position:absolute; right:-5px; top:0; bottom:0; width:10px; cursor:col-resize; touch-action:none; z-index:10; }
@@ -55,7 +55,7 @@ body { font-family:"Segoe UI Variable","Microsoft YaHei UI",system-ui,sans-serif
 .greet p { font-size:var(--text-ui-sm); color:var(--ink-2); }
 .eyebrow { color:var(--accent); font-size:var(--text-ui-xs); letter-spacing:.1em; }
 .btn { background:var(--accent); color:var(--accent-foreground); border-radius:8px; box-shadow:none; font-weight:600; }
-:root[data-theme="dark"] .btn:not(.ghost):not(.danger) { color:#10213C; }
+
 .btn.ghost,.btn.danger { background:var(--surface); }
 .btn.ghost { color:var(--ink-2); border:1px solid var(--line); }
 .btn.danger { border:1px solid var(--line); color:var(--danger); }

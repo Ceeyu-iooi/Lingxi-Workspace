@@ -1,5 +1,5 @@
 {
-  "version": "0.1.3",
+  "version": "0.1.4",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
@@ -17,7 +17,8 @@
       "depth",
       "responsive",
       "brand-suites",
-      "themes"
+      "themes",
+      "resources"
     ]
   },
   "businessModules": [
@@ -87,20 +88,19 @@
   "refinements": {
     "themePresets": 6,
     "carouselSchemes": [
-      "stack",
       "rail"
     ],
     "sharedAppearance": true,
     "sidebar": "240/64-left",
     "pageZoom": "whole-application",
     "harnessReader": "zstd-all-frames",
-    "deepseekAuthorization": "one-click-local-browser",
-    "nativeReview": "pending",
+    "deepseekAuthorization": "ephemeral-existing-electron-session",
+    "nativeReview": "cancelled-by-maintainer-0.1.4",
     "themeScope": "six light main-shell presets; one default mist dark mode",
     "tableMetricInset": "18px; narrow layout flows right below heading",
     "independentTheme": "light/dark only; navigation follows mode",
     "windowTitle": "left logo plus purpose label",
-    "accentRoles": "strong fill, soft surface, readable accent text, contrasting solid foreground",
+    "accentRoles": "white on contrast-adjusted strong fill; readable soft pair",
     "legacyColorAccent": "soft surface"
   },
   "sharedContracts": [
@@ -113,6 +113,10 @@
     "rail-carousel",
     "startup-updates",
     "resource-manager",
-    "system-browser-ds-bridge"
+    "ephemeral-ds-login",
+    "stable-sidebar-tracks",
+    "automatic-agent-collection",
+    "contextual-object-actions",
+    "resource-four-tabs"
   ]
 }

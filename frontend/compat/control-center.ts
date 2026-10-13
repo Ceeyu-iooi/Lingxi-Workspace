@@ -1386,21 +1386,19 @@
           })
           .catch(() => {});
       });
-    const timer = setInterval(() => {
-      if (!body.isConnected) {
-        clearInterval(timer);
-        clearTimeout(scheduled);
-        return;
-      }
-      if(document.hidden || !body.closest("dialog[open]"))return;
-      action(async () => {
-        const local = scope;
-        cache.clear();
-        if (local !== "api" && data.config[local + "Enabled"])
-          await sync(local);
-        if (local === scope) await refreshAccounts();
-      });
-    }, 30000);
+    let refreshing=false;
+    const timer=setInterval(async()=>{
+      if(!body.isConnected){clearInterval(timer);clearTimeout(scheduled);return;}
+      if(document.hidden||refreshing||(!body.closest('dialog[open]')&&!location.hash.startsWith('#/usage')))return;
+      refreshing=true;try{const activeScope=scope,collection=await call('GET','/api/usage/collection');
+        if(activeScope!==scope||!body.isConnected)return;
+        const current=collection[scope];const note=q('#usage-sync-result',root);
+        if(current?.status==='collecting')note.textContent='正在自动读取日志，已出现的用量会继续补齐历史…';
+        else if(current?.status==='error')note.textContent=current.error;
+        else if(current?.status==='ready')note.textContent=current.error||'已自动同步 '+new Date(current.syncedAt).toLocaleTimeString();
+        cache.clear();request();
+      }catch(_){}finally{refreshing=false;}
+    },2000);
     usageTimer = timer;
   }
   function drawUsage(root, s) {
@@ -1480,7 +1478,7 @@
     const menus = document.createElement("div");
     menus.className = "workbench-menubar";
     menus.innerHTML =
-      '<details><summary>文件</summary><div class="workbench-menu"><a href="#/prompts">提示词库</a><a href="#/settings/data">导入 / 导出 / 备份</a></div></details><details><summary>编辑</summary><div class="workbench-menu"><button data-menu="search">搜索与跳转</button><a href="#/skills">本地技能</a></div></details><details><summary>视图</summary><div class="workbench-menu"><button data-menu="sidebar">收起 / 展开侧边栏</button><button data-menu="theme">切换主题</button><button data-menu="zoom-reset">实际大小</button><a href="#/settings/appearance">界面设置</a></div></details><details><summary>帮助</summary><div class="workbench-menu"><a href="#/settings/shortcuts">快捷键</a><button type="button" data-resource-manager>任务管理器</button><a href="preview.html">设计预览</a></div></details>';
+      '<details><summary>文件</summary><div class="workbench-menu"><a href="#/prompts">提示词库</a><a href="#/settings/data">导入 / 导出 / 备份</a></div></details><details><summary>编辑</summary><div class="workbench-menu"><button data-menu="search">搜索与跳转</button><a href="#/skills">本地技能</a></div></details><details><summary>视图</summary><div class="workbench-menu"><button data-menu="sidebar">收起 / 展开侧边栏</button><button data-menu="theme">切换主题</button><button data-menu="zoom-reset">实际大小</button><a href="#/settings/appearance">界面设置</a></div></details><details><summary>帮助</summary><div class="workbench-menu"><a href="#/settings/shortcuts">快捷键</a><button type="button" data-resource-manager>资源管理器</button><a href="preview.html">设计预览</a></div></details>';
     q(".shell-bar").insertBefore(menus, q("#theme-toggle"));
     qa("[data-menu]", menus).forEach(
       (b) =>

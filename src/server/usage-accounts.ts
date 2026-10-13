@@ -77,6 +77,7 @@ export class UsageAccounts {
           !!keys["usage:" + row.id] ||
           !!(keys["platform:" + row.id] && row.keyTrackingId),
         apiConfigured: !!keys["usage:" + row.id],
+        apiKeyHint:keys["usage:"+row.id]?"••••"+String(keys["usage:"+row.id]).slice(-4):null,
         platformConfigured:
           row.kind === "lmu"
             ? !!keys["lmu:platform"]
