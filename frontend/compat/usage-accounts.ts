@@ -453,7 +453,7 @@
     d.className = "usage-key-editor";
     d.setAttribute("role", "region");
     d.setAttribute("aria-label", c.id ? "编辑 APIKey" : "导入 APIKey");
-    d.innerHTML = `<form><div class="control-dialog-head"><h3>${c.id ? "编辑 APIKey" : "导入 APIKey"}</h3><button type="button" class="btn ghost" data-close aria-label="关闭">×</button></div>${kind === "custom" ? `<label class="control-field">供应商名称<input name="supplierName" required maxlength="60" value="${escape(c.supplierName || "")}"></label>` : ""}<label class="control-field">API 用量请求地址<input name="apiUrl" type="url" required value="${escape(requestURL)}" placeholder="https://…" autocomplete="url"></label><label class="control-field">名称<input name="name" maxlength="80" required value="${escape(c.name || (kind === "deepseek" ? "DeepSeek" : kind === "glm" ? "GLM" : kind === "lmu" ? "LMU" : preset?.name || "API") + " Key")}"></label><label class="control-field">${kind === "sub2api" ? "账户访问凭据" : "API Key"}<input type="password" name="apiKey" ${c.id ? "" : "required"} maxlength="4096" autocomplete="new-password" spellcheck="false" placeholder="${c.id ? "留空保留现有 Key" : "每次导入一个 API Key"}"></label><p class="meta">${kind === "lmu" ? "添加 Key 后，授权 LMU 平台查询历史。" : kind === "glm" ? "粘贴 Key 后导入，即可查询每日用量和费用。" : kind === "deepseek" ? "API Key 可直接查询余额；历史 Token 需平台提供相应查询权限。" : preset ? "查询可用余额或额度；Token 仅来自真实用量响应。" : "接口需返回日期、模型、Token；可同时返回费用。"}</p>${kind === "deepseek" ? `<p class="meta">导入后点击“一键获取历史用量”，在默认浏览器通过授权桥完成登录即可。</p>` : ["newapi", "custom_balance", "minimax"].includes(kind) ? `<details class="usage-platform-import"><summary>查询配置</summary><p class="meta">填写 JSON。New API 可设 credentialMode、userId；MiniMax 订阅 Key 设 credentialMode=subscription；自定义余额设 balanceMapping，明确币种和字段。</p><textarea name="adapterOptions" rows="3" autocomplete="off" spellcheck="false">${escape(JSON.stringify({ credentialMode: c.credentialMode || "key", ...(c.userId !== undefined ? { userId: c.userId } : {}), ...(c.quotaCurrency ? { quotaCurrency: c.quotaCurrency } : {}), ...(c.balanceMapping ? { balanceMapping: c.balanceMapping } : {}) }))}</textarea></details>` : ""}<label class="control-check"><input name="enabled" type="checkbox" ${c.enabled !== false ? "checked" : ""}>自动同步</label><p class="control-form-error" role="alert"></p><div class="control-dialog-actions"><button type="button" class="btn ghost" data-close>取消</button><button type="submit" class="btn">${c.id ? "保存" : "导入"}</button></div></form>`;
+    d.innerHTML = `<form><div class="control-dialog-head"><h3>${c.id ? "编辑 APIKey" : "导入 APIKey"}</h3><button type="button" class="btn ghost" data-close aria-label="关闭">×</button></div>${kind === "custom" ? `<label class="control-field">供应商名称<input name="supplierName" required maxlength="60" value="${escape(c.supplierName || "")}"></label>` : ""}<label class="control-field">API 用量请求地址<input name="apiUrl" type="url" required value="${escape(requestURL)}" placeholder="https://…" autocomplete="url"></label><label class="control-field">名称<input name="name" maxlength="80" required value="${escape(c.name || (kind === "deepseek" ? "DeepSeek" : kind === "glm" ? "GLM" : kind === "lmu" ? "LMU" : preset?.name || "API") + " Key")}"></label><label class="control-field">${kind === "sub2api" ? "账户访问凭据" : "API Key"}<input type="password" name="apiKey" ${c.id ? "" : "required"} maxlength="4096" autocomplete="new-password" spellcheck="false" placeholder="${c.id ? "留空保留现有 Key" : "每次导入一个 API Key"}"></label><p class="meta">${kind === "lmu" ? "添加 Key 后，授权 LMU 平台查询历史。" : kind === "glm" ? "粘贴 Key 后导入，即可查询每日用量和费用。" : kind === "deepseek" ? "查询余额；历史用量需官方授权。" : preset ? "查询可用余额或额度；Token 仅来自真实用量响应。" : "接口需返回日期、模型、Token；可同时返回费用。"}</p>${kind === "deepseek" ? "" : ["newapi", "custom_balance", "minimax"].includes(kind) ? `<details class="usage-platform-import"><summary>查询配置</summary><p class="meta">填写 JSON。New API 可设 credentialMode、userId；MiniMax 订阅 Key 设 credentialMode=subscription；自定义余额设 balanceMapping，明确币种和字段。</p><textarea name="adapterOptions" rows="3" autocomplete="off" spellcheck="false">${escape(JSON.stringify({ credentialMode: c.credentialMode || "key", ...(c.userId !== undefined ? { userId: c.userId } : {}), ...(c.quotaCurrency ? { quotaCurrency: c.quotaCurrency } : {}), ...(c.balanceMapping ? { balanceMapping: c.balanceMapping } : {}) }))}</textarea></details>` : ""}<label class="control-check"><input name="enabled" type="checkbox" ${c.enabled !== false ? "checked" : ""}>自动同步</label><p class="control-form-error" role="alert"></p><div class="control-dialog-actions"><button type="button" class="btn ghost" data-close>取消</button><button type="submit" class="btn">${c.id ? "保存" : "导入"}</button></div></form>`;
     const editor = {
       node: d,
       id: c.id,
@@ -470,7 +470,7 @@
       );
     (card || body).insertBefore(
       d,
-      card ? null : body.querySelector("[data-add-key]"),
+      card ? null : body.querySelector(":scope > [data-add-key]"),
     );
     d.classList.toggle("dsh-key-add-card", !c.id);
     d.close = () => closeKeyEditor(state, true);
@@ -595,11 +595,6 @@
         if (current()) {
           message.textContent =
             (added ? "已导入 " + added + " 个；" : "") + error.message;
-          if (!c.id)
-            form.elements.apiKeys.value = entries
-              .slice(added)
-              .map((r) => r.line)
-              .join("\n");
           if (added) await refreshManaged(state, preferred);
         }
       } finally {
@@ -721,21 +716,21 @@
       scroll = body.scrollTop;
     editor?.node.remove();
     body.innerHTML =
-      `<div class="dsh-provider-heading"><h2>${escape(group.name)}</h2><p>查看密钥状态、历史授权与最近同步结果。</p></div><div class="usage-supplier-tools"><span>${selected.length} 个 Key</span><button type="button" class="btn" data-add-key>添加 Key</button>${group.kind === "lmu" ? '<button type="button" class="btn ghost" data-lmu-auth>授权 LMU</button>' : ""}</div>` +
+      `<div class="dsh-provider-heading"><h2>${escape(group.name)}</h2><p></p></div><div class="usage-supplier-tools"><span>${selected.length} 个 Key</span>${group.kind === "lmu" ? '<button type="button" class="btn ghost" data-lmu-auth>授权 LMU</button>' : ""}</div>` +
       selected
         .map(
           (c) =>
-            `<article class="usage-managed-key" data-account="${escape(c.id)}"><div class="dsh-key-head"><div class="dsh-key-identity"><strong>${escape(c.name)}</strong><small class="meta">${escape(c.apiKeyHint || c.maskedKey || (c.configured ? "已配置密钥" : "未配置"))}</small><span class="dsh-credential-dot ${c.configured ? "configured" : ""}" role="img" aria-label="${c.configured ? "密钥已配置" : "尚未配置密钥"}" title="${c.configured ? "密钥已配置" : "尚未配置密钥"}"></span></div><div class="dsh-key-actions"><button type="button" class="btn ghost" data-sync="${escape(c.id)}" ${!c.configured ? "disabled" : ""}>同步</button><details class="key-more" name="usage-key-more" data-action-menu><summary aria-label="Key 更多操作">更多</summary><div>${c.kind === "deepseek" ? `<button type="button" class="btn ghost" data-deepseek-auth="${escape(c.id)}">一键获取历史用量</button>` : ""}<button type="button" class="btn ghost" data-edit="${escape(c.id)}">编辑</button><button type="button" class="btn ghost danger" data-remove="${escape(c.id)}">移除</button></div></details></div></div><span class="usage-key-status ${c.error ? "error" : ""}">${c.enabled === false ? "自动同步已暂停 · " : ""}${c.error ? "同步失败" : c.snapshot?.historyAvailable ? "已连接历史" : c.snapshot?.adapter ? "已查询余额／额度" : "尚未同步"}</span>${c.error ? `<p class="account-error">${escape(c.error)}</p>` : ""}<details class="usage-key-details" data-key-detail="${escape(c.id)}" ${state.supplierOpen.has(c.id) ? "open" : ""}><summary>用量详情</summary><div class="usage-managed-key-body"><p class="meta">${c.snapshot?.historyCount ? number(c.snapshot.historyCount) + " 条用量记录 · " : ""}${time(c.lastSuccessAt)}</p></div></details></article>`,
+            `<article class="usage-managed-key" data-account="${escape(c.id)}"><div class="dsh-key-head"><div class="dsh-key-identity"><strong>${escape(c.name)}</strong><small class="meta">${escape(c.apiKeyHint || c.maskedKey || (c.configured ? "已配置密钥" : "未配置"))}</small><span class="dsh-credential-dot ${c.configured ? "configured" : ""}" role="img" aria-label="${c.configured ? "密钥已配置" : "尚未配置密钥"}" title="${c.configured ? "密钥已配置" : "尚未配置密钥"}"></span></div><div class="dsh-key-actions"><button type="button" class="btn ghost" data-sync="${escape(c.id)}" ${!c.configured ? "disabled" : ""}>同步</button><details class="key-more" name="usage-key-more" data-action-menu><summary aria-label="Key 更多操作">更多</summary><div>${c.kind === "deepseek" ? `<button type="button" class="btn ghost" data-deepseek-auth="${escape(c.id)}">一键获取历史用量</button>` : ""}<button type="button" class="btn ghost" data-edit="${escape(c.id)}">编辑</button><button type="button" class="btn ghost danger" data-remove="${escape(c.id)}">移除</button></div></details></div></div><span class="usage-key-status ${c.error ? "error" : ""}">${c.enabled === false ? "自动同步已暂停 · " : ""}${c.error ? "同步失败" : c.snapshot?.historyAvailable ? "已连接历史" : c.snapshot?.adapter ? "已查询余额／额度" : "尚未同步"}</span>${c.error || c.snapshot?.unavailable?.history ? `<p class="account-error">${escape(c.error || c.snapshot.unavailable.history)}</p>` : ""}<details class="usage-key-details" data-key-detail="${escape(c.id)}" ${state.supplierOpen.has(c.id) ? "open" : ""}><summary>用量详情</summary><div class="usage-managed-key-body"><p class="meta">${c.snapshot?.historyCount ? number(c.snapshot.historyCount) + " 条用量记录 · " : ""}${time(c.lastSuccessAt)}</p></div></details></article>`,
         )
         .join("") +
-      '';
+      '<button type="button" class="dsh-key-add-card" data-add-key>＋ 添加 API Key</button>';
     if (editor) {
       const card = [...body.querySelectorAll("[data-account]")].find(
         (el) => el.dataset.account === editor.id,
       );
       (card || body).insertBefore(
         editor.node,
-        card ? null : body.querySelector("[data-add-key]"),
+        card ? null : body.querySelector(":scope > [data-add-key]"),
       );
       editingFocus?.focus({ preventScroll: true });
     }
@@ -805,10 +800,10 @@
   }
   function manageSuppliers(state) {
     const d = document.createElement("dialog");
-    d.className = "control-dialog wb-redesign usage-supplier-manager";
+    d.className = "control-dialog lingxi-dialog wb-redesign usage-supplier-manager";
     d.setAttribute("aria-label", "管理 API供应商");
     d.innerHTML =
-      '<button type="button" class="btn ghost" data-close data-manager-close aria-label="关闭 API供应商管理">×</button><aside class="usage-supplier-navigation"><h3>API供应商</h3><div class="usage-supplier-tabs" role="tablist" aria-label="API供应商"></div></aside><div data-managed-accounts></div>';
+      '<header class="control-dialog-head"><div class="dialog-brand-title"><img class="lingxi-window-logo" src="assets/lingxi-logo.svg" alt="灵犀"><h2>管理 API 供应商</h2></div><button type="button" class="btn ghost lingxi-dialog-close" data-close data-manager-close aria-label="关闭 API供应商管理">×</button></header><aside class="usage-supplier-navigation"><div class="usage-supplier-tabs" role="tablist" aria-label="API供应商"></div></aside><div data-managed-accounts></div>';
     document.body.append(d);
     state.dialog = d;
     state.managerOwner = user.username;
@@ -876,14 +871,26 @@
     return manage(root);
   }
   async function authorizeDeepseek(state,id,label){
-    let timer=null,finished=false,taskId=null;
-    const stop=async()=>{if(finished)return;finished=true;clearTimeout(timer);if(taskId)await call('POST','/api/deepseek/authorization/cancel',{});return true;};
-    const shell=window.WorkbenchDialogs.open({title:'获取历史用量 · '+(label||'DeepSeek Key'),body:'<p>请在系统默认浏览器安装授权桥并打开官方页面。已有登录会直接复用。<a href="/extensions/deepseek-bridge.zip" target="_blank" rel="noopener">下载授权桥</a></p><p data-authorization-status role="status">正在准备…</p>',beforeClose:stop,actions:[{id:'cancel',label:'取消',onClick:stop}]});
-    const status=shell.body.querySelector('[data-authorization-status]');
-    try{const task=window.workbenchDesktop?.deepseekAuthorize?await window.workbenchDesktop.deepseekAuthorize(id):await call('POST','/api/deepseek/authorization/start',{connectionId:id});taskId=task.id;
-      const poll=async()=>{if(finished)return;try{const task=await call('GET','/api/deepseek/authorization/status');if(task.id!==taskId)throw Error('授权任务已变更');status.textContent=task.status==='waiting'?(task.error||'等待官方临时窗口登录…'):task.status==='syncing'?'正在读取历史用量…':task.error||'授权已结束';if(task.status==='complete'){finished=true;await refreshManaged(state);shell.close(true);toast('DeepSeek 历史用量已同步',{kind:'success'});return;}if(['failed','cancelled'].includes(task.status)){finished=true;status.textContent=task.error||'已取消';return;}timer=setTimeout(poll,700);}catch(error){finished=true;status.textContent=error.message;}};await poll();
-    }catch(error){finished=true;status.textContent=error.message;}
-    shell.d.addEventListener('close',()=>{clearTimeout(timer);},{once:true});
+    if(!managerActive(state))return;
+    const card=[...state.dialog.querySelectorAll('[data-account]')].find(node=>node.dataset.account===id);if(!card)return;
+    let host=card.querySelector('[data-authorization-inline]');if(host?.dataset.busy==='true')return;
+    if(!host){host=document.createElement('div');host.dataset.authorizationInline='';host.className='dsh-authorization-inline';card.append(host);}
+    host.innerHTML='<p data-authorization-status role="status">正在准备…</p><button type="button" class="btn ghost" data-authorization-cancel>取消</button>';host.dataset.busy='true';
+    const status=host.querySelector('[role=status]');let timer=null,taskId=null,finished=false;
+    const valid=()=>managerActive(state)&&host.isConnected;
+    const cancel=async()=>{if(finished)return;finished=true;clearTimeout(timer);try{if(taskId)await call('POST','/api/deepseek/authorization/cancel',{});}catch{}if(valid()){host.dataset.busy='false';status.textContent='已取消';host.querySelector('button').hidden=true;}};
+    host.querySelector('button').onclick=cancel;
+    const release=()=>{clearTimeout(timer);if(!finished)void cancel();};state.dialog.addEventListener('close',release,{once:true});
+    try{
+      const task=window.workbenchDesktop?.deepseekAuthorize?await window.workbenchDesktop.deepseekAuthorize(id):await call('POST','/api/deepseek/authorization/start',{connectionId:id});taskId=task.id;
+      const poll=async()=>{if(finished)return;if(!valid()){await cancel();return;}
+        try{const task=await call('GET','/api/deepseek/authorization/status');if(task.id!==taskId||task.connectionId!==id)throw Error('授权任务已变更');
+          status.textContent=task.status==='waiting'?'请在官方临时窗口登录':task.status==='syncing'?'正在读取历史用量…':task.error||'授权已结束';
+          if(task.status==='complete'){finished=true;host.dataset.busy='false';await refreshManaged(state);toast('DeepSeek 历史用量已同步',{kind:'success'});return;}
+          if(['failed','cancelled'].includes(task.status)){finished=true;host.dataset.busy='false';host.querySelector('button').hidden=true;return;}timer=setTimeout(poll,700);
+        }catch(error){finished=true;if(valid()){host.dataset.busy='false';status.textContent=error.message;host.querySelector('button').hidden=true;}}
+      };await poll();
+    }catch(error){finished=true;if(valid()){host.dataset.busy='false';status.textContent=error.message;host.querySelector('button').hidden=true;}}
   }
   window.usageAccounts = {
     render,

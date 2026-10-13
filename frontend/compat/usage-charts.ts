@@ -296,7 +296,7 @@
       let text = valid(row)
         ? `${row.date}\n${row.provided === false ? "已知 " : ""}${value(host, row.total)}${unit(host)}${host.dataset.experimental === "true" ? " · API 等价值（实验）" : ""}`
         : `${row.date}\n${host.dataset.experimental === "true" ? "该日等价值未知" : "平台未返回该日" + (host.dataset.metric === "cost" ? "费用" : "用量")}`;
-      const detailRows = segment ? [{ label: segment.dataset.model, value: value(host, Number(segment.dataset.total)) + unit(host), color: segment.getAttribute("fill") || "#2563EB" }] : (row.models || []).map((m,i)=>({ label:m.model, value:value(host,m.total)+unit(host), color:"#2563EB" }));
+      const detailRows = segment ? [{ label: segment.dataset.model, value: value(host, Number(segment.dataset.total)) + unit(host), color: segment.getAttribute("fill") || "#2563EB" }] : (row.models || []).slice().sort((a,b)=>b.total-a.total || modelKey(a).localeCompare(modelKey(b))).map(m=>({ label:m.model, value:value(host,m.total)+unit(host), color:modelColor(modelKey(m)) }));
       tip.show({primary:valid(row)?value(host,row.total)+unit(host):"未返回",date:row.date,rows:detailRows}, clientX ?? screen.x, clientY ?? screen.y);
     };
     const clipId = "usage-reveal-" + ++sequence;
@@ -742,7 +742,7 @@
       segment.style.setProperty("--slice-x", Math.sin(angle) * 2 + "px");
       segment.style.setProperty("--slice-y", -Math.cos(angle) * 2 + "px");
       tip.show(
-        { primary: value(host, row.total) + unit(host), rows: [{ label: row.model, value: value(host, row.total) + unit(host), color: "#2563EB" }] },
+        { primary: value(host, row.total) + unit(host), rows: [{ label: row.model, value: value(host, row.total) + unit(host), color: row.color || modelColor(modelKey(row)) }] },
         x,
         y,
       );

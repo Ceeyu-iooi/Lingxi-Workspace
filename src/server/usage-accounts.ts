@@ -738,6 +738,7 @@ export class UsageAccounts {
             "DeepSeek 平台凭据无效或没有历史查询权限，请更新平台登录凭据",
           );
         const raw = data.biz_data;
+        if(Array.isArray(raw.series)&&raw.series.some((item:JsonObject)=>item.api_key?.tracking_id&&item.api_key.tracking_id!==row.keyTrackingId))throw new Error("平台返回了其他 Key 的历史，已停止同步");
         matched =
           matched ||
           (raw.series || []).some(
@@ -767,7 +768,7 @@ export class UsageAccounts {
           throw new Error("历史记录超过 10000 条，请缩短查询范围");
         cursor = from;
       }
-      if (!matched)
+      if (!matched && rows.length)
         throw new Error("平台未返回该 Key 的历史，请核对 Key 标识和查询范围");
       if (new Set(rows.map((r) => r.id)).size !== rows.length)
         throw new Error("历史接口返回重复记录");

@@ -1,5 +1,5 @@
 {
-  "version": "0.1.4",
+  "version": "0.1.5",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
@@ -117,6 +117,25 @@
     "stable-sidebar-tracks",
     "automatic-agent-collection",
     "contextual-object-actions",
-    "resource-four-tabs"
-  ]
+    "resource-four-tabs",
+    "draggable-window-titlebar",
+    "one-second-visible-sampling",
+    "inline-storage-detail",
+    "instant-metric-selection",
+    "usage-only-recent-requests",
+    "portal-filter-lifecycle",
+    "readiness-update-cleanup"
+  ],
+  "windowGeometry": {
+    "titlebar": 40,
+    "radius": 16,
+    "resources": [
+      960,
+      640
+    ],
+    "providers": [
+      960,
+      680
+    ]
+  }
 }

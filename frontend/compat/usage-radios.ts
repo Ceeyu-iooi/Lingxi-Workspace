@@ -13,7 +13,7 @@
         label: title,
         items: choices,
         value,
-        onChange: change,
+        onChange: next => { value = next; render(); change(next); },
       });
     render();
     return {
@@ -87,7 +87,7 @@
           b.click();
       },
     );
-    s.tables=[...root.querySelectorAll("[data-usage-table]")].map((section,i)=>{const host=document.createElement("div");host.className="table-metric-radio";section.querySelector("h3").after(host);const button=section.querySelector("[data-table-money]");button.classList.add("usage-radio-action");return group(host,"表格统计量",[["token","用量"],["cost","价格"]],value=>{if((button.getAttribute("aria-pressed")==="true")!==(value==="cost"))button.click();});});
+    s.tables=[...root.querySelectorAll("[data-usage-table]")].slice(0,1).map((section,i)=>{const host=document.createElement("div");host.className="table-metric-radio";section.querySelector("h3").after(host);const button=section.querySelector("[data-table-money]");button.classList.add("usage-radio-action");return group(host,"表格统计量",[["token","用量"],["cost","价格"]],value=>{if((button.getAttribute("aria-pressed")==="true")!==(value==="cost"))button.click();});});
     states.set(root, s);
   }
   function sync(root) {

@@ -341,7 +341,7 @@
       "备份整个 Profile，包含工作内容、个人资料、设置与凭据。",
     );
     body.innerHTML =
-      '<section class="control-section"><div class="control-actions"><button class="btn" data-backup>创建加密备份</button><button class="btn ghost" data-export-profile>导出加密 Profile</button></div><p class="meta">请妥善保存备份口令，恢复时需要使用。</p><p class="control-form-error" role="alert"></p><div data-backup-list></div></section>';
+      '<section class="control-section"><div class="control-actions"><button class="btn" data-backup>创建加密备份</button><button class="btn ghost" data-export-profile>导出加密 Profile</button></div><p class="meta">请妥善保存备份口令，恢复时需要使用。</p><p class="control-form-error" role="alert"></p><div data-backup-list role="status">正在读取备份…</div></section>';
     const identity = user.username,
       active = () => root.isConnected && user?.username === identity;
     const passwordDialog = (title, confirmPassword, submit) =>
@@ -412,7 +412,7 @@
             }),
         );
       } catch (error) {
-        if (active()) q("[role=alert]", body).textContent = error.message;
+        if (active()) {q("[role=alert]", body).textContent = error.message;const host=q("[data-backup-list]",body);host.innerHTML='<button type="button" class="btn ghost" data-backup-retry>重新读取备份</button>';host.querySelector("button").onclick=list;}
       }
     };
     q("[data-backup]", body).onclick = () =>

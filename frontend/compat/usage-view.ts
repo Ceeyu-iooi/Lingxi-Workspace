@@ -354,10 +354,11 @@
       b.hidden = true;
       b.setAttribute("aria-pressed", "false");
       b.setAttribute("aria-label", "切换 API 等价值");
-      q(".usage-table-tools", section).append(b);
+      if (i === 0) q(".usage-table-tools", section).append(b);
       b.onclick = () => {
         state.metrics["table" + i] = !state.metrics["table" + i];
         b.setAttribute("aria-pressed", String(state.metrics["table" + i]));
+        window.usageRadios?.sync(root);
         table(root, state, i, true);
       };
       window.usageFilters.models(
@@ -369,24 +370,9 @@
       q("[data-table-sort]", section).onchange = () =>
         table(root, state, i, true);
     });
-    const viewport = document.createElement("div");
-    viewport.className = "usage-trend-viewport";
-    viewport.innerHTML =
-      '<span data-viewport-label>鼠标滚轮缩放趋势日期；不改变其他统计</span><button type="button" class="btn ghost" data-reset-viewport>重置视窗</button>';
-    q(".usage-plot", root).after(viewport);
     state.trendViewport = null;
     state.trendRows = null;
     state.trendTicket = 0;
-    q("[data-reset-viewport]", root).onclick = () => {
-      state.trendTicket++;
-      clearTimeout(state.trendTimer);
-      state.trendAbort?.abort();
-      state.trendViewport = null;
-      state.trendRows = null;
-      state.trendGranularity = null;
-      state.signatures.trend = null;
-      charts(root, state);
-    };
     window.usageCharts.track(root, () => {
       clearTimeout(state.trendTimer);
       state.trendAbort?.abort();
@@ -458,7 +444,7 @@
       charts(root, state);
     } catch (error) {
       if (error.name !== "AbortError" && root.isConnected)
-        q("[data-viewport-label]", root).textContent =
+        q(".usage-updated", root).textContent =
           error.message + "；原图保留";
     } finally {
       stop();
@@ -839,27 +825,6 @@
       q(".usage-pie-heading h3", root).textContent =
         "模型等价值占比" + (valued.summary.costUnknown ? "（已知）" : "");
     }
-    if (state.trendViewport) {
-      q("[data-viewport-label]", root).textContent =
-        state.trendViewport.start +
-        " — " +
-        state.trendViewport.end +
-        " · " +
-        ({ day: "按日", week: "按周聚合", month: "按月聚合" }[
-          state.trendGranularity
-        ] || "读取中") +
-        " · 仅趋势视窗";
-      const key = [cash, cash ? currency : "", state.snapshot.dataVersion].join(
-        ":",
-      );
-      if (state.trendLastMetric && state.trendLastMetric !== key) {
-        state.trendLastMetric = key;
-        clearTimeout(state.trendTimer);
-        state.trendTimer = setTimeout(() => loadTrend(root, state), 100);
-      }
-    } else
-      q("[data-viewport-label]", root).textContent =
-        "鼠标滚轮缩放趋势日期；不改变其他统计";
     if (plot.dataset.valueCurrency && plot.dataset.valueCurrency !== currency)
       plot.dataset.transition = "vertical";
     plot.dataset.valueCurrency = currency || "";
@@ -908,7 +873,7 @@
     if (!s) return;
     const valued = valueSnapshot(state),
       cash =
-        ["codex","api"].includes(state.scope) && !!valued && state.metrics["table" + index];
+        index === 0 && ["codex","api"].includes(state.scope) && !!valued && state.metrics["table" + index];
     const section = all("[data-usage-table]", root)[index],
       model = q("[data-table-model]", section),
       sort = q("[data-table-sort]", section),

@@ -88,7 +88,7 @@
       // Legacy callers keep their information until converted to structured rows.
       data = { primary: lines.shift() || "—", date, rows: lines.map((l,i)=>({ label:l, value:"", color:["#2563EB","#F28C38","#2A9D99"][i%3] })) };
     }
-    return `<strong class="lingxi-tip-primary">${escape(data.primary)}</strong>${data.date?`<small class="lingxi-tip-date">${escape(data.date)}</small>`:""}${data.rows?.length?`<div class="lingxi-tip-rows">${data.rows.map(r=>`<div><i style="background:${/^#[0-9a-f]{3,8}$/i.test(r.color)?r.color:'#2563EB'}"></i><span title="${escape(r.label)}">${escape(r.label)}</span><b>${escape(r.value)}</b></div>`).join("")}</div>`:""}`;
+    return `<strong class="lingxi-tip-primary">${escape(data.primary)}</strong>${data.date?`<small class="lingxi-tip-date">${escape(data.date)}</small>`:""}${data.rows?.length?`<div class="lingxi-tip-rows">${data.rows.map(r=>`<div><i style="background:${/^(?:#[0-9a-f]{3,8}|hsl\(\d{1,3} \d{1,3}% \d{1,3}%\))$/i.test(r.color)?r.color:'#2563EB'}"></i><span title="${escape(r.label)}">${escape(r.label)}</span><b>${escape(r.value)}</b></div>`).join("")}</div>`:""}`;
   }
   function header() {
     const main=document.getElementById("main"), shell=main?.parentElement; if(!main||!shell) return;

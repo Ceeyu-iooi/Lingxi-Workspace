@@ -2,7 +2,7 @@
 // Compatibility controller: retain the validated interactions during the React migration.
 (() => {
   let popup = null,
-    owner = null;
+    owner = null, releaseOverlay = null;
   const updateButton = (select, button) => {
     let label = button.querySelector(".wb-select-label");
     if (!label) {
@@ -21,7 +21,7 @@
     );
   };
   const close = (focus) => {
-    popup?.remove();
+    releaseOverlay?.();releaseOverlay=null;popup?.remove();
     popup = null;
     if (owner) {
       owner.setAttribute("aria-expanded", "false");
@@ -78,7 +78,7 @@
       });
       const container=select.closest('dialog[open]')||document.body;
       container.append(popup);
-      window.WorkbenchOverlay.place(popup,button);
+      releaseOverlay=window.WorkbenchOverlay.follow(popup,button);
       popup.querySelector("[aria-selected=true]:not(:disabled)")?.focus();
       popup.onkeydown = (e) => {
         const items = [...popup.querySelectorAll("button:not(:disabled)")],
@@ -131,15 +131,6 @@
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") close(true);
   });
-  window.addEventListener("resize", () => close());
-  window.addEventListener("workbench:zoom", () => close());
-  window.addEventListener(
-    "scroll",
-    (event) => {
-      if (popup && !popup.contains(event.target)) close();
-    },
-    true,
-  );
   window.addEventListener("hashchange", () => close());
   document.addEventListener("change", scan);
   window.roundedSelects = { scan, close };

@@ -1,3 +1,4 @@
+import "./startup";
 import "./motion";
 import "./brand";
 import "./surfaces";
@@ -51,12 +52,13 @@ function Page({ route, ready }: { route: string; ready: boolean }) {
   useLayoutEffect(() => {
     if (ready) {
       window.lingxiRuntime?.render();
+      const presented=(window as any).WorkbenchStartup.finish();
       if (
         window.workbenchRuntime?.version === __LINGXI_VERSION__ &&
         (window.lingxiRuntime?.getUser() ||
           document.getElementById("profile-create-form"))
       )
-        window.workbenchDesktop?.applicationReady?.().catch(() => {});
+        void presented.then(()=>window.workbenchDesktop?.applicationReady?.()).catch(() => {});
     }
   }, [route, hash, ready]);
   return null;

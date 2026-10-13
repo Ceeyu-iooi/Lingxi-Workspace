@@ -7,7 +7,7 @@
 @media(max-width:719px){.lingxi-dialog-form{max-height:calc(100dvh - 16px)}.lingxi-dialog-form>.control-dialog-head{padding:18px 20px}.lingxi-dialog-form>.control-dialog-actions{padding:16px 20px}}
 .lingxi-module-bar .usage-tab-icon,.lingxi-module-bar .usage-tab-icon img{--usage-icon-size:calc(var(--ui-font-size,14px) * 1.428571 * var(--ui-scale,1));width:var(--usage-icon-size)!important;height:var(--usage-icon-size)!important;min-width:var(--usage-icon-size)!important;max-width:var(--usage-icon-size)!important;flex:0 0 var(--usage-icon-size)!important}
 
-.lingxi-dialog:not(.settings-center-modal):not(.usage-supplier-manager):not(.valuation-modal){height:fit-content!important;min-height:0!important}
+.lingxi-dialog:not(.settings-center-modal):not(.usage-supplier-manager):not(.resource-manager):not(.valuation-modal){height:fit-content!important;min-height:0!important}
 .settings-center-modal>.settings-center-head{position:relative;inset:auto;width:auto;height:auto;min-height:64px;padding:16px 24px!important;border-bottom:1px solid var(--line)!important;margin:0;background:var(--surface);pointer-events:auto}
 .settings-center-modal>.settings-center-head button{width:36px!important;height:36px!important;min-height:36px!important}
 .wb-slider-host .scrub-field{width:calc(160px * var(--ui-scale,1))!important;height:calc(34px * var(--ui-scale,1))!important;font-size:calc(13px * var(--ui-scale,1))!important}

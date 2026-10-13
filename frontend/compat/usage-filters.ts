@@ -67,7 +67,7 @@
       error = shell.querySelector("[role=status]");
     let start = "",
       end = "",
-      applied = null;
+      applied = null, releaseOverlay = null;
     const months = {
       start: new Date(today().slice(0, 8) + "01T00:00:00Z"),
       end: new Date(today().slice(0, 8) + "01T00:00:00Z"),
@@ -75,11 +75,12 @@
     body.inert = true;
     const expand = (value) => {
       popup.dataset.custom = String(value);
+      if(!popup.hidden){releaseOverlay?.();releaseOverlay=window.WorkbenchOverlay.follow(popup,button,()=>value?Math.min(720,innerWidth-24):button.getBoundingClientRect().width);}
       body.inert = !value;
       body.setAttribute("aria-hidden", String(!value));
     };
     const close = (focus = false) => {
-      popup.hidden = true;
+      releaseOverlay?.();releaseOverlay=null;popup.hidden = true;
       button.setAttribute("aria-expanded", "false");
       if (focus) button.focus({ preventScroll: true });
     };
@@ -221,13 +222,14 @@
       expand(false);
       render();
       popup.hidden = false;
+      releaseOverlay=window.WorkbenchOverlay.follow(popup,button,()=>button.getBoundingClientRect().width);
       button.setAttribute("aria-expanded", "true");
     };
     select.addEventListener("change", () => {
       title();
     });
     const outside = (ev) => {
-        if (!shell.contains(ev.target)) close();
+        if (!shell.contains(ev.target)&&!popup.contains(ev.target)) close();
       },
       escape = (ev) => {
         if (ev.key === "Escape") {
@@ -237,6 +239,8 @@
       };
     document.addEventListener("pointerdown", outside);
     shell.addEventListener("keydown", escape);
+    popup.addEventListener("keydown",escape);
+    window.usageCharts.track(root,()=>{releaseOverlay?.();popup.remove();});
     window.usageCharts.track(root, () =>
       document.removeEventListener("pointerdown", outside),
     );
@@ -256,6 +260,7 @@
       '<summary class="usage-filter-button">' +
       caption("全部") +
       '</summary><div class="usage-key-options"></div>';
+    const options=shell.querySelector(".usage-key-options");
     let rows = [],
       selected = [];
     const paint = () => {
@@ -273,7 +278,7 @@
             ? selected.length + " 个 APIKey"
             : "全部",
       );
-      shell.querySelector(".usage-key-options").innerHTML =
+      options.innerHTML =
         '<label><input type="checkbox" data-all ' +
         (!selected.length ? "checked" : "") +
         ">全部</label>" +
@@ -283,15 +288,15 @@
               `<label><input type="checkbox" value="${e(r.id)}" ${selected.includes(r.id) ? "checked" : ""}>${e(r.name)}</label>`,
           )
           .join("");
-      shell.querySelector("[data-all]").onchange = () => {
+      options.querySelector("[data-all]").onchange = () => {
         selected = [];
         paint();
         changed();
       };
-      shell.querySelectorAll("input[value]").forEach(
+      options.querySelectorAll("input[value]").forEach(
         (input) =>
           (input.onchange = () => {
-            selected = [...shell.querySelectorAll("input[value]:checked")].map(
+            selected = [...options.querySelectorAll("input[value]:checked")].map(
               (x) => x.value,
             );
             paint();
@@ -299,15 +304,9 @@
           }),
       );
       if (focusKey)
-        shell.querySelector(focusKey)?.focus({ preventScroll: true });
+        options.querySelector(focusKey)?.focus({ preventScroll: true });
     };
-    const outside = (ev) => {
-      if (!shell.contains(ev.target)) shell.open = false;
-    };
-    document.addEventListener("pointerdown", outside);
-    window.usageCharts.track(root, () =>
-      document.removeEventListener("pointerdown", outside),
-    );
+    window.usageCharts.track(root,window.WorkbenchOverlay.disclosure(shell,shell.querySelector(".usage-key-options")));
     return {
       shell,
       get: () => [...selected],
@@ -339,6 +338,7 @@
       search = shell.querySelector("input[type=search]"),
       list = shell.querySelector(".usage-model-options"),
       allBox = shell.querySelector("[data-all]"),
+      empty = shell.querySelector(".usage-model-empty"),
       nodes = new Map();
     const storage = () => (typeof key === "function" ? key() : key);
     const save = () => {
@@ -352,7 +352,7 @@
         label.hidden = !value.toLocaleLowerCase().includes(term);
         if (!label.hidden) visible++;
       });
-      shell.querySelector(".usage-model-empty").hidden = !!visible;
+      empty.hidden = !!visible;
     };
     const paint = () => {
       summary.querySelector(".usage-filter-label").textContent =
@@ -438,13 +438,12 @@
       changed();
     };
     search.oninput = filter;
-    shell.ontoggle = () =>
-      summary.setAttribute("aria-expanded", String(shell.open));
+    window.usageCharts.track(root,window.WorkbenchOverlay.disclosure(shell,shell.querySelector(".usage-model-popover")));
     select.addEventListener("change", () => {
       set(select.value ? [select.value] : []);
       changed();
     });
-    shell.addEventListener("keydown", (event) => {
+    const handleModelKey = (event) => {
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
@@ -490,9 +489,9 @@
         event.target.checked = !event.target.checked;
         event.target.dispatchEvent(new Event("change", { bubbles: true }));
       }
-    });
+    };shell.addEventListener("keydown",handleModelKey);list.parentElement.addEventListener("keydown",handleModelKey);
     const outside = (event) => {
-      if (!shell.contains(event.target)) shell.open = false;
+      if (!shell.contains(event.target)&&!list.parentElement.contains(event.target)) shell.open = false;
     };
     document.addEventListener("pointerdown", outside);
     window.usageCharts.track(root, () =>
