@@ -1,5 +1,5 @@
 {
-  "version": "0.1.5",
+  "version": "0.1.6",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
@@ -124,11 +124,16 @@
     "instant-metric-selection",
     "usage-only-recent-requests",
     "portal-filter-lifecycle",
-    "readiness-update-cleanup"
+    "readiness-update-cleanup",
+    "per-frame-sidebar-anchor-stability",
+    "fixed-date-preset-width",
+    "primary-charts-before-account",
+    "borderless-storage-legend",
+    "profile-backup-hierarchy"
   ],
   "windowGeometry": {
-    "titlebar": 40,
-    "radius": 16,
+    "titlebar": 32,
+    "radius": 4,
     "resources": [
       960,
       640

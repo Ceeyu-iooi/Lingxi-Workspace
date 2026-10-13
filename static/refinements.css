@@ -8,7 +8,7 @@
 .layout{zoom:var(--page-scale);width:calc(100vw / var(--page-scale))!important;height:calc(100svh / var(--page-scale))!important;min-height:0!important;grid-template-columns:240px minmax(0,1fr)!important;grid-template-rows:auto minmax(0,1fr)!important}
 .layout>.side{display:flex!important;grid-column:1!important;grid-row:2!important;position:relative!important;flex-direction:column}
 .layout>.main-shell{grid-column:2!important;grid-row:2!important;min-width:0;min-height:0}.sidebar-collapsed .layout{grid-template-columns:64px minmax(0,1fr)!important}.tabbar{display:none!important}
-.layout>.shell-bar{grid-column:1/-1!important;min-height:max(40px,calc(40px / var(--page-scale)))!important}
+.layout>.shell-bar{grid-column:1/-1!important;min-height:max(32px,calc(32px / var(--page-scale)))!important}
 .lingxi-window-controls{zoom:calc(1 / var(--page-scale))}
 .lingxi-dialog,.lingxi-surface{zoom:var(--page-scale);max-width:calc((100vw - 24px) / var(--page-scale))!important;max-height:calc((100svh - 24px) / var(--page-scale))!important}
 .lingxi-surface{width:calc(100vw / var(--page-scale))!important;height:calc(100svh / var(--page-scale))!important;max-width:none!important;max-height:none!important}

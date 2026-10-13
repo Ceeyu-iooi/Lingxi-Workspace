@@ -265,23 +265,10 @@ import {accentColors} from '../../src/shared/accent-colors';
         .forEach((node) => node.remove());
       link.appendChild(label);
     });
-    let sidebarFrame=0, restoreSidebarAnchor=null;
     document.getElementById("sidebar-toggle").onclick = () => {
-      cancelAnimationFrame(sidebarFrame);restoreSidebarAnchor?.();
-      const main=document.getElementById("main"), viewport=main.getBoundingClientRect();
-      // Pick the currently visible content, including a partly clipped first row.
-      const visible=[...main.querySelectorAll("[data-motion-row],.control-section,.card,.ob-panel,.sum-card,h2,h3")].find(node=>{const r=node.getBoundingClientRect();return r.bottom>viewport.top+1&&r.top<viewport.bottom;});
-      const offset=visible?.getBoundingClientRect().top, previous=main.style.overflowAnchor;
-      main.style.overflowAnchor='none';
-      restoreSidebarAnchor=()=>{main.style.overflowAnchor=previous;restoreSidebarAnchor=null;};
-      const start=performance.now();
-      const preserve=()=>{if(visible?.isConnected&&main.isConnected){const delta=visible.getBoundingClientRect().top-offset;if(Math.abs(delta)>.1)main.scrollTop+=delta/(Number(document.documentElement.dataset.uiScale||100)/100);}if(performance.now()-start<360)sidebarFrame=requestAnimationFrame(preserve);else restoreSidebarAnchor?.();};
       sidebarCollapsed = !sidebarCollapsed;
       applySidebar();
-
-      if(document.documentElement.dataset.motion==='reduced'||matchMedia('(prefers-reduced-motion: reduce)').matches){preserve();cancelAnimationFrame(sidebarFrame);restoreSidebarAnchor?.();}else sidebarFrame=requestAnimationFrame(preserve);
     };
-    window.addEventListener('pagehide',()=>{cancelAnimationFrame(sidebarFrame);restoreSidebarAnchor?.();},{once:true});
     document.querySelectorAll(".sidebar-resize").forEach(node=>node.remove());
     const icons = {
       home: '<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M9 21v-8h6v8"/>',

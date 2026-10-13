@@ -1,5 +1,5 @@
 {
-  "version": "0.1.5",
+  "version": "0.1.6",
   "files": [
     {
       "file": "README.md",
@@ -19,11 +19,11 @@
     },
     {
       "file": "VERSION",
-      "sha256": "800cf1c0392b24de7c0a1c6ea6778ecb433dec71c49a150bce96a98477527b2f"
+      "sha256": "1f2110568627307becae713f8b808f3d9d912d4b2a24ed6a78605f03f7437d3c"
     },
     {
       "file": "design.md",
-      "sha256": "652dcd420213d5a5ad0fd77a0986853fe6e3af3c6837274b990e047197687f86"
+      "sha256": "52b99d602f578dfc39741fee92c60a012287f32b904bc7396b14d78fb3f2e74b"
     },
     {
       "file": "start.bat",
@@ -151,7 +151,7 @@
     },
     {
       "file": "src/server/package.json",
-      "sha256": "d1d552a1e4d0863fc67b33abddc362227263a74d254b19f5e5944ccab1cb2f65"
+      "sha256": "616505650c48d369aa772a197502e812f18f7d7e28f14c1ba1f4dbd3ce05db4e"
     },
     {
       "file": "src/server/parsers.ts",
@@ -275,11 +275,11 @@
     },
     {
       "file": "frontend/app/motion.ts",
-      "sha256": "e724545630813c11e4aeec50bc203ce2ec39e4405b0415e5f210d63d8d952a0f"
+      "sha256": "e16e7a273aacb208ecf60c80ce0adeae2de552bb39d2c2fa64dfe438165d923d"
     },
     {
       "file": "frontend/app/overlay.ts",
-      "sha256": "1d1e99bd791c38b95f9461d74ed0cc05e1941d852c5974d025a9645e436005fa"
+      "sha256": "2adff53eb81572c18c77be88c766fdd5e64ae37a153e78a8dbc67f186bd0b51f"
     },
     {
       "file": "frontend/app/page-zoom.ts",
@@ -295,7 +295,7 @@
     },
     {
       "file": "frontend/app/preview.ts",
-      "sha256": "339e8728608332f4f02b66d6a60659e584a45962ef1e1e49bed67dce9ef25023"
+      "sha256": "42ae82da45e4cadcb5ba16080ffdb97a9ed9b54736ea5313c32de3bbe0e301c6"
     },
     {
       "file": "frontend/app/prices.html",
@@ -303,7 +303,7 @@
     },
     {
       "file": "frontend/app/resources.ts",
-      "sha256": "d029840e0f06b020165d4d575d52128ec80c80b2eddb4677f27b2107a371bb81"
+      "sha256": "f30a1f75f7e15652d95a3a103828b3493ea6cd881acfc0bf1cf362665a9606a1"
     },
     {
       "file": "frontend/app/runtime.d.ts",
@@ -347,7 +347,7 @@
     },
     {
       "file": "frontend/compat/control-center.ts",
-      "sha256": "b55dc378179208d5d1cd8f785a3bcec4d3ff62fed651fee87342aee14774f617"
+      "sha256": "1c4d7d076bc805f623df32d73f2a561aa0c4084973ca38d75634d20071ee0a63"
     },
     {
       "file": "frontend/compat/dialogs.ts",
@@ -363,7 +363,7 @@
     },
     {
       "file": "frontend/compat/lingxi-design.ts",
-      "sha256": "3c4faa4d675df8f6347fdd0130987e4af3e5f62087f6261df8c842d2a69013f3"
+      "sha256": "c1028240cdd30010ca15210c25ea43a55e0f6fe2d49d8826d00de5f64189b58f"
     },
     {
       "file": "frontend/compat/news-board.ts",
@@ -407,7 +407,7 @@
     },
     {
       "file": "frontend/compat/theme.ts",
-      "sha256": "dc4eed5dd4a221a4c1713bdd4ee92101731f4541d33a579af8a526d57af7a5f5"
+      "sha256": "8e8f41a9ed91dbb9e5f3fa92d8590f840bbf52d765263d83cb90d92c0d3cccd6"
     },
     {
       "file": "frontend/compat/ui-core.ts",
@@ -423,7 +423,7 @@
     },
     {
       "file": "frontend/compat/usage-filters.ts",
-      "sha256": "8413bdc7b5760dec3335a2d6b214b723d638dff7be226bcb78ae613de128de24"
+      "sha256": "2442037d0fb0f4dd2bbd8385c905cc48b376b4dddac058742e1834a69ba99b2b"
     },
     {
       "file": "frontend/compat/usage-radios.ts",
@@ -431,7 +431,7 @@
     },
     {
       "file": "frontend/compat/usage-view.ts",
-      "sha256": "af4fe4e3d27971f1c574d4396c9f61abb7c7cbb5d9c5ab722b5bb5294af0fb6f"
+      "sha256": "3c382e18ccad96f1032578dd2b9c40448f736ae3b2b84c1954359cdd32c91951"
     },
     {
       "file": "frontend/compat/workbench-design.ts",
@@ -547,7 +547,7 @@
     },
     {
       "file": "static/design-preview.css",
-      "sha256": "4e47b43897e67a71fddc5ae165885655a2c8aa916d935aca85aaa1bf8c0e1249"
+      "sha256": "31d541d337fe1d8fde7ae7650e365542e770b24443ad55e77dc22b97c89f7c5c"
     },
     {
       "file": "static/dialogs.css",
@@ -563,7 +563,7 @@
     },
     {
       "file": "static/interaction-surfaces.css",
-      "sha256": "84d0ca596e6452293dae4d0357a1847d11c1c7fcef37038fb1b92cd3877b9e58"
+      "sha256": "997a18329ee699a78f44e2d63bd3b2e958d983c53bc49644b99baa7e514a73c6"
     },
     {
       "file": "static/lingxi-design.css",
@@ -599,11 +599,11 @@
     },
     {
       "file": "static/refinements.css",
-      "sha256": "7a20639313c6cb6dfa99fbe9713d9a445baa617a14e8e1c439478b299667ff8c"
+      "sha256": "32328841ab67f26c12182d6ff245e3ffa2fb9a1436c0f452da339dc806565080"
     },
     {
       "file": "static/shell/window-controls.css",
-      "sha256": "97c04bbffd03021f9afa4ad0561626bcd83a5d2f97c16ed4e36c98a855a202f2"
+      "sha256": "d35a48530d55de8e04a65cd0aa4375566b1f94ebc4b1407bbf92ceab7cd01ed9"
     },
     {
       "file": "static/shell/window-controls.js",
@@ -615,7 +615,7 @@
     },
     {
       "file": "static/startup.css",
-      "sha256": "146b4260fbae937656be8524c66e336870c043f2a041e5c6fdd85ec05f160438"
+      "sha256": "bca3d1bef354cfad35531d0f5b5dcf2f7fc476896c74c6f51c43e62122881587"
     },
     {
       "file": "static/theme.css",
@@ -723,7 +723,7 @@
     },
     {
       "file": "docs/design-coverage.json",
-      "sha256": "1e43e6c3dd886f719c5fd06f1f6bd6a9bd8868595dd440c70df1c09534500c1b"
+      "sha256": "831ffcc72e95454569efd91f8eba9467c2757ae57a5e36f28e52e0a2cb6c832d"
     },
     {
       "file": "docs/design-reference-audit.json",
@@ -731,7 +731,7 @@
     },
     {
       "file": "docs/FIRST_RUN_PLAN.md",
-      "sha256": "49e19abb4d7b0be8f9415b02710417b377e7c0ce8271d8d1b280fddcbcaed240"
+      "sha256": "de34f15e5d95f114fdaea27e29f5d7b8758339c33db2a3412f48f7314c2b5b97"
     },
     {
       "file": "docs/images/architecture.svg",
@@ -747,11 +747,11 @@
     },
     {
       "file": "docs/TYPESCRIPT_MIGRATION.md",
-      "sha256": "2b349f3844dd71449957eae0fad3a6c22a53eca4f3531fcfd5fc05430c6673f8"
+      "sha256": "ea65b88e479c25a2fb26f7f133d7481d1ff41fc31e4830917bfda33ca511a8e1"
     },
     {
       "file": "docs/UI_DESIGN.md",
-      "sha256": "1c411b575aca5f8e2a416c47d19bfc4b6dfc41c55f8b93770bb854181ffdefbe"
+      "sha256": "13debac8f45c50ecfcac92c311ac45811aad1cec5100c67137bb3ec01252286e"
     },
     {
       "file": "docs/USAGE.md",

@@ -341,11 +341,12 @@
       "备份整个 Profile，包含工作内容、个人资料、设置与凭据。",
     );
     body.innerHTML =
-      '<section class="control-section"><div class="control-actions"><button class="btn" data-backup>创建加密备份</button><button class="btn ghost" data-export-profile>导出加密 Profile</button></div><p class="meta">请妥善保存备份口令，恢复时需要使用。</p><p class="control-form-error" role="alert"></p><div data-backup-list role="status">正在读取备份…</div></section>';
+      '<section class="control-section profile-backup-panel"><header class="backup-heading"><div><h3>加密备份</h3><p>工作内容、设置与凭据</p></div><button class="btn" data-backup>创建备份</button></header><div class="backup-library-heading"><span data-backup-summary>正在读取…</span><button class="btn ghost" data-export-profile>导出当前 Profile</button></div><p class="control-form-error" role="alert"></p><div data-backup-list role="status">正在读取备份…</div><p class="backup-password-note">恢复时需要备份口令，请妥善保存。</p></section>';
+    body.classList.add('profile-settings');
     const identity = user.username,
       active = () => root.isConnected && user?.username === identity;
-    const passwordDialog = (title, confirmPassword, submit) =>
-      dialog(
+    const passwordDialog = (title, confirmPassword, submit, submitLabel) => {
+      const modal=dialog(
         title,
         `<label class="control-field">备份口令<input type="password" name="password" required minlength="8" maxlength="1024" autocomplete="new-password"></label>${confirmPassword ? '<label class="control-field">再次输入口令<input type="password" name="confirmPassword" required minlength="8" autocomplete="new-password"></label>' : ""}<p class="meta">口令只用于本次加密或恢复，不会保存在浏览器中。</p>`,
         async (fields) => {
@@ -354,6 +355,9 @@
           await submit(fields.password);
         },
       );
+      modal.querySelector("button[type=submit]").textContent=submitLabel;
+      return modal;
+    };
     const reloadProfile = async () => {
       const result = await call("GET", "/api/profile/session", undefined, {
         auth: true,
@@ -383,14 +387,15 @@
       try {
         const result = await call("GET", "/api/backups");
         if (!active()) return;
+        q("[data-backup-summary]",body).textContent=result.backups.length?result.backups.length+" 份备份":"备份记录";
         q("[data-backup-list]", body).innerHTML = result.backups.length
           ? result.backups
               .map(
                 (row) =>
-                  `<div class="resource-row"><div class="resource-details"><h3>${e(new Date(row.at * 1000).toLocaleString())}</h3><small>${(row.size / 1024).toFixed(1)} KB · 完整 Profile · 已加密</small></div><div class="resource-actions"><button class="btn ghost" data-download-backup="${e(row.file)}">下载</button><button class="btn ghost" data-restore-profile="${e(row.file)}">恢复</button></div></div>`,
+                  `<div class="resource-row backup-record"><span class="backup-record-mark" aria-hidden="true">↺</span><div class="resource-details"><h3>${e(new Date(row.at * 1000).toLocaleString())}</h3><small>${(row.size / 1024).toFixed(1)} KB · 已加密</small></div><div class="resource-actions"><button class="btn ghost" data-download-backup="${e(row.file)}">下载</button><button class="btn ghost" data-restore-profile="${e(row.file)}">恢复</button></div></div>`,
               )
               .join("")
-          : '<div class="control-empty">尚无 Profile 备份</div>';
+          : '<div class="backup-empty"><strong>还没有备份</strong><span>创建第一份备份，保留当前工作空间。</span></div>';
         qa("[data-download-backup]", body).forEach(
           (b) =>
             (b.onclick = () =>
@@ -408,7 +413,7 @@
                 });
                 await reloadProfile();
                 toast("Profile 已恢复", {kind:"success"});
-              });
+              }, "恢复");
             }),
         );
       } catch (error) {
@@ -420,14 +425,14 @@
         await call("POST", "/api/backup", { password });
         toast("加密备份已创建", {kind:"success"});
         await list();
-      });
+      }, "创建备份");
     q("[data-export-profile]", body).onclick = () =>
       passwordDialog("导出加密 Profile", true, async (password) => {
         const result = await call("POST", "/api/backup", { password });
         await downloadBackup(result.file);
         await list();
         toast("加密 Profile 已导出", {kind:"success"});
-      });
+      }, "导出");
     if (!window.workbenchDesktop) {
       const access = document.createElement("section");
       access.className = "control-section";
@@ -462,7 +467,7 @@
           () => toast("请选中凭证手动复制"),
         );
     }
-    const profiles=document.createElement("section");profiles.className="control-section";body.prepend(profiles);window.LingxiDesign.profileCards(profiles).catch(error=>profiles.textContent=error.message);
+    const profiles=document.createElement("section");profiles.className="control-section profile-identity-section";body.prepend(profiles);window.LingxiDesign.profileCards(profiles).catch(error=>profiles.textContent=error.message);
     list();
     window.profileManagement?.mount(body);
     const restart = document.createElement("button");

@@ -42,6 +42,7 @@ function draggable(dialog:HTMLDialogElement,header:HTMLElement){
 HTMLDialogElement.prototype.showModal = function () {
   const header=this.querySelector<HTMLElement>('.control-dialog-head,.settings-center-head,.wb-dialog-head');
   if(header&&!header.querySelector('.lingxi-window-logo')){const logo=document.createElement('img');logo.className='lingxi-window-logo';logo.src='assets/lingxi-logo.svg';logo.alt='灵犀';header.prepend(logo);}
+  if(header&&!header.querySelector('.dialog-brand-title')){const title=header.querySelector('h2,h3'),logo=header.querySelector('.lingxi-window-logo');if(title&&logo){const group=document.createElement('div');group.className='dialog-brand-title';header.prepend(group);group.append(logo,title);}}
   if (!(this as any)._motionCancelInstalled) {
     (this as any)._motionCancelInstalled=true;
     this.addEventListener('cancel',event=>{if(!event.defaultPrevented){event.preventDefault();this.close();}});

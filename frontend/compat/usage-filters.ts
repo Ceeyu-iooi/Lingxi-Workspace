@@ -72,12 +72,13 @@
       start: new Date(today().slice(0, 8) + "01T00:00:00Z"),
       end: new Date(today().slice(0, 8) + "01T00:00:00Z"),
     };
-    body.inert = true;
+    const panelWidth=()=>{const rect=button.getBoundingClientRect(),scale=rect.width/Math.max(1,button.offsetWidth);return popup.dataset.custom==='true'?Math.min(720*scale,innerWidth-24):142*scale;};
+    body.inert = true;body.hidden=true;
     const expand = (value) => {
       popup.dataset.custom = String(value);
-      if(!popup.hidden){releaseOverlay?.();releaseOverlay=window.WorkbenchOverlay.follow(popup,button,()=>value?Math.min(720,innerWidth-24):button.getBoundingClientRect().width);}
-      body.inert = !value;
+      body.inert = !value;body.hidden=!value;
       body.setAttribute("aria-hidden", String(!value));
+      if(!popup.hidden)window.WorkbenchOverlay.place(popup,button,panelWidth());
     };
     const close = (focus = false) => {
       releaseOverlay?.();releaseOverlay=null;popup.hidden = true;
@@ -222,7 +223,7 @@
       expand(false);
       render();
       popup.hidden = false;
-      releaseOverlay=window.WorkbenchOverlay.follow(popup,button,()=>button.getBoundingClientRect().width);
+      releaseOverlay=window.WorkbenchOverlay.follow(popup,button,panelWidth);
       button.setAttribute("aria-expanded", "true");
     };
     select.addEventListener("change", () => {

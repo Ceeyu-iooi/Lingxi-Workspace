@@ -11,11 +11,12 @@ export function placePopup(popup:HTMLElement,button:HTMLElement,width?:number){c
 export function placePoint(popup:HTMLElement,x:number,y:number,gap=8){place(popup,x+gap,y+gap,y-gap);}
 function follow(popup:HTMLElement,trigger:HTMLElement,width?:()=>number){
  const parent=popup.parentElement!,next=popup.nextSibling,portal=trigger.closest('dialog[open]')||document.body;
+ const focused=document.activeElement,ownsFocus=popup.contains(focused);
  portal.append(popup);popup.dataset.overlayPortal='';let frame=0;
- const update=()=>{frame=0;if(!popup.isConnected||popup.hidden)return;if(!trigger.isConnected||!trigger.getClientRects().length){popup.hidden=true;return;}placePopup(popup,trigger,width?.());};
+ const update=()=>{frame=0;if(!popup.isConnected||popup.hidden)return;if(!trigger.isConnected||!trigger.getClientRects().length){popup.hidden=true;return;}const rendered=trigger.getBoundingClientRect().width/Math.max(1,parseFloat(getComputedStyle(trigger).width));popup.style.zoom=portal===document.body?String(rendered):'1';placePopup(popup,trigger,width?.());};
  const queue=()=>{if(!frame)frame=requestAnimationFrame(update);};
  const abort=new AbortController();document.addEventListener('scroll',queue,{capture:true,passive:true,signal:abort.signal});window.addEventListener('resize',queue,{signal:abort.signal});
- const observer=new ResizeObserver(queue);observer.observe(trigger);observer.observe(popup);update();
+ const observer=new ResizeObserver(queue);observer.observe(trigger);observer.observe(popup);update();if(ownsFocus&&focused instanceof HTMLElement)focused.focus({preventScroll:true});
  return ()=>{abort.abort();observer.disconnect();cancelAnimationFrame(frame);delete popup.dataset.overlayPortal;popup.style.cssText='';if(parent.isConnected)parent.insertBefore(popup,next?.parentNode===parent?next:null);};
 }
 function disclosure(shell:HTMLDetailsElement,popup:HTMLElement){
