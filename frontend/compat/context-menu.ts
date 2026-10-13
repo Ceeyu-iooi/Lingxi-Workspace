@@ -3,9 +3,11 @@
 /* Business modules can add actions through register() or the extension event. */
 (() => {
   const providers = new Set();
+  let observer=null;
   let menu = null,
     returnFocus = null;
   function close(restore = false) {
+    observer?.disconnect();observer=null;
     const old = menu;
     menu = null;
     if (old) {
@@ -61,10 +63,11 @@
       event.preventDefault();
       return;
     }
-    const data=target.closest('[data-resource-row],.resource-table td,.usage-stat,.usage-value,[data-copy-value]');
+    const data=target.closest('[data-resource-row],.resource-table td,.control-table td,.project-table td,.usage-table td,.usage-stat,.usage-value,[data-copy-value]');
     if(data){const value=data.dataset.copyValue||data.textContent.trim();if(value)add({label:'复制当前数据',action:()=>copy(value)});}
-    const object=target.closest('[data-project],.project-card,.ob-project,[data-account],.usage-managed-key');
-    if(object){const edit=object.querySelector('[data-edit],[data-project-edit]');const sync=object.querySelector('[data-sync]');if(edit&&!edit.disabled)add({label:object.hasAttribute('data-account')?'编辑此Key':'编辑当前项目',action:()=>edit.click()});if(sync&&!sync.disabled)add({label:'同步此Key',action:()=>sync.click()});}
+    const record=target.closest('[data-resource-row]');if(record){const heads=[...record.closest('table').querySelectorAll('thead th')].map(n=>n.textContent),cells=[...record.cells].map(n=>n.textContent);const text=value=>{const n=document.createElement('span');n.textContent=value;return n.innerHTML;};add({label:'查看当前条目',action:()=>window.WorkbenchDialogs.open({title:'资源条目',body:'<dl>'+cells.map((v,i)=>'<dt>'+text(heads[i]||'数据')+'</dt><dd>'+text(v)+'</dd>').join('')+'</dl>'})});}
+    const object=target.closest('.project-table tr[data-id],[data-project],.project-card,.ob-project,[data-account],.usage-managed-key');
+    if(object){const project=object.matches('button[data-project]')?object:object.querySelector('button[data-project]');if(project&&!project.disabled)add({label:'查看此项目',action:()=>project.click()});const edit=object.querySelector('[data-edit],[data-project-edit]');const sync=object.querySelector('[data-sync]');if(edit&&!edit.disabled)add({label:object.hasAttribute('data-account')?'编辑此Key':'编辑当前项目',action:()=>edit.click()});if(sync&&!sync.disabled)add({label:'同步此Key',action:()=>sync.click()});}
     if(link&&!link.href.startsWith(location.origin+'/#'))add({label:'打开链接',action:()=>link.click()});
     if (!items.length) return;
     event.preventDefault();
@@ -82,7 +85,7 @@
       };
     });
     (target.closest("dialog[open]") || document.body).append(d);
-    menu = d;
+    menu = d;observer=new MutationObserver(()=>{if(!target.isConnected)close();});observer.observe(document.body,{childList:true,subtree:true});
     d.show();
     window.WorkbenchOverlay.point(d,x,y,0);
     d.querySelector("button:not(:disabled)")?.focus({ preventScroll: true });

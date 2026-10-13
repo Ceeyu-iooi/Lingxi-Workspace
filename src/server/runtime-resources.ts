@@ -24,7 +24,7 @@ export class RuntimeResources{
     subscribe('undici:request:headers',({request,response})=>this.finishRequest(request,response.statusCode));
     subscribe('undici:request:error',({request})=>this.finishRequest(request,null));
   }
-  private active(){if(this.leaseUntil<=Date.now()||this.owner!==this.profile.owner){this.entries=[];this.bytes=0;this.pending=new WeakMap();return false;}return !!this.lease;}
+  private active(){if(!this.lease)return false;if(this.leaseUntil<=Date.now()||this.owner!==this.profile.owner){this.stop();return false;}return true;}
   private renew(){this.leaseUntil=Date.now()+7000;if(this.leaseTimer)clearTimeout(this.leaseTimer);this.leaseTimer=setTimeout(()=>this.stop(),7000);this.leaseTimer.unref?.();}
   session(active:boolean,id?:string){if(!active){if(id===this.lease)this.stop();return {id:null};}if(!id||id!==this.lease||this.owner!==this.profile.owner){this.stop();this.lease=randomUUID();this.owner=this.profile.owner;}this.renew();return {id:this.lease};}
   touch(id:string){if(!this.active()||id!==this.lease)throw Error('资源采样会话已关闭');this.renew();}

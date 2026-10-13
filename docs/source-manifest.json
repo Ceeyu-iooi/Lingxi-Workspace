@@ -191,7 +191,7 @@
     },
     {
       "file": "src/server/runtime-resources.ts",
-      "sha256": "0b54f467b64f178e69a7274818937ec547972a117d6ab5d0c55d1bd4d103f795"
+      "sha256": "08a222cd42992a62a3c7f580f3e31c12e6b46ce7f9b90ffb7c9d46f60a1b0afa"
     },
     {
       "file": "src/server/skills.ts",
@@ -303,7 +303,7 @@
     },
     {
       "file": "frontend/app/resources.ts",
-      "sha256": "89ea6d38807c32203fdf3bb2271f498cfa6ad64eb92fc7fa4f912ab6b7c3dd9f"
+      "sha256": "e3969245d032cd3e4cecb1cf76025c79032f1270466c3de6e0638b4fb30bbd2b"
     },
     {
       "file": "frontend/app/runtime.d.ts",
@@ -339,7 +339,7 @@
     },
     {
       "file": "frontend/compat/context-menu.ts",
-      "sha256": "1a6f873c6e1855448a01c284278a5fe391e3d287f89325dd8617f84ea37af606"
+      "sha256": "4c5efa98caaef9f787a5448bbb5a84c6d403b3de6b15e1d1f4cb5425c8288656"
     },
     {
       "file": "frontend/compat/control-center.ts",
