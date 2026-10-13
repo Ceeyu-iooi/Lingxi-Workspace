@@ -1,0 +1,51 @@
+[
+  {
+    "file": "openrouter.png",
+    "source": "https://openrouter.ai/favicon/glyph.png",
+    "sha256": "e6ce76bf956ac68569a7b1456fe0310fb9cc22bc1bc0fd8defd5daae099480b8",
+    "bytes": 16833,
+    "use": "供应商身份识别，原样标识；商标归原所有者"
+  },
+  {
+    "file": "siliconflow.ico",
+    "source": "https://www.siliconflow.cn/favicon.ico",
+    "sha256": "34b69206516f4f999c5fd6b4e41171dd2d356248ec13f6136e098c416319ae68",
+    "bytes": 358,
+    "use": "供应商身份识别，原样标识；商标归原所有者"
+  },
+  {
+    "file": "minimax.ico",
+    "source": "https://www.minimax.io/favicon.ico",
+    "sha256": "43ce4c9b9e627b391a116cd5da09e4c062d9c4e3d585509c65a4a3d16f386256",
+    "bytes": 4286,
+    "use": "供应商身份识别，原样标识；商标归原所有者"
+  },
+  {
+    "file": "moonshot.ico",
+    "source": "https://statics.kimi.ai/moonshot-ai/favicon.ico",
+    "sha256": "b963e8d74a9a4f6986fee2662e333ae4b4379f0553c8bf9eee50d40a3077014f",
+    "bytes": 3310,
+    "use": "供应商身份识别，原样标识；商标归原所有者"
+  },
+  {
+    "file": "lmu.svg",
+    "source": "https://docs.lmuai.ai/icon.svg?icon.0uy85ssnj6y4f.svg",
+    "sha256": "10e8af62363a9ae427db129df780fdb7b670bb6e7074a811625bfdf8c3060ede",
+    "bytes": 284,
+    "use": "供应商身份识别，原样标识；商标归原所有者"
+  },
+  {
+    "file": "newapi.png",
+    "source": "https://raw.githubusercontent.com/QuantumNous/new-api/main/web/public/logo.png",
+    "sha256": "5b20392caae1c558b6d04743f9c0a731237914433c216caf91fd44564a8f5f2b",
+    "bytes": 13907,
+    "use": "供应商身份识别，原样标识；商标归原所有者"
+  },
+  {
+    "file": "sub2api.svg",
+    "source": "https://raw.githubusercontent.com/Wei-Shaw/sub2api/main/frontend/public/logo.svg",
+    "sha256": "ce1f2ac07efcfff80904a9582578b5db8fdd14a3118a5c7b58f408ed06df18e1",
+    "bytes": 2010,
+    "use": "供应商身份识别，原样标识；商标归原所有者"
+  }
+]

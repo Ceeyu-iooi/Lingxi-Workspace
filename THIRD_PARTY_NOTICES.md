@@ -81,3 +81,7 @@ Fastify 5.12.5, decimal.js 10.6.0, yaml 2.9.1, yauzl 3.4.0 and yazl 3.3.1 retain
 - node:sqlite / SQLite: runtime builtin, with SQLite public-domain source; no better-sqlite3 addon is shipped.
 - pngjs 7.0.0 (MIT), jpeg-js 0.4.4 (BSD-3-Clause), @jsquash/webp 1.5.0 (Apache-2.0), and the bundled WebP codec notices: static avatar decoding / re-encoding in a bounded worker. Sharp / libvips and Codex CLI are no longer bundled runtime dependencies.
 - React Bits SwipeToast-JS-CSS: source from https://reactbits.dev/r/SwipeToast-JS-CSS.json, MIT + Commons Clause; application-integrated output only. Source digests are maintained with the existing component receipt.
+
+## 供应商品牌标识
+
+static/assets/providers保存OpenRouter、硅基流动、Moonshot、MiniMax、LMU、New API和Sub2API官方网站或官方仓库的原样标识，仅用于识别对应连接，商标归各自所有者，不表示背书。sources.json保留来源URL与SHA-256。New API和Sub2API的上游许可随标识保留于同目录；未集成其程序实现。DeepSeek、GLM及OpenAI沿用既有来源标识。自定义连接采用项目通用图标，不冒充品牌。

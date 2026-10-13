@@ -851,7 +851,7 @@
   }
   function usageIcon(id) {
     if (id === "codex")
-      return '<span class="brand-knot usage-tab-icon" aria-hidden="true"><img class="brand-knot-light" src="assets/openai-blossom-black.svg" alt=""><img class="brand-knot-dark" src="assets/openai-blossom-white.svg" alt=""></span>';
+      return '<img class="usage-tab-icon usage-codex-logo" src="assets/openai-blossom-black.svg" alt="">';
     return id === "zcode"
       ? '<svg class="usage-tab-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16L4 19h16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
       : '<svg class="usage-tab-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';

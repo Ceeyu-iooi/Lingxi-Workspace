@@ -33,13 +33,13 @@
       return;
     }
     root.innerHTML = `<div class="greet"><div><h2>项目与待办</h2><p>查看进度，安排下一步</p></div></div><div class="project-layout">
-      <section class="card"><div class="project-heading"><h3>项目</h3><span class="meta" id="project-count"></span></div>
+      <aside class="card project-directory"><div class="project-heading"><h3>项目</h3><span class="meta" id="project-count"></span></div>
         <div class="project-toolbar"><input id="project-search" type="search" placeholder="搜索项目" aria-label="搜索项目"><button class="btn ghost" id="project-all">全部待办</button></div>
         <div class="project-table-wrap"><table class="project-table"><thead><tr><th>项目</th><th>完成进度</th><th>状态</th><th><span class="meta">操作</span></th></tr></thead><tbody id="proj-list"></tbody></table></div>
-        <div class="add-row"><input id="proj-add-name" placeholder="新项目名称，回车创建" aria-label="新项目名称"><button class="btn" id="project-create">创建</button></div><button class="btn ghost" id="project-more" hidden>加载更多</button></section>
-      <section class="card"><div class="project-heading"><h3 id="project-tasks-title">全部待办</h3><span class="meta" id="project-task-count"></span></div>${ai()}
+        <div class="add-row"><input id="proj-add-name" placeholder="新项目名称，回车创建" aria-label="新项目名称"><button class="btn" id="project-create">创建</button></div><button class="btn ghost" id="project-more" hidden>加载更多</button></aside>
+      <section class="card project-workspace"><div class="project-heading"><h3 id="project-tasks-title">全部待办</h3><span class="meta" id="project-task-count"></span></div>${ai()}
         <div class="add-row"><input id="pj-add" placeholder="新待办，回车保存" aria-label="新待办内容"><button class="btn ghost" id="pj-ai-btn">AI 识别</button><select id="pj-proj" aria-label="归入项目"><option value="">不归组</option></select></div>
-        <div id="pj-todos"></div><button class="btn ghost" id="task-more" hidden>加载更多</button></section></div>`;
+        <div class="task-filter-toolbar"><input type="search" id="task-search" aria-label="搜索待办" placeholder="搜索待办"><select id="task-state" aria-label="待办状态"><option value="">全部状态</option><option value="open">未完成</option><option value="done">已完成</option></select></div><div id="pj-todos"></div><button class="btn ghost" id="task-more" hidden>加载更多</button></section></div>`;
     const q = (s) => root.querySelector(s),
       paint =
         window.workbenchDesign?.paint || ((el, html) => (el.innerHTML = html));
@@ -108,9 +108,9 @@
             )
             .join(""),
       );
-      const tasks = snapshot.tasks.filter(
-        (t) => !selected || t.projectId === selected,
-      );
+      const taskQuery=q('#task-search').value.trim().toLocaleLowerCase(),taskState=q('#task-state').value;
+      const tasks = snapshot.tasks.filter(t=>(!selected||t.projectId===selected)&&(!taskQuery||t.title.toLocaleLowerCase().includes(taskQuery))&&(!taskState||(taskState==='done'?t.done:!t.done)));
+
       q("#project-tasks-title").textContent = selected
         ? snapshot.projects.find((p) => p.id === selected)?.name + " · 待办"
         : "全部待办";
@@ -152,6 +152,8 @@
           }),
       );
     }
+    q("#task-search").oninput=()=>{taskLimit=50;update(snapshot);};
+    q("#task-state").onchange=()=>{taskLimit=50;update(snapshot);};
     q("#project-search").oninput = () => {
       limit = 50;
       update(snapshot);

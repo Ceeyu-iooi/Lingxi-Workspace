@@ -411,14 +411,10 @@
     d.showModal();
     return d;
   }
-  const supplierIcon = (kind) =>
-    kind === "lmu"
-      ? '<span class="usage-lmu-icon" aria-hidden="true">L</span>'
-      : kind === "deepseek"
-        ? '<img src="assets/deepseek-logo.svg" alt="">'
-        : kind === "glm"
-          ? '<img src="assets/glm-logo.png" alt="">'
-          : '<span aria-hidden="true">◇</span>';
+  const supplierIcon = (kind) => {
+    const files={deepseek:'deepseek-logo.svg',glm:'glm-logo.png',lmu:'providers/lmu.svg',openrouter:'providers/openrouter.png',siliconflow:'providers/siliconflow.ico',moonshot:'providers/moonshot.ico',minimax:'providers/minimax.ico',newapi:'providers/newapi.png',sub2api:'providers/sub2api.svg'};
+    return '<span class="supplier-brand-icon" aria-hidden="true">'+(files[kind]?'<img src="assets/'+files[kind]+'" alt="">':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="16" height="16" rx="5"/><path d="M8 12h8m-4-4v8"/></svg>')+'</span>';
+  };
   const managerActive = (state) =>
     state.dialog?.isConnected &&
     state.root.isConnected &&
@@ -453,7 +449,7 @@
     d.className = "usage-key-editor";
     d.setAttribute("role", "region");
     d.setAttribute("aria-label", c.id ? "编辑 APIKey" : "导入 APIKey");
-    d.innerHTML = `<form><div class="control-dialog-head"><h3>${c.id ? "编辑 APIKey" : "导入 APIKey"}</h3><button type="button" class="btn ghost" data-close aria-label="关闭">×</button></div>${kind === "custom" ? `<label class="control-field">供应商名称<input name="supplierName" required maxlength="60" value="${escape(c.supplierName || "")}"></label>` : ""}<label class="control-field">API 用量请求地址<input name="apiUrl" type="url" required value="${escape(requestURL)}" placeholder="https://…" autocomplete="url"></label><label class="control-field">名称<input name="name" maxlength="80" required value="${escape(c.name || (kind === "deepseek" ? "DeepSeek" : kind === "glm" ? "GLM" : kind === "lmu" ? "LMU" : preset?.name || "API") + " Key")}"></label><label class="control-field">${kind === "sub2api" ? "账户访问凭据" : "API Key"}<input type="password" name="apiKey" ${c.id ? "" : "required"} maxlength="4096" autocomplete="new-password" spellcheck="false" placeholder="${c.id ? "留空保留现有 Key" : "每次导入一个 API Key"}"></label><p class="meta">${kind === "lmu" ? "添加 Key 后，授权 LMU 平台查询历史。" : kind === "glm" ? "粘贴 Key 后导入，即可查询每日用量和费用。" : kind === "deepseek" ? "查询余额；历史用量需官方授权。" : preset ? "查询可用余额或额度；Token 仅来自真实用量响应。" : "接口需返回日期、模型、Token；可同时返回费用。"}</p>${kind === "deepseek" ? "" : ["newapi", "custom_balance", "minimax"].includes(kind) ? `<details class="usage-platform-import"><summary>查询配置</summary><p class="meta">填写 JSON。New API 可设 credentialMode、userId；MiniMax 订阅 Key 设 credentialMode=subscription；自定义余额设 balanceMapping，明确币种和字段。</p><textarea name="adapterOptions" rows="3" autocomplete="off" spellcheck="false">${escape(JSON.stringify({ credentialMode: c.credentialMode || "key", ...(c.userId !== undefined ? { userId: c.userId } : {}), ...(c.quotaCurrency ? { quotaCurrency: c.quotaCurrency } : {}), ...(c.balanceMapping ? { balanceMapping: c.balanceMapping } : {}) }))}</textarea></details>` : ""}<label class="control-check"><input name="enabled" type="checkbox" ${c.enabled !== false ? "checked" : ""}>自动同步</label><p class="control-form-error" role="alert"></p><div class="control-dialog-actions"><button type="button" class="btn ghost" data-close>取消</button><button type="submit" class="btn">${c.id ? "保存" : "导入"}</button></div></form>`;
+    d.innerHTML = `<form class="api-key-form"><div class="control-dialog-head"><h3>${c.id ? "编辑 API Key" : "添加 API Key"}</h3><button type="button" class="btn ghost" data-close aria-label="关闭">×</button></div>${kind === "custom" ? `<label class="control-field">供应商名称<input name="supplierName" required maxlength="60" value="${escape(c.supplierName || "")}"></label>` : ""}<label class="control-field key-endpoint-field">查询地址<input name="apiUrl" type="url" required value="${escape(requestURL)}" placeholder="https://…" autocomplete="url"></label><label class="control-field">名称<input name="name" maxlength="80" required value="${escape(c.name || (kind === "deepseek" ? "DeepSeek" : kind === "glm" ? "GLM" : kind === "lmu" ? "LMU" : preset?.name || "API") + " Key")}"></label><label class="control-field key-secret-field">${kind === "sub2api" ? "账户访问凭据" : "API Key"}<input type="password" name="apiKey" ${c.id ? "" : "required"} maxlength="4096" autocomplete="new-password" spellcheck="false" placeholder="${c.id ? "留空保留现有 Key" : "每次导入一个 API Key"}"></label><p class="meta">${kind === "lmu" ? "添加 Key 后，授权 LMU 平台查询历史。" : kind === "glm" ? "粘贴 Key 后导入，即可查询每日用量和费用。" : kind === "deepseek" ? "查询余额；历史用量需官方授权。" : preset ? "查询可用余额或额度；Token 仅来自真实用量响应。" : "接口需返回日期、模型、Token；可同时返回费用。"}</p>${kind === "deepseek" ? "" : ["newapi", "custom_balance", "minimax"].includes(kind) ? `<details class="usage-platform-import"><summary>查询配置</summary><p class="meta">填写 JSON。New API 可设 credentialMode、userId；MiniMax 订阅 Key 设 credentialMode=subscription；自定义余额设 balanceMapping，明确币种和字段。</p><textarea name="adapterOptions" rows="3" autocomplete="off" spellcheck="false">${escape(JSON.stringify({ credentialMode: c.credentialMode || "key", ...(c.userId !== undefined ? { userId: c.userId } : {}), ...(c.quotaCurrency ? { quotaCurrency: c.quotaCurrency } : {}), ...(c.balanceMapping ? { balanceMapping: c.balanceMapping } : {}) }))}</textarea></details>` : ""}<label class="control-check"><input name="enabled" type="checkbox" ${c.enabled !== false ? "checked" : ""}>自动同步</label><p class="control-form-error" role="alert"></p><div class="control-dialog-actions"><button type="button" class="btn ghost" data-close>取消</button><button type="submit" class="btn">${c.id ? "保存修改" : "添加 Key"}</button></div></form>`;
     const editor = {
       node: d,
       id: c.id,
@@ -472,7 +468,7 @@
       d,
       card ? null : body.querySelector(":scope > [data-add-key]"),
     );
-    d.classList.toggle("dsh-key-add-card", !c.id);
+    d.classList.toggle("usage-key-new", !c.id);
     d.close = () => closeKeyEditor(state, true);
     d.querySelectorAll("[data-close]").forEach(
       (b) => (b.onclick = () => closeKeyEditor(state)),
@@ -716,14 +712,14 @@
       scroll = body.scrollTop;
     editor?.node.remove();
     body.innerHTML =
-      `<div class="dsh-provider-heading"><h2>${escape(group.name)}</h2><p></p></div><div class="usage-supplier-tools"><span>${selected.length} 个 Key</span>${group.kind === "lmu" ? '<button type="button" class="btn ghost" data-lmu-auth>授权 LMU</button>' : ""}</div>` +
-      selected
+      `<div class="dsh-provider-heading">${supplierIcon(group.kind)}<div><h2>${escape(group.name)}</h2><p>${selected.length} 个 Key · ${selected.filter(c=>c.enabled!==false).length} 个自动同步</p></div></div><div class="usage-supplier-tools">${group.kind === "lmu" ? '<button type="button" class="btn ghost" data-lmu-auth>授权 LMU</button>' : ""}</div>` +
+      (selected.length ? "" : '<div class="supplier-empty"><strong>还没有 API Key</strong><span>添加一个 Key，查询这个供应商的余额或用量。</span></div>') + selected
         .map(
           (c) =>
             `<article class="usage-managed-key" data-account="${escape(c.id)}"><div class="dsh-key-head"><div class="dsh-key-identity"><strong>${escape(c.name)}</strong><small class="meta">${escape(c.apiKeyHint || c.maskedKey || (c.configured ? "已配置密钥" : "未配置"))}</small><span class="dsh-credential-dot ${c.configured ? "configured" : ""}" role="img" aria-label="${c.configured ? "密钥已配置" : "尚未配置密钥"}" title="${c.configured ? "密钥已配置" : "尚未配置密钥"}"></span></div><div class="dsh-key-actions"><button type="button" class="btn ghost" data-sync="${escape(c.id)}" ${!c.configured ? "disabled" : ""}>同步</button><details class="key-more" name="usage-key-more" data-action-menu><summary aria-label="Key 更多操作">更多</summary><div>${c.kind === "deepseek" ? `<button type="button" class="btn ghost" data-deepseek-auth="${escape(c.id)}">一键获取历史用量</button>` : ""}<button type="button" class="btn ghost" data-edit="${escape(c.id)}">编辑</button><button type="button" class="btn ghost danger" data-remove="${escape(c.id)}">移除</button></div></details></div></div><span class="usage-key-status ${c.error ? "error" : ""}">${c.enabled === false ? "自动同步已暂停 · " : ""}${c.error ? "同步失败" : c.snapshot?.historyAvailable ? "已连接历史" : c.snapshot?.adapter ? "已查询余额／额度" : "尚未同步"}</span>${c.error || c.snapshot?.unavailable?.history ? `<p class="account-error">${escape(c.error || c.snapshot.unavailable.history)}</p>` : ""}<details class="usage-key-details" data-key-detail="${escape(c.id)}" ${state.supplierOpen.has(c.id) ? "open" : ""}><summary>用量详情</summary><div class="usage-managed-key-body"><p class="meta">${c.snapshot?.historyCount ? number(c.snapshot.historyCount) + " 条用量记录 · " : ""}${time(c.lastSuccessAt)}</p></div></details></article>`,
         )
         .join("") +
-      '<button type="button" class="dsh-key-add-card" data-add-key>＋ 添加 API Key</button>';
+      '<button type="button" class="dsh-key-add-card" data-add-key><span aria-hidden="true">＋</span> 添加 API Key</button>';
     if (editor) {
       const card = [...body.querySelectorAll("[data-account]")].find(
         (el) => el.dataset.account === editor.id,

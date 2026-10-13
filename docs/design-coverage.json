@@ -1,5 +1,5 @@
 {
-  "version": "0.1.6",
+  "version": "0.1.7",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
@@ -127,12 +127,12 @@
     "readiness-update-cleanup",
     "per-frame-sidebar-anchor-stability",
     "fixed-date-preset-width",
-    "primary-charts-before-account",
+    "preserved-usage-015-layout",
     "borderless-storage-legend",
     "profile-backup-hierarchy"
   ],
   "windowGeometry": {
-    "titlebar": 32,
+    "titlebar": 40,
     "radius": 4,
     "resources": [
       960,
@@ -142,5 +142,17 @@
       960,
       680
     ]
-  }
+  },
+  "workspaceHierarchy": {
+    "overview": "metrics-support-tasks",
+    "projects": "directory-workspace",
+    "summary": "history-editor",
+    "news": "sources-content",
+    "finance": "summary-analysis-ledger",
+    "prompts": "filters-resources-actions",
+    "skills": "sources-resources-actions",
+    "usage": "preserved-0.1.5"
+  },
+  "providerBrandSources": "static/assets/providers/sources.json",
+  "responsiveUsage": "原桌面排列保持，窄屏仅调整筛选换行、月份端点与图表边界"
 }

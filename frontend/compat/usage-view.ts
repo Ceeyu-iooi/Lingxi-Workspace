@@ -250,9 +250,7 @@
     const toolbar = root.parentElement.querySelector(".usage-toolbar");
     if (toolbar) q(".usage-lifetime", root).after(toolbar);
     const accountSlot = root.parentElement.querySelector(".usage-account-slot");
-    const chartSection=q(".usage-charts",root);
-    q(".usage-summary",root).after(chartSection);
-    if(accountSlot)chartSection.after(accountSlot);
+    if (accountSlot) q(".usage-summary", root).after(accountSlot);
     const state = {
       snapshot: null,
       heat: "day",

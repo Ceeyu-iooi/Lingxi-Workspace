@@ -39,7 +39,7 @@
       month = date.slice(0, 7),
       tasks = state.tasks || [],
       projects = state.projects || [],
-      pending = tasks.filter((t) => !t.done),
+      pending = tasks.filter((t) => !t.done).sort((a,b)=>(a.dueAt?new Date(a.dueAt).getTime():Infinity)-(b.dueAt?new Date(b.dueAt).getTime():Infinity)||String(a.createdAt).localeCompare(String(b.createdAt))),
       finished = tasks.filter((t) => t.done),
       active = projects.filter((p) => p.status !== "done");
     const overdue = pending.filter((t) => t.dueAt && day(t.dueAt) < date),

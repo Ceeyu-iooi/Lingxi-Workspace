@@ -31,9 +31,8 @@
     root.innerHTML = `<section class="hot-board" aria-label="近期热点">
       <header class="hot-heading"><div><h2>近期热点</h2><p>各平台榜单与近 7 天资讯</p></div>
         <button type="button" class="hot-refresh" id="btn-news-refresh">${icon("refresh")}<span>刷新热点</span></button></header>
-      <div class="hot-toolbar"><nav class="hot-tabs" aria-label="热点来源"></nav>
-        <label class="hot-search">${icon("search")}<input type="search" placeholder="搜索热点标题" aria-label="搜索热点标题" maxlength="120"></label></div>
-      <p class="hot-notice" role="status" aria-live="polite">正在获取热点…</p>
+      <div class="hot-toolbar"><label class="hot-search">${icon("search")}<input type="search" placeholder="搜索热点标题" aria-label="搜索热点标题" maxlength="120"></label></div>
+      <nav class="hot-tabs" aria-label="热点来源"></nav><p class="hot-notice" role="status" aria-live="polite">正在获取热点…</p>
       <div class="hot-grid" id="news-body" aria-busy="true"></div>
       <p class="hot-empty" hidden>没有匹配的热点，试试其他关键词。</p>
     </section>`;

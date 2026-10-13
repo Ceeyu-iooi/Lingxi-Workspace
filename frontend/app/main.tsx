@@ -124,7 +124,7 @@ function Menus() {
           <strong>文件</strong><a href="#/prompts">提示词库</a><a href="#/settings/data">数据与备份</a>
           <strong>编辑</strong><button onClick={(e)=>action('search',e)}>搜索与跳转</button>
           <strong>视图</strong><button onClick={(e)=>action('sidebar',e)}>收起 / 展开侧边栏</button><button onClick={(e)=>action('theme',e)}>切换主题</button><button onClick={(e)=>action('zoom-reset',e)}>实际大小</button>
-          <strong>帮助</strong><a href="#/settings/shortcuts">快捷键</a><button type="button" data-resource-manager>任务管理器</button><a href="preview.html">设计预览</a>
+          <strong>帮助</strong><a href="#/settings/shortcuts">快捷键</a><button type="button" data-resource-manager>资源管理器</button><a href="preview.html">设计预览</a>
         </div>
       </details>
       <details name="lingxi-title-menu">
@@ -158,7 +158,7 @@ function Menus() {
         <summary>帮助</summary>
         <div className="workbench-menu">
           <a href="#/settings/shortcuts">快捷键</a>
-          <button type="button" data-resource-manager>任务管理器</button><a href="preview.html">设计预览</a>
+          <button type="button" data-resource-manager>资源管理器</button><a href="preview.html">设计预览</a>
         </div>
       </details>
     </div>

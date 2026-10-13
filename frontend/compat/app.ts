@@ -755,6 +755,8 @@ function renderFinance(root) {
   const rows = (state.transactions || []).filter((r) =>
     r.date.startsWith(financeMonth),
   );
+  const ledgerQuery=root._financeQuery||'',ledgerKind=root._financeKind||'';
+  const ledgerRows=rows.filter(r=>(!ledgerQuery||(r.title+' '+r.category+' '+r.date).toLocaleLowerCase().includes(ledgerQuery.toLocaleLowerCase()))&&(!ledgerKind||r.kind===ledgerKind));
   const expense = rows.filter((r) => r.kind === "expense");
   const income = rows.filter((r) => r.kind === "income");
   const spent = expense.reduce((s, r) => s + Number(r.amount), 0);
@@ -795,7 +797,7 @@ function renderFinance(root) {
   (window.workbenchDesign?.paint || ((node, html) => (node.innerHTML = html)))(
     root,
     `
-  <div class="greet"><div><span class="eyebrow">MONEY / 每一笔都有去处</span><h2>记账</h2><p>账单留在本机，识别后核对再导入</p></div>
+  <div class="greet"><div><h2>记账</h2><p>账单留在本机，识别后核对再导入</p></div>
     <input type="month" id="finance-month" value="${financeMonth}" aria-label="选择账单月份" style="margin-left:auto">
     <label class="btn upload-btn">导入账单<input id="bill-file" type="file" accept=".csv,.tsv,.xlsx" hidden></label></div>
   <div class="finance-stats"><div><small>本月支出</small><strong>¥ ${money(spent)}</strong></div><div><small>本月收入</small><strong>¥ ${money(earned)}</strong></div><div><small>结余</small><strong>¥ ${money(earned - spent)}</strong></div></div>
@@ -825,9 +827,9 @@ function renderFinance(root) {
       .join(
         "",
       )}</select><button class="btn small" id="txn-add">添加</button></div>
-    <div class="ledger-list">${
-      rows.length
-        ? rows
+    <div class="ledger-filter-toolbar"><input type="search" id="finance-query" aria-label="搜索交易" placeholder="搜索交易、分类或日期" value="${esc(ledgerQuery)}"><select id="finance-kind-filter" aria-label="交易收支筛选"><option value="">全部收支</option><option value="expense" ${ledgerKind==='expense'?'selected':''}>支出</option><option value="income" ${ledgerKind==='income'?'selected':''}>收入</option></select></div><div class="ledger-list">${
+      ledgerRows.length
+        ? ledgerRows
             .slice()
             .sort((a, b) => b.date.localeCompare(a.date))
             .slice(0, financeVisible)
@@ -837,9 +839,11 @@ function renderFinance(root) {
             )
             .join("")
         : `<div class="empty">暂无交易。可以手动添加，或上传 CSV / XLSX 账单。</div>`
-    }</div>${rows.length > financeVisible ? `<button class="btn small ghost" id="txn-more">显示更多（已显示 ${financeVisible} / ${rows.length}）</button>` : ""}</section>
+    }</div>${ledgerRows.length > financeVisible ? `<button class="btn small ghost" id="txn-more">显示更多（已显示 ${financeVisible} / ${ledgerRows.length}）</button>` : ""}</section>
   <dialog id="bill-dialog" class="bill-dialog"><h3>核对识别结果</h3><p id="bill-count"></p><div id="bill-rows" class="bill-rows"></div><div id="bill-pagination"></div><div class="dialog-actions"><button class="btn ghost" id="bill-cancel">取消</button><button class="btn" id="bill-confirm">确认导入</button></div></dialog>`,
   );
+  $("#finance-query").oninput=(e)=>{root._financeQuery=e.target.value;financeVisible=100;renderFinance(root);};
+  $("#finance-kind-filter").onchange=(e)=>{root._financeKind=e.target.value;financeVisible=100;renderFinance(root);};
   $("#finance-month").onchange = (e) => {
     setFinanceMonth(e.target.value);
     financeVisible = 100;

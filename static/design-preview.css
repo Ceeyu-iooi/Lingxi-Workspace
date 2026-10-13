@@ -11,7 +11,7 @@ body.lingxi-preview{height:100%!important;overflow:hidden!important}
 .lingxi-surface::backdrop{background:transparent}.lingxi-surface[open]{display:block}
 .lingxi-surface-content{height:100%;display:flex;flex-direction:column;min-height:0;background:var(--lingxi-body);font:var(--text-ui-base,14px)/1.6 "Segoe UI","Microsoft YaHei UI",system-ui,sans-serif}
 .lingxi-preview #design-preview,.lingxi-surface>.lingxi-preview{height:100%!important;overflow:hidden!important;min-height:0;display:flex;flex-direction:column}
-.lingxi-preview .preview-top,.lingxi-surface-content>.preview-top{height:32px;min-height:32px;max-height:32px;gap:16px;scroll-margin-top:32px;background:var(--lingxi-body)}
+.lingxi-preview .preview-top,.lingxi-surface-content>.preview-top{height:40px;min-height:40px;max-height:40px;gap:16px;scroll-margin-top:40px;background:var(--lingxi-body)}
 .preview-top{display:grid;grid-template-columns:1fr auto 1fr;position:sticky;top:0}.preview-top>nav{justify-self:center}.preview-top-actions{justify-self:end;min-width:0}
 .desktop-shell .preview-top:has(>.preview-brand-group){padding-left:0!important}.desktop-shell .preview-top>.preview-brand-group{padding-left:32px}
 .preview-brand-group{display:flex;gap:12px;align-items:center;min-width:0}.preview-brand span{font-size:20px;font-weight:400}
