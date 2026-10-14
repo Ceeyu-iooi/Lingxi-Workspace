@@ -58,6 +58,7 @@ export interface Task {
   createdAt: string;
   completedAt: string | null;
   dueAt: string | null;
+  startAt?: string | null;
   location: string | null;
   keywords: string[];
 }

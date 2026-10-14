@@ -1,5 +1,5 @@
 {
-  "version": "0.1.7",
+  "version": "0.1.9",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
@@ -145,7 +145,7 @@
   },
   "workspaceHierarchy": {
     "overview": "metrics-support-tasks",
-    "projects": "directory-workspace",
+    "projects": "project-directory-gantt-list-editor",
     "summary": "history-editor",
     "news": "sources-content",
     "finance": "summary-analysis-ledger",
@@ -154,5 +154,12 @@
     "usage": "preserved-0.1.5"
   },
   "providerBrandSources": "static/assets/providers/sources.json",
-  "responsiveUsage": "原桌面排列保持，窄屏仅调整筛选换行、月份端点与图表边界"
+  "responsiveUsage": "原桌面排列保持，窄屏仅调整筛选换行、月份端点与图表边界",
+  "taskPlanning": {
+    "startEnd": true,
+    "undated": true,
+    "aiReview": true,
+    "timezone": "Asia/Shanghai",
+    "draftNavigation": true
+  }
 }

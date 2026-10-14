@@ -272,8 +272,9 @@ export class Monitor {
       ]),
       cached = this.responseCache.get(key);
     if (cached) return cached as JsonObject;
-    let rows = rowsOverride || this.usageCube.rows(params.scope);
-    rows = rows.filter(
+    const scope = params.scope || "",
+      enabled = params.valuation_enabled === true;
+    const readRows = () => (rowsOverride || this.usageCube.rows(scope)).filter(
       (r) =>
         !["codex-cumulative", "unverified"].includes(r.source) &&
         !(
@@ -283,12 +284,6 @@ export class Monitor {
           !r.id.startsWith("codex:v4:")
         ),
     );
-    const scope = params.scope || "",
-      enabled = params.valuation_enabled === true;
-    if (["codex", "zcode", "dsh"].includes(scope))
-      rows = rows.filter((r) => r.source === scope);
-    else if (scope === "api" && !rowsOverride)
-      rows = rows.filter((r) => !["codex", "zcode", "dsh"].includes(r.source));
     const datasetKey = canonical([
       this.profile.owner,
       version,
@@ -298,6 +293,11 @@ export class Monitor {
     ]);
     let dataset = !rowsOverride ? this.datasets.get(datasetKey) : undefined;
     if (!dataset) {
+      let rows = readRows();
+      if (["codex", "zcode", "dsh"].includes(scope))
+        rows = rows.filter((r) => r.source === scope);
+      else if (scope === "api" && !rowsOverride)
+        rows = rows.filter((r) => !["codex", "zcode", "dsh"].includes(r.source));
       dataset = new Dataset(
         rows,
         params.cost_currency || "CNY",
@@ -319,7 +319,7 @@ export class Monitor {
     if (accounting) data.accounting = accounting;
     if (enabled && this.valuation) {
       const currency = params.value_currency || "USD",
-        valued = rowsOverride?this.valuation(rows,currency):this.usageCube.rows(scope,currency);
+        valued = rowsOverride?this.valuation(dataset.rows,currency):this.usageCube.rows(scope,currency);
       data.valuation = {
         ...new Dataset(valued, currency, params.range_earliest).snapshot(
           params,

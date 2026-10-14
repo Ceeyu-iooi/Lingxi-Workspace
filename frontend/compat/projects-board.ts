@@ -1,204 +1,85 @@
 // @ts-nocheck
-// Compatibility controller: retain the validated interactions during the React migration.
 (() => {
-  const escape = (value) =>
-    String(value ?? "").replace(
-      /[&<>"']/g,
-      (c) =>
-        ({
-          "&": "&amp;",
-          "<": "&lt;",
-          ">": "&gt;",
-          '"': "&quot;",
-          "'": "&#39;",
-        })[c],
-    );
-  function mount(
-    root,
-    {
-      state,
-      write,
-      remove,
-      refresh,
-      toast,
-      todo,
-      ai,
-      bindAI,
-      bindTodos,
-      bindAdd,
-    },
-  ) {
-    if (root._projects) {
-      root._projects.update(state);
-      return;
-    }
-    root.innerHTML = `<div class="greet"><div><h2>项目与待办</h2><p>查看进度，安排下一步</p></div></div><div class="project-layout">
-      <aside class="card project-directory"><div class="project-heading"><h3>项目</h3><span class="meta" id="project-count"></span></div>
-        <div class="project-toolbar"><input id="project-search" type="search" placeholder="搜索项目" aria-label="搜索项目"><button class="btn ghost" id="project-all">全部待办</button></div>
-        <div class="project-table-wrap"><table class="project-table"><thead><tr><th>项目</th><th>完成进度</th><th>状态</th><th><span class="meta">操作</span></th></tr></thead><tbody id="proj-list"></tbody></table></div>
-        <div class="add-row"><input id="proj-add-name" placeholder="新项目名称，回车创建" aria-label="新项目名称"><button class="btn" id="project-create">创建</button></div><button class="btn ghost" id="project-more" hidden>加载更多</button></aside>
-      <section class="card project-workspace"><div class="project-heading"><h3 id="project-tasks-title">全部待办</h3><span class="meta" id="project-task-count"></span></div>${ai()}
-        <div class="add-row"><input id="pj-add" placeholder="新待办，回车保存" aria-label="新待办内容"><button class="btn ghost" id="pj-ai-btn">AI 识别</button><select id="pj-proj" aria-label="归入项目"><option value="">不归组</option></select></div>
-        <div class="task-filter-toolbar"><input type="search" id="task-search" aria-label="搜索待办" placeholder="搜索待办"><select id="task-state" aria-label="待办状态"><option value="">全部状态</option><option value="open">未完成</option><option value="done">已完成</option></select></div><div id="pj-todos"></div><button class="btn ghost" id="task-more" hidden>加载更多</button></section></div>`;
-    const q = (s) => root.querySelector(s),
-      paint =
-        window.workbenchDesign?.paint || ((el, html) => (el.innerHTML = html));
-    let snapshot = state,
-      selected = root._wbSaved?.custom?.selected || "",
-      limit = root._wbSaved?.custom?.limit || 50,
-      taskLimit = root._wbSaved?.custom?.taskLimit || 50,
-      busy = false;
-    const execute = async (button, fn) => {
-      if (button.disabled) return;
-      button.disabled = true;
-      try {
-        await fn();
-        const next = await refresh();
-        if (root.isConnected) update(next);
-      } catch (error) {
-        if (root.isConnected) toast(error.message, {kind:"error"});
-      } finally {
-        if (button.isConnected) button.disabled = false;
+  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const dateFormatter=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'});
+  const timeFormatter=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+  const day=value=>value&&Number.isFinite(Date.parse(value))?dateFormatter.format(new Date(value)):null;
+  const shift=(date,n)=>new Date(Date.parse(date+'T00:00:00Z')+n*86400000).toISOString().slice(0,10);
+  const inputTime=value=>{if(!value||!Number.isFinite(Date.parse(value)))return '';return timeFormatter.format(new Date(value)).replace(' ','T');};
+  const timeText=value=>inputTime(value).replace('T',' ');
+  function mount(root,{state,api,write,remove,refresh,toast}) {
+    if(root._projects){root._projects.update(state);return;}
+    const saved=root._wbSaved?.custom||{};
+    let snapshot=state,selected=saved.selected||'',view=saved.view||'gantt',anchor=saved.anchor||day(new Date()),span=saved.span||14,limit=100,editing=null,editorGeneration=0,alive=true,projectEditing=null;
+    root.innerHTML=`<div class="greet task-page-heading"><div><h2>项目与待办</h2><p>安排时间，推进自己的事项</p></div><button class="btn" id="task-new">＋ 新建待办</button></div>
+    <div class="task-layout"><aside class="task-directory"><div class="task-directory-head"><h3>项目</h3><span id="project-count" class="meta"></span></div><input type="search" id="project-search" aria-label="搜索项目" placeholder="搜索项目"><nav id="project-list" aria-label="项目筛选"></nav><form id="project-form"><label for="proj-add-name" class="meta" id="project-form-label">创建项目</label><div class="project-create-row"><input id="proj-add-name" aria-label="项目名称" placeholder="项目名称" maxlength="100" required><button class="btn ghost" id="project-create" type="submit">创建</button></div><div id="project-edit-actions" hidden><select id="project-status" aria-label="项目状态"><option value="active">进行中</option><option value="waiting">等待中</option><option value="done">已完成</option></select><button class="btn ghost" type="button" id="project-cancel">取消编辑</button></div><p class="task-error" id="project-error" role="alert"></p></form></aside>
+    <section class="task-workspace"><header class="task-workspace-heading"><div><h3 id="project-tasks-title">全部待办</h3><p id="project-task-count" class="meta"></p></div><div class="task-view-switch" aria-label="待办视图"><button type="button" data-view="gantt">甘特图</button><button type="button" data-view="list">列表</button></div></header>
+    <form class="task-editor" id="task-editor" hidden><header><h4 id="task-editor-title">新建待办</h4><button class="btn ghost" type="button" id="task-close" aria-label="关闭待办编辑">×</button></header><div class="task-ai-input"><label for="task-source">从文本识别</label><textarea id="task-source" rows="2" maxlength="8000" placeholder="例如：明天下午三点，在会议室讨论项目排期"></textarea><div><span id="task-ai-engine" class="meta">使用设置中的 AI 引擎</span><a href="#/settings/modelProvider" class="task-config-link">配置引擎</a><button type="button" class="btn ghost" id="task-parse">识别时间、地点与主题</button></div></div>
+    <div class="task-fields"><label class="task-title-field">主题<input id="task-title" maxlength="300" required placeholder="要做什么"></label><label>开始时间<input id="task-start" type="datetime-local"></label><label>结束／截止时间<input id="task-end" type="datetime-local"></label><label>地点<input id="task-location" maxlength="200" placeholder="可不填写"></label><label>项目<select id="task-project"><option value="">未归组</option></select></label><label class="task-title-field">关键词<input id="task-keywords" placeholder="用逗号分隔，可不填写"></label></div><p class="task-error" id="task-form-error" role="alert"></p><footer><span class="meta" id="task-editor-notice">未填写日期的事项保留在未排期</span><button type="button" class="btn ghost" id="task-cancel">取消</button><button class="btn" type="submit" id="task-save">保存待办</button></footer></form>
+    <div class="task-toolbar"><input type="search" id="task-search" placeholder="搜索主题、地点或关键词" aria-label="搜索待办"><select id="task-state" aria-label="待办状态"><option value="">全部状态</option><option value="open">未完成</option><option value="done">已完成</option></select></div>
+    <div class="gantt-toolbar" id="gantt-toolbar"><div><button type="button" class="btn ghost" id="gantt-prev" aria-label="上一个时间段">‹</button><button type="button" class="btn ghost" id="gantt-today">今天</button><button type="button" class="btn ghost" id="gantt-next" aria-label="下一个时间段">›</button></div><label>起始日期<input id="gantt-date" type="date" aria-label="甘特图起始日期"></label><select id="gantt-span" aria-label="甘特图天数"><option value="14">两周</option><option value="30">一个月</option></select><span class="meta" id="gantt-range"></span></div><div id="task-board"></div><button type="button" class="btn ghost" id="task-more" hidden>加载更多事项</button></section></div>`;
+    const q=s=>root.querySelector(s),paint=window.workbenchDesign?.paint||((el,html)=>el.innerHTML=html);
+    const editor=q('#task-editor'),formValues=()=>['task-source','task-title','task-start','task-end','task-location','task-project','task-keywords'].map(id=>q('#'+id).value).join('\u0001');
+    let initialForm='',saving=false,parsing=false;
+    const filtered=()=>snapshot.tasks.filter(t=>(selected==='ungrouped'?!t.projectId:!selected||t.projectId===selected)&&(!q('#task-state').value||(q('#task-state').value==='done')===!!t.done)&&[t.title,t.location,...(t.keywords||[])].join(' ').toLocaleLowerCase().includes(q('#task-search').value.trim().toLocaleLowerCase()));
+    const dates=t=>({start:day(t.startAt||t.dueAt),end:day(t.dueAt||t.startAt)});
+    const meta=t=>[t.startAt?timeText(t.startAt):null,t.dueAt?(t.startAt?'至 ':'截止 ')+timeText(t.dueAt):null,t.location,snapshot.projects.find(p=>p.id===t.projectId)?.name].filter(Boolean).map(esc).join(' · ');
+    function taskRow(t){return `<article class="task-list-row ${t.done?'is-done':''}"><input type="checkbox" data-complete="${esc(t.id)}" ${t.done?'checked':''} aria-label="${t.done?'重新打开':'完成'}：${esc(t.title)}"><button type="button" class="task-row-title" data-edit-task="${esc(t.id)}"><strong>${esc(t.title)}</strong><small>${meta(t)||'未排期'}</small></button><button type="button" class="btn ghost task-delete" data-delete-task="${esc(t.id)}" aria-label="删除：${esc(t.title)}">删除</button></article>`;}
+    async function action(button,fn){if(button.disabled)return;button.disabled=true;try{await fn();const next=await refresh();if(alive&&root.isConnected)update(next);}catch(error){if(alive){update(snapshot);toast(error.message);}}finally{if(button.isConnected)button.disabled=false;}}
+    function paintTasks(){
+      const tasks=filtered(),end=shift(anchor,span-1),today=day(new Date());
+      q('#gantt-toolbar').hidden=view!=='gantt';q('#gantt-date').value=anchor;q('#gantt-span').value=String(span);q('#gantt-range').textContent=anchor.replaceAll('-','.')+' — '+end.replaceAll('-','.');
+      root.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===view)));
+      let html='';
+      if(view==='list'){html=tasks.slice(0,limit).map(taskRow).join('');q('#task-more').hidden=tasks.length<=limit;}
+      else{
+        const scheduled=tasks.filter(t=>dates(t).start),visible=scheduled.filter(t=>dates(t).start<=end&&dates(t).end>=anchor),unscheduled=tasks.filter(t=>!dates(t).start);
+        const columns=Array.from({length:span},(_,i)=>{const d=shift(anchor,i),week=new Date(d+'T00:00Z').getUTCDay();return `<span class="gantt-day ${[0,6].includes(week)?'is-weekend':''} ${d===today?'is-today':''}"><strong>${d.slice(5).replace('-','/')}</strong><small>${['日','一','二','三','四','五','六'][week]}</small></span>`;}).join('');
+        const row=t=>{const d=dates(t),left=Math.max(0,(Date.parse(d.start)-Date.parse(anchor))/86400000),right=Math.min(span,(Date.parse(d.end)-Date.parse(anchor))/86400000+1),isLate=!t.done&&d.end<today;return `<div class="gantt-row ${t.done?'is-done':''}"><div class="gantt-identity"><input type="checkbox" data-complete="${esc(t.id)}" ${t.done?'checked':''} aria-label="${t.done?'重新打开':'完成'}：${esc(t.title)}"><button type="button" data-edit-task="${esc(t.id)}" title="${esc(t.title)}"><strong>${esc(t.title)}</strong><small>${esc(t.location||'')}</small></button></div><div class="gantt-lane"><button type="button" class="gantt-bar ${isLate?'is-late':''}" style="left:${left*42+4}px;width:${Math.max(12,(right-left)*42-8)}px" data-edit-task="${esc(t.id)}" title="${esc(t.title+' · '+meta(t))}" aria-label="编辑 ${esc(t.title)}，${esc(meta(t))}"><span>${esc(t.title)}</span></button></div></div>`;};
+        html=`<div class="gantt-scroll" tabindex="0" aria-label="甘特图，可横向滚动"><div class="gantt-grid" style="--gantt-days:${span};--gantt-track:${span*42}px"><div class="gantt-header"><div class="gantt-identity">事项</div><div class="gantt-calendar">${columns}</div></div>${visible.slice(0,limit).map(row).join('')||'<div class="gantt-empty">当前日期范围没有排期事项</div>'}</div></div>`;
+        if(scheduled.length>visible.length)html+=`<p class="task-range-notice">${scheduled.length-visible.length} 项在当前日期范围之外，可切换日期或列表查看。</p>`;
+        if(unscheduled.length)html+=`<section class="task-unscheduled"><header><h4>未排期</h4><span class="meta">${unscheduled.length} 项</span></header>${unscheduled.slice(0,limit).map(taskRow).join('')}</section>`;
+        q('#task-more').hidden=visible.length<=limit&&unscheduled.length<=limit;
       }
-    };
-    function update(next) {
-      snapshot = next;
-      if (selected && !snapshot.projects.some((p) => p.id === selected))
-        selected = "";
-      const keyword = q("#project-search").value.trim().toLocaleLowerCase();
-      const projects = snapshot.projects.filter((p) =>
-        p.name.toLocaleLowerCase().includes(keyword),
-      );
-      q("#project-count").textContent = `${projects.length} 个`;
-      paint(
-        q("#proj-list"),
-        projects
-          .slice(0, limit)
-          .map((p) => {
-            const children = snapshot.tasks.filter((t) => t.projectId === p.id),
-              done = children.filter((t) => t.done).length,
-              ratio = children.length
-                ? Math.round((done / children.length) * 100)
-                : 0;
-            return `<tr data-id="${escape(p.id)}" aria-selected="${selected === p.id}"><td><button class="project-pick" data-project="${escape(p.id)}">${escape(p.name)}</button></td><td class="project-progress">${done} / ${children.length}<span class="bar"><i style="width:${ratio}%"></i></span></td><td><select class="st-select" data-id="${escape(p.id)}" aria-label="修改 ${escape(p.name)} 的状态">${[
-              ["active", "进行中"],
-              ["waiting", "等待中"],
-              ["done", "已完成"],
-            ]
-              .map(
-                ([v, label]) =>
-                  `<option value="${v}" ${p.status === v ? "selected" : ""}>${label}</option>`,
-              )
-              .join(
-                "",
-              )}</select></td><td><button class="del proj-del" data-id="${escape(p.id)}" aria-label="删除项目 ${escape(p.name)}">×</button></td></tr>`;
-          })
-          .join("") ||
-          '<tr><td colspan="4" class="empty">没有匹配项目，可创建或修改搜索条件。</td></tr>',
-      );
-      q("#project-more").hidden = projects.length <= limit;
-      const options = q("#pj-proj");
-      paint(
-        options,
-        '<option value="">不归组</option>' +
-          snapshot.projects
-            .map(
-              (p) =>
-                `<option value="${escape(p.id)}">${escape(p.name)}</option>`,
-            )
-            .join(""),
-      );
-      const taskQuery=q('#task-search').value.trim().toLocaleLowerCase(),taskState=q('#task-state').value;
-      const tasks = snapshot.tasks.filter(t=>(!selected||t.projectId===selected)&&(!taskQuery||t.title.toLocaleLowerCase().includes(taskQuery))&&(!taskState||(taskState==='done'?t.done:!t.done)));
-
-      q("#project-tasks-title").textContent = selected
-        ? snapshot.projects.find((p) => p.id === selected)?.name + " · 待办"
-        : "全部待办";
-      q("#project-task-count").textContent =
-        `${tasks.filter((t) => !t.done).length} 项未完成`;
-      paint(
-        q("#pj-todos"),
-        tasks.slice(0, taskLimit).map(todo).join("") ||
-          '<div class="empty">暂无待办，在上方添加。</div>',
-      );
-      q("#task-more").hidden = tasks.length <= taskLimit;
-      bindTodos(root, () => update(snapshot));
-      root.querySelectorAll("[data-project]").forEach(
-        (button) =>
-          (button.onclick = () => {
-            selected = button.dataset.project;
-            options.value = selected;
-            taskLimit = 50;
-            update(snapshot);
-          }),
-      );
-      root.querySelectorAll(".st-select").forEach((select) => {
-        select.value = snapshot.projects.find(
-          (p) => p.id === select.dataset.id,
-        ).status;
-        select.onchange = () =>
-          execute(select, () =>
-            write("projects", select.dataset.id, { status: select.value }),
-          );
-      });
-      root.querySelectorAll(".proj-del").forEach(
-        (button) =>
-          (button.onclick = () => {
-            const project = snapshot.projects.find(
-              (p) => p.id === button.dataset.id,
-            );
-            if (confirm(`删除项目「${project.name}」及其待办？`))
-              execute(button, () => remove("projects", project.id));
-          }),
-      );
+      paint(q('#task-board'),html||'<div class="empty">没有匹配事项，可新建待办或调整筛选。</div>');
+      root.querySelectorAll('[data-edit-task]').forEach(b=>b.onclick=()=>openEditor(snapshot.tasks.find(t=>t.id===b.dataset.editTask)));
+      root.querySelectorAll('[data-complete]').forEach(b=>b.onchange=()=>action(b,()=>write('tasks',b.dataset.complete,{done:b.checked})));
+      root.querySelectorAll('[data-delete-task]').forEach(b=>b.onclick=()=>{const t=snapshot.tasks.find(t=>t.id===b.dataset.deleteTask);if(confirm(`删除「${t.title}」？`))action(b,()=>remove('tasks',t.id));});
     }
-    q("#task-search").oninput=()=>{taskLimit=50;update(snapshot);};
-    q("#task-state").onchange=()=>{taskLimit=50;update(snapshot);};
-    q("#project-search").oninput = () => {
-      limit = 50;
-      update(snapshot);
+    function update(next){
+      snapshot=next;if(selected&&selected!=='ungrouped'&&!snapshot.projects.some(p=>p.id===selected))selected='';
+      const term=q('#project-search').value.trim().toLocaleLowerCase(),projects=snapshot.projects.filter(p=>p.name.toLocaleLowerCase().includes(term));q('#project-count').textContent=snapshot.projects.length+' 个';
+      const item=(id,label,count)=>`<button type="button" class="task-project-pick" data-project="${esc(id)}" aria-current="${selected===id?'true':'false'}"><span>${esc(label)}</span><small>${count}</small></button>`;
+      paint(q('#project-list'),item('','全部待办',snapshot.tasks.filter(t=>!t.done).length)+item('ungrouped','未归组',snapshot.tasks.filter(t=>!t.done&&!t.projectId).length)+projects.map(p=>{const tasks=snapshot.tasks.filter(t=>t.projectId===p.id),done=tasks.filter(t=>t.done).length;return `<div class="task-project-entry">${item(p.id,p.name,tasks.length-done)}<div class="task-project-meta"><span>${done}/${tasks.length} 已完成 · ${{active:'进行中',waiting:'等待中',done:'已完成'}[p.status]||esc(p.status)}</span><button type="button" data-project-edit="${esc(p.id)}" aria-label="编辑项目 ${esc(p.name)}">编辑</button><button type="button" data-project-delete="${esc(p.id)}" aria-label="删除项目 ${esc(p.name)}">删除</button></div></div>`;}).join(''));
+      const projectSelect=q('#task-project'),chosen=projectSelect.value;paint(projectSelect,'<option value="">未归组</option>'+snapshot.projects.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join(''));projectSelect.value=chosen;
+      const name=selected==='ungrouped'?'未归组':snapshot.projects.find(p=>p.id===selected)?.name||'全部待办';q('#project-tasks-title').textContent=name;const tasks=filtered();q('#project-task-count').textContent=`${tasks.filter(t=>!t.done).length} 项未完成 · ${tasks.filter(t=>t.done).length} 项已完成`;
+      root.querySelectorAll('[data-project]').forEach(b=>b.onclick=()=>{selected=b.dataset.project;limit=100;update(snapshot);});
+      root.querySelectorAll('[data-project-edit]').forEach(b=>b.onclick=()=>{const p=snapshot.projects.find(p=>p.id===b.dataset.projectEdit);projectEditing=p.id;q('#proj-add-name').value=p.name;q('#project-status').value=p.status;q('#project-form-label').textContent='编辑项目';q('#project-create').textContent='保存';q('#project-edit-actions').hidden=false;q('#proj-add-name').focus();});
+      root.querySelectorAll('[data-project-delete]').forEach(b=>b.onclick=()=>{const p=snapshot.projects.find(p=>p.id===b.dataset.projectDelete);if(confirm(`删除项目「${p.name}」及其待办？`))action(b,()=>remove('projects',p.id));});paintTasks();
+    }
+    function closeEditor(force=false){if(saving)return false;if(!force&&!editor.hidden&&formValues()!==initialForm&&!confirm('放弃未保存的待办修改？'))return false;editorGeneration++;editor.hidden=true;editing=null;return true;}
+    function openEditor(task){if(!closeEditor())return;editing=task?.id||null;editor.hidden=false;q('#task-editor-title').textContent=task?'编辑待办':'新建待办';q('#task-source').value='';q('#task-title').value=task?.title||'';q('#task-start').value=inputTime(task?.startAt);q('#task-end').value=inputTime(task?.dueAt);q('#task-location').value=task?.location||'';q('#task-keywords').value=(task?.keywords||[]).join('，');q('#task-project').value=task?.projectId||(selected==='ungrouped'?'':selected);q('#task-form-error').textContent='';q('#task-editor-notice').textContent='未填写日期的事项保留在未排期';initialForm=formValues();q('#task-title').focus();editor.scrollIntoView({block:'nearest',behavior:'instant'});const generation=editorGeneration;api('GET','/api/ai/config').then(config=>{if(alive&&!editor.hidden&&generation===editorGeneration)q('#task-ai-engine').textContent=config.configured?`${config.provider} · ${config.model}`:'未配置 AI，将使用本地规则';}).catch(()=>{if(alive)q('#task-ai-engine').textContent='暂时无法读取引擎配置';});}
+    q('#task-new').onclick=()=>openEditor(null);q('#task-close').onclick=q('#task-cancel').onclick=()=>closeEditor();
+    q('#task-parse').onclick=async()=>{
+      if(parsing||saving)return;const text=q('#task-source').value.trim();if(!text){q('#task-form-error').textContent='请先填写原文';q('#task-source').focus();return;}
+      const generation=editorGeneration,values=formValues();parsing=true;q('#task-parse').disabled=true;q('#task-parse').textContent='正在识别…';q('#task-form-error').textContent='';
+      try{const result=await api('POST','/api/ai/parse',{text});if(!alive||editor.hidden||generation!==editorGeneration)return;if(formValues()!==values){q('#task-form-error').textContent='内容已修改，请重新识别';return;}q('#task-title').value=result.title||'';q('#task-start').value=inputTime(result.startAt);q('#task-end').value=inputTime(result.dueAt);q('#task-location').value=result.location||'';q('#task-keywords').value=(result.keywords||[]).join('，');q('#task-editor-notice').textContent=result.engine==='external'?'AI已识别，请核对后保存':result.notice||'本地规则已识别，请核对后保存';}
+      catch(error){if(alive&&generation===editorGeneration)q('#task-form-error').textContent=error.message;}
+      finally{parsing=false;if(alive){q('#task-parse').disabled=false;q('#task-parse').textContent='识别时间、地点与主题';}}
     };
-    q("#project-all").onclick = () => {
-      selected = "";
-      update(snapshot);
+    editor.onsubmit=async event=>{
+      event.preventDefault();if(saving||parsing)return;const start=q('#task-start').value,end=q('#task-end').value;if(start&&end&&start>end){q('#task-form-error').textContent='结束时间不能早于开始时间';return;}
+      const values=formValues(),id=editing;const payload={title:q('#task-title').value.trim(),startAt:start||null,dueAt:end||null,location:q('#task-location').value.trim(),projectId:q('#task-project').value||null,keywords:q('#task-keywords').value.split(/[,，]/).map(s=>s.trim()).filter(Boolean).slice(0,5)};
+      saving=true;q('#task-save').disabled=true;q('#task-form-error').textContent='';
+      try{const result=await write('tasks',id,payload);if(!alive)return;if(formValues()===values){saving=false;closeEditor(true);}else{editing=result.task?.id||id;initialForm=values;q('#task-editor-notice').textContent='刚才的内容已保存，新增修改尚未保存';}toast('待办已保存');const next=await refresh();if(alive)update(next);}
+      catch(error){if(alive)q('#task-form-error').textContent=error.message;}
+      finally{saving=false;if(alive)q('#task-save').disabled=false;}
     };
-    q("#project-more").onclick = () => {
-      limit += 50;
-      update(snapshot);
-    };
-    q("#task-more").onclick = () => {
-      taskLimit += 50;
-      update(snapshot);
-    };
-    const create = async () => {
-      const input = q("#proj-add-name"),
-        name = input.value.trim();
-      if (!name || busy) return;
-      busy = true;
-      await execute(q("#project-create"), async () => {
-        await write("projects", null, { name });
-        if (input.isConnected && input.value.trim() === name) {
-          input.value = "";
-          delete input.dataset.wbDirty;
-        }
-      });
-      busy = false;
-    };
-    q("#project-create").onclick = create;
-    q("#proj-add-name").onkeydown = (event) => {
-      if (event.key === "Enter" && !event.isComposing) {
-        event.preventDefault();
-        create();
-      }
-    };
-    update(state);
-    bindAdd("#pj-add", "#pj-proj", "#pj-ai-btn");
-    bindAI(root, "#pj-proj");
-    root._wbSnapshot = () => ({ selected, limit, taskLimit });
-    root._projects = { update };
-    root._wbDispose = () => {
-      root._projects = null;
-    };
+    q('#project-form').onsubmit=async event=>{event.preventDefault();const name=q('#proj-add-name').value.trim(),button=q('#project-create');if(!name||button.disabled)return;button.disabled=true;q('#project-error').textContent='';const id=projectEditing;try{await write('projects',id,{name,status:q('#project-status').value});if(!alive)return;if(q('#proj-add-name').value.trim()===name)resetProject();const next=await refresh();if(alive)update(next);}catch(error){if(alive)q('#project-error').textContent=error.message;}finally{if(alive)button.disabled=false;}};
+    function resetProject(){projectEditing=null;q('#proj-add-name').value='';q('#project-form-label').textContent='创建项目';q('#project-create').textContent='创建';q('#project-edit-actions').hidden=true;}
+    q('#project-cancel').onclick=resetProject;q('#project-search').oninput=()=>update(snapshot);q('#task-search').oninput=q('#task-state').onchange=()=>{limit=100;update(snapshot);};
+    root.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{view=b.dataset.view;paintTasks();});q('#gantt-prev').onclick=()=>{anchor=shift(anchor,-span);paintTasks();};q('#gantt-next').onclick=()=>{anchor=shift(anchor,span);paintTasks();};q('#gantt-today').onclick=()=>{anchor=day(new Date());paintTasks();};q('#gantt-date').onchange=()=>{if(q('#gantt-date').value){anchor=q('#gantt-date').value;paintTasks();}};q('#gantt-span').onchange=()=>{span=Number(q('#gantt-span').value);paintTasks();};q('#task-more').onclick=()=>{limit+=100;paintTasks();};
+    root._wbSnapshot=()=>({selected,view,anchor,span,editor:editor.hidden?null:{id:editing,values:['task-source','task-title','task-start','task-end','task-location','task-project','task-keywords'].map(id=>q('#'+id).value)}});root._projects={update};root._wbDispose=()=>{alive=false;editorGeneration++;root._projects=null;};update(state);if(saved.editor){openEditor(snapshot.tasks.find(t=>t.id===saved.editor.id));editing=saved.editor.id||null;['task-source','task-title','task-start','task-end','task-location','task-project','task-keywords'].forEach((id,i)=>{q('#'+id).value=saved.editor.values[i]||'';});}
   }
-  window.projectsBoard = { mount };
+  window.projectsBoard={mount};
 })();

@@ -18,6 +18,16 @@ const entities = [
   "settings",
   "preferences",
 ];
+export function taskTime(value: unknown): string | null {
+  if (value == null || value === "") return null;
+  if (typeof value !== "string") throw new Error("请填写有效日期时间");
+  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})?$/.exec(value);
+  const calendar = match ? new Date(match[1]+"T00:00:00Z") : null;
+  if (!match || !calendar || !Number.isFinite(calendar.getTime()) || Number(match[2]) > 23 || Number(match[3]) > 59 || Number(match[4] || 0) > 59 || calendar.toISOString().slice(0,10) !== match[1]) throw new Error("请填写有效日期时间");
+  const result = match[5] ? value : value + "+08:00";
+  if (!Number.isFinite(Date.parse(result))) throw new Error("请填写有效日期时间");
+  return result;
+}
 export class Business {
   constructor(readonly profile: ProfileStore) {}
   settings() {
@@ -86,6 +96,14 @@ export class Business {
   }
   task(id: string | null, body: JsonObject) {
     const rows = this.profile.read<Task[]>("tasks", []);
+    if (body._method !== "DELETE") {
+      if (body.title !== undefined && (typeof body.title !== "string" || !body.title.trim() || body.title.length > 300)) throw new Error("请填写待办主题，最多300个字符");
+      if (body.projectId && !this.profile.read<Project[]>("projects", []).some(p=>p.id===body.projectId)) throw new Error("项目已不存在，请重新选择");
+      for (const key of ["startAt", "dueAt"]) if (body[key] !== undefined) body[key]=taskTime(body[key]);
+      const current=rows.find(t=>t.id===id),start=body.startAt===undefined?current?.startAt:body.startAt,end=body.dueAt===undefined?current?.dueAt:body.dueAt;
+      if (start && end && Date.parse(start)>Date.parse(end)) throw new Error("结束时间不能早于开始时间");
+      if (body.keywords !== undefined && !Array.isArray(body.keywords)) throw new Error("关键词格式不正确");
+    }
     if (id) {
       if (body._method === "DELETE") {
         this.profile.write(
@@ -109,6 +127,8 @@ export class Business {
         if (body.projectId !== undefined)
           row.projectId = body.projectId || null;
         if (body.dueAt !== undefined) row.dueAt = body.dueAt || null;
+        if (body.startAt !== undefined) row.startAt = body.startAt || null;
+        if (body.keywords !== undefined) row.keywords=body.keywords.slice(0,5).map((k:unknown)=>String(k).slice(0,20));
         if (body.location !== undefined)
           row.location = String(body.location || "").trim() || null;
         this.profile.write("tasks", rows);
@@ -125,6 +145,7 @@ export class Business {
       createdAt: stamp(),
       completedAt: null,
       dueAt: body.dueAt || null,
+      startAt: body.startAt || null,
       location: String(body.location || "").trim() || null,
       keywords: (body.keywords || [])
         .slice(0, 5)

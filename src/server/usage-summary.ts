@@ -137,9 +137,9 @@ export class Dataset {
     readonly currency = "CNY",
     readonly rangeEarliest?: string,
   ) {
-    this.rows = rows.map((r) => ({
+    this.rows = rows.map((r) => r.local_date ? r : ({
       ...r,
-      local_date: r.local_date || shanghaiDay(r.at),
+      local_date: shanghaiDay(r.at),
     }));
   }
   snapshot(params: JsonObject = {}, days = 30) {
@@ -290,16 +290,19 @@ export class Dataset {
       daily,
       groups: [...groups]
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([key, rows]) => ({
+        .map(([key, rows]) => {
+          const identity = JSON.parse(key);
+          return ({
           ...Object.fromEntries(
             ["source", "agent", "provider", "model"].map((k, i) => [
               k,
-              JSON.parse(key)[i],
+              identity[i],
             ]),
           ),
           ...summarize(rows, this.currency),
           at: rows.reduce((latest, r) => (r.at > latest ? r.at : latest), ""),
-        })),
+        });
+        }),
       events: (params.include_all ? within : within.slice(0, 100)).map((r) =>
         Object.fromEntries(Object.entries(r).filter(([k]) => k !== "owner")),
       ),
