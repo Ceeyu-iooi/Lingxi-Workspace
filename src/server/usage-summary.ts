@@ -220,11 +220,10 @@ export class Dataset {
     for (let i = 0; i < 366; i++) {
       const day = addDays(end, i - 365),
         s = dayValues.get(day) || empty;
-      for (const key of ["total", "requests", "unknown"] as const)
-        running[key] =
-          typeof running[key] === "bigint" || typeof s[key] === "bigint"
-            ? BigInt(running[key]) + BigInt(s[key])
-            : running[key] + s[key];
+      for (const key of ["total", "requests", "unknown"] as const) {
+        const value=BigInt(running[key])+BigInt(s[key]);
+        running[key]=value<=BigInt(Number.MAX_SAFE_INTEGER)?Number(value):value;
+      }
       money.add(s.costExact[this.currency] || 0);
       unknownCost += s.costUnknown;
       activity.push({

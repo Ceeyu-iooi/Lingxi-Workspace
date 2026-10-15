@@ -1,5 +1,5 @@
 import { Decimal } from "decimal.js";
-import { normalizeTokens, iso } from "./monitor.ts";
+import { normalizeTokens, iso, addCount } from "./monitor.ts";
 import { hash, type JsonObject } from "./profile.ts";
 
 export const platformInteger = (v: any) =>
@@ -132,10 +132,10 @@ export function normalizeHistory(
         records.push({
           at: bucket.time,
           model: series.model,
-          input: hit + miss,
+          input: addCount(hit, miss),
           output,
           cached: hit,
-          total: hit + miss + output,
+          total: addCount(hit, miss, output),
           requests: counter(u.REQUEST),
         });
       }
@@ -176,12 +176,6 @@ export function normalizeHistory(
       usage = normalizeTokens(record.usage || record);
     if (!usage || usage.total == null)
       throw new Error("历史记录缺少有效 Token 数值");
-    if (
-      Object.values(usage).some(
-        (v) => v !== null && platformInteger(v) === null,
-      )
-    )
-      throw new Error("历史 Token 超出有效范围");
     const model = record.model || "平台未区分模型";
     if (typeof model !== "string" || model.length > 180)
       throw new Error("历史模型名不正确");
@@ -291,8 +285,9 @@ export function glmBills(
         cost: new Decimal(0),
         priced: true,
       };
-    group[kind === "输出" ? "output" : "input"] += total;
-    if (kind === "缓存命中") group.cached += total;
+    const field=kind === "输出" ? "output" : "input";
+    group[field] = addCount(group[field],total);
+    if (kind === "缓存命中") group.cached = addCount(group.cached,total);
     group.priced = group.priced && cost !== null;
     if (cost !== null) group.cost = group.cost.plus(cost);
     groups.set(identity, group);
@@ -306,7 +301,7 @@ export function glmBills(
         input: g.input,
         output: g.output,
         cached: g.cached,
-        total: g.input + g.output,
+        total: addCount(g.input,g.output),
         cost: g.priced ? g.cost.toNumber() : null,
         currency: "CNY",
       };

@@ -2,7 +2,6 @@ import {
   existsSync,
   statSync,
   realpathSync,
-  copyFileSync,
   mkdirSync,
   rmSync,
 } from "node:fs";
@@ -22,7 +21,22 @@ import { records, listFiles } from "./log-readers.ts";
 type ReadState = [string, JsonObject];
 export class Agents {
   private tasks = new Map<string, Promise<JsonObject>>();
-  constructor(readonly monitor: Monitor,private allowed=(source:string)=>true) {}
+  constructor(readonly monitor: Monitor,private allowed=(source:string)=>true) {
+    if(monitor)this.reconcileZcode();
+  }
+  private reconcileZcode() {
+    const p=this.monitor.profile;
+    if(p.read<JsonObject>('zcode-accounting-policy',{}).version===19)return;
+    const evidence=p.db.prepare("SELECT id,raw,verified FROM agent_evidence WHERE owner=? AND source='zcode'").iterate(p.owner);
+    const logs:string[]=[];let database=false;
+    for(const row of evidence){const raw=parseExact(row.raw);if(raw.origin==='database')database=true;else if(raw.origin==='model_io'&&row.verified)logs.push(row.id);}
+    if(!database)return;
+    p.transaction(()=>{
+      const prior=p.db.prepare('SELECT * FROM events WHERE owner=? AND id=?'),retire=p.db.prepare('INSERT OR REPLACE INTO agent_retired VALUES(?,?,?,?)'),remove=p.db.prepare('DELETE FROM events WHERE owner=? AND id=?'),mark=p.db.prepare("UPDATE agent_evidence SET verified=0,reason='unverified_source_overlap',version='usage-v19' WHERE owner=? AND id=?");
+      for(const id of logs){const old=prior.get(p.owner,id);if(old){retire.run(p.owner,id,canonical(old),'unverified_source_overlap');remove.run(p.owner,id);}mark.run(p.owner,id);}
+      p.write('zcode-accounting-policy',{version:19,excludedLogs:logs.length});
+    });
+  }
   private store(source: string, items: JsonObject[], reads: ReadState[]) {
     if(!this.allowed(source))throw Error('日志监测已停止');
     const p = this.monitor.profile,
@@ -32,6 +46,15 @@ export class Agents {
       updated = 0;
     p.transaction(() => {
       for (const record of items) {
+        for(const id of record.evidence.supersedes||[]){
+          const prior=db.prepare('SELECT raw FROM agent_evidence WHERE owner=? AND id=?').get(owner,id);
+          if(!prior)continue;
+          const evidence=parseExact(prior.raw);
+          if(source!=='dsh'||evidence.session!==record.evidence.session||!evidence.identity||canonical(evidence.identity)!==canonical(record.evidence.identity)||evidence.time!==record.evidence.time||canonical(evidence.usage)!==canonical(record.evidence.usage))continue;
+          const old=db.prepare('SELECT * FROM events WHERE owner=? AND id=?').get(owner,id);
+          if(old){db.prepare('INSERT OR REPLACE INTO agent_retired VALUES(?,?,?,?)').run(owner,id,canonical(old),'duplicate_retry_signal');db.prepare('DELETE FROM events WHERE owner=? AND id=?').run(owner,id);updated++;}
+          db.prepare("UPDATE agent_evidence SET verified=0,reason='duplicate_retry_signal' WHERE owner=? AND id=?").run(owner,id);
+        }
         const raw = canonical(record.evidence),
           reason = record.reason || "verified",
           verified = reason === "verified",
@@ -68,7 +91,7 @@ export class Agents {
           source,
           raw,
           hash(raw),
-          "usage-v18",
+          "usage-v19",
           Number(verified),
           reason,
         );
@@ -113,7 +136,7 @@ export class Agents {
       unverifiedLegacy: 0,
       message: "仅统计已核验的本机消费证据；缺失与冲突记录未补数",
       source,
-      parserVersion: "usage-v18",
+      parserVersion: "usage-v19",
     };
   }
   get running() {
@@ -142,14 +165,15 @@ export class Agents {
       if (row && typeof row === "object" && !Array.isArray(row)) {
         // Keep only accounting context while folding the transcript. Large
         // user/tool/assistant bodies are never retained in the scan array.
-        if(row.type==='session'||row.type==='session/end-seed')rows.push(row);
+        if(row.type==='session')rows.push({type:row.type,id:row.id,version:row.version,isSeeded:row.isSeeded,seedLength:row.seedLength,cwd:row.cwd});
+        else if(row.type==='session/end-seed')rows.push({type:row.type,seq:row.seq,data:{inherited:row.data?.inherited}});
         else if(['request/header','llm/retry-started','assistant/message','assistant/attempt','compaction/summary'].includes(row.type)) {
-          const d=row.data||{},source=d.message?.source||d.source||{};
+          const d=row.data||{},source=d.message?.source||d.source||{},lastUsage=(d.stream||[]).findLast((item:JsonObject)=>item.type==='chunk'&&item.chunk?.type==='usage'&&item.chunk.usage&&typeof item.chunk.usage==='object'&&!Array.isArray(item.chunk.usage));
           rows.push({type:row.type,time:row.time,seq:row.seq,data:{
             turn:d.turn,step:d.step,attemptId:d.attemptId,retryId:d.retryId,compactionId:d.compactionId,
             usage:d.usage,header:d.header?{config:d.header.config}:undefined,inherited:d.inherited,
             message:{id:d.message?.id,source:{model:source.model,provider:source.provider,replayState:{response:{responseModel:source.replayState?.response?.responseModel}}}},
-            stream:(d.stream||[]).filter((item:JsonObject)=>item.type==='chunk'&&item.chunk?.type==='usage'),
+            stream:lastUsage?[lastUsage]:[],
           }});
         }
       }
@@ -175,6 +199,8 @@ export class Agents {
     let model: any = null,
       provider: any = null;
     const settlements = new Map<string, JsonObject>(),
+      retrySignals = new Set<string>(),
+      legacyRetry = new Map<string,number>(),
       retry = new Map<string, number>();
     for (const r of rows) {
       const kind = r.type,
@@ -187,6 +213,12 @@ export class Agents {
       const slot = [d.turn ?? null, d.step ?? null],
         slotKey = canonical(slot);
       if (kind === "llm/retry-started") {
+        legacyRetry.set(slotKey,(legacyRetry.get(slotKey)||0)+1);
+        if(Number.isInteger(r.seq)||d.retryId||d.attemptId){
+          const notice=canonical([slot,r.seq??null,d.retryId??null,d.attemptId??null]);
+          if(retrySignals.has(notice))continue;
+          retrySignals.add(notice);
+        }
         retry.set(slotKey, (retry.get(slotKey) || 0) + 1);
         continue;
       }
@@ -262,6 +294,7 @@ export class Agents {
         provider: routed,
         usage,
         seedCut: cut,
+        ...((legacyRetry.get(slotKey)||0)!==attempt&&identity?{supersedes:[...new Set([...(settlements.get(id)?.evidence.supersedes||[]),'dsh:'+hash(canonical(stable.map((v,i)=>i===3?(legacyRetry.get(slotKey)||0):v)))])]}:{}),
       };
       try {
         if (typeof r.time !== "number" || r.time <= 0)
@@ -354,7 +387,7 @@ export class Agents {
       if (
         prior.size === fingerprint.size &&
         prior.mtime === fingerprint.mtime &&
-        prior.readerVersion === "zstd-frames-v2" &&
+        prior.readerVersion === "harness-v19" &&
         !prior.error
       )
         continue;
@@ -363,7 +396,7 @@ export class Agents {
         continue;
       }
       try {
-        fingerprint.readerVersion = "zstd-frames-v2";
+        fingerprint.readerVersion = "harness-v19";
         if (fingerprint.size > 128 * 1024 * 1024)
           throw new Error("Harness 文件超过单次读取限制");
         items.push(...(await this.parseDSH(file)));
@@ -456,7 +489,7 @@ export class Agents {
         at = iso(0);
         counts = null;
       }
-      if (origin === "model_io" && existsSync(database) && !databaseIdentity)
+      if (origin === "model_io" && (existsSync(database) || this.monitor.profile.read<JsonObject>('zcode-accounting-policy',{}).version===19))
         reason = "unverified_source_overlap";
       const evidence = {
           usage: Object.fromEntries(
@@ -515,11 +548,8 @@ export class Agents {
           let stable = false;
           for (let i = 0; i < 3; i++) {
             const before = stats();
-            for (let j = 0; j < paths.length; j++) {
-              const destination = target + (j ? "-wal" : "");
-              if (existsSync(paths[j])) copyFileSync(paths[j], destination);
-              else if (existsSync(destination)) rmSync(destination);
-            }
+            const sourceDB=new Database(database,{readonly:true,fileMustExist:true});
+            try{await sourceDB.backup(target);}finally{sourceDB.close();}
             const after = stats();
             if (canonical(before) === canonical(after)) {
               stable = true;
@@ -678,15 +708,17 @@ export class Agents {
       reads.push([file, state]);
     }
     if (owner !== p.owner) throw new Error("Profile 已切换");
+    const stored=this.store("zcode", [...items.values()], reads);
+    this.reconcileZcode();
     return {
       files,
       scanned,
-      ...this.store("zcode", [...items.values()], reads),
+      ...stored,
       errors: errors.slice(0, 100),
       truncated: !!pending,
       pending,
       syncedAt: iso(),
-      coverage: "ZCode 数据库／响应日志；同一请求只计一次，缺失或冲突未补数",
+      coverage: "ZCode 数据库优先；无法证明独立消费的响应日志保留证据、不叠加，缺失或冲突未补数",
     };
   }
 }

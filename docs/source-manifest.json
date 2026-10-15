@@ -1,5 +1,5 @@
 {
-  "version": "0.1.9",
+  "version": "0.1.10",
   "files": [
     {
       "file": "README.md",
@@ -15,11 +15,11 @@
     },
     {
       "file": "TOKEN_ACCOUNTING.md",
-      "sha256": "c91ab6ba2c808445ad7be1373748f84e823b7441742a172e6d1ca5cffb7f0430"
+      "sha256": "1b0ba40b54bc730e12fba683d2bb497a20982c19026c900b423ed25dd09f45cb"
     },
     {
       "file": "VERSION",
-      "sha256": "e358d84552808a5c0bd6679d690c283b938ebe15c2bd843c898681d093213107"
+      "sha256": "fecf23c4b3c2c29381d4c14cacb998939eb53f5791b99ab7e4e0bc7972c44524"
     },
     {
       "file": "design.md",
@@ -51,7 +51,7 @@
     },
     {
       "file": "src/server/agents.ts",
-      "sha256": "7fb6c336aff5f171cf4e853bdcbc6979da0f8c4c667fc19198a406a9b3d266ee"
+      "sha256": "0c377ab111aef84544fcf493420381e25d2fd49494a056a93f10d3e7cd179771"
     },
     {
       "file": "src/server/avatar-worker.ts",
@@ -171,7 +171,7 @@
     },
     {
       "file": "src/server/provider-data.ts",
-      "sha256": "5d2ac0622eb0649869d24eab3db5d672858f0b69a594b2cb55b29d9af92102cc"
+      "sha256": "6c00b5b5abce564b164a9d0e3a2397ed9a3838b54093730716e81570f1a213c4"
     },
     {
       "file": "src/server/provider-network.ts",
@@ -211,7 +211,7 @@
     },
     {
       "file": "src/server/usage-cube.ts",
-      "sha256": "39e2540f9ffff52916b2e0a67d70a4888574b8110976ab480c9552fa4f586c87"
+      "sha256": "8f798e30805e370f77f1ff1896557741aa0556d6b169fb681122db76d4293a1f"
     },
     {
       "file": "src/server/usage-import.ts",
@@ -223,7 +223,7 @@
     },
     {
       "file": "src/server/usage-summary.ts",
-      "sha256": "fdb4e2dc06554e81b44cd2bf20db6967736e4ec450f2c46ba5063fa71b9391de"
+      "sha256": "7d56cc8c7be90c4e8e3b8971e27925948d86fe7dfeeae189cd802d4d30ba2283"
     },
     {
       "file": "src/server/web-updates.ts",
@@ -803,7 +803,7 @@
     },
     {
       "file": "docs/USAGE.md",
-      "sha256": "ec733a4f25203e1cab6291631d3a4e21276df58e4563268a7ba010dbc6a925ef"
+      "sha256": "24697cf76e99e3543fe105666ce134986050b44e44e6520f20c704e19f151e7a"
     },
     {
       "file": "scripts/build_app.cjs",
