@@ -85,3 +85,7 @@ Fastify 5.12.5, decimal.js 10.6.0, yaml 2.9.1, yauzl 3.4.0 and yazl 3.3.1 retain
 ## 供应商品牌标识
 
 static/assets/providers保存OpenRouter、硅基流动、Moonshot、MiniMax、LMU、New API和Sub2API官方网站或官方仓库的原样标识，仅用于识别对应连接，商标归各自所有者，不表示背书。sources.json保留来源URL与SHA-256。New API和Sub2API的上游许可随标识保留于同目录；未集成其程序实现。DeepSeek、GLM及OpenAI沿用既有来源标识。自定义连接采用项目通用图标，不冒充品牌。
+
+## 桌面全屏检测辅助程序（0.1.11）
+
+全屏检测程序为本项目实现，仅链接Windows系统接口；使用MinGW-w64构建，不携带额外Node、PowerShell或C++运行时DLL。二进制发行所需MinGW-w64 runtime版权说明、GCC Runtime Library Exception 3.1及GPL-3.0全文随包保存在resources/floating/licenses，构建来源副本位于desktop/native/licenses。许可例外适用于符合条件的GCC运行库组合，不改变应用自身许可证。

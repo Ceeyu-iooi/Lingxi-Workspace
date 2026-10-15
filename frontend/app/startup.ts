@@ -1,11 +1,12 @@
 import '../../static/startup.css';
 const cover=document.getElementById('startup-cover');
+if((window as any).workbenchDesktop?.resumeState)void (window as any).workbenchDesktop.resumeState().then((state:any)=>{if(state.resuming)cover?.remove();}).catch(()=>{});
 let finishing:Promise<void>|null=null;
 const began=performance.now();
 function finish(){
  if(finishing)return finishing;
  finishing=(async()=>{
-  if(!cover)return;
+  if(!cover||!cover.isConnected)return;
   await Promise.allSettled([document.fonts.ready,...[...cover.querySelectorAll('img')].map(image=>image.decode())]);
   await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));
   const wait=(window as any).workbenchDesktop?0:Math.max(0,2000-(performance.now()-began));

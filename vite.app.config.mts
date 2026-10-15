@@ -47,7 +47,7 @@ export default defineConfig({
               ).replace(/^\/\/ @ts-nocheck\s*/, "").replace(/^import .*?;\s*$/gm, ""),
             )
             .join("\n;\n");
-        return `import {marked} from "marked"; import DOMPurify from "dompurify"; import {themePresets,presetPalette} from "virtual:lingxi-theme-presets"; import {accentColors} from "virtual:lingxi-accent-colors"; export function ${standalone ? "installStandalone" : "installRuntime"}(){\nfunction onReady(callback){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',callback,{once:true});else queueMicrotask(()=>callback(new Event('DOMContentLoaded')));}\n${source}\n${standalone ? "" : "return appReady.then(()=>({render,refresh,getUser:()=>user}));"}\n}`;
+        return `import {quotaWindows as readQuotaWindows} from "../../src/shared/usage-presentation"; import {marked} from "marked"; import DOMPurify from "dompurify"; import {themePresets,presetPalette} from "virtual:lingxi-theme-presets"; import {accentColors} from "virtual:lingxi-accent-colors"; export function ${standalone ? "installStandalone" : "installRuntime"}(){\nfunction onReady(callback){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',callback,{once:true});else queueMicrotask(()=>callback(new Event('DOMContentLoaded')));}\n${source}\n${standalone ? "" : "return appReady.then(()=>({render,refresh,getUser:()=>user}));"}\n}`;
       },
     },
   ],

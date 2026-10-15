@@ -1,5 +1,5 @@
 {
-  "version": "0.1.9",
+  "version": "0.1.11",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
@@ -18,7 +18,8 @@
       "responsive",
       "brand-suites",
       "themes",
-      "resources"
+      "resources",
+      "floating"
     ]
   },
   "businessModules": [
@@ -161,5 +162,23 @@
     "aiReview": true,
     "timezone": "Asia/Shanghai",
     "draftNavigation": true
+  },
+  "floating": {
+    "shapes": [
+      "rings",
+      "strip",
+      "compact",
+      "detail"
+    ],
+    "surfaces": [
+      "standard",
+      "minimal",
+      "accent",
+      "glass"
+    ],
+    "previewData": "synthetic-only",
+    "nativeMaterial": "separate-native-validation",
+    "filters": "independent",
+    "lightMode": "renderer-disposal-with-module-checkpoint"
   }
 }

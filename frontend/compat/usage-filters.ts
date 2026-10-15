@@ -250,6 +250,11 @@
         select.value === "custom" && applied
           ? { ...applied }
           : { period: select.value },
+      restore(value){
+        if(value?.start_date&&value?.end_date){applied={start_date:value.start_date,end_date:value.end_date};select.value='custom';}
+        else if([...select.options].some(o=>o.value===String(value?.period)))select.value=String(value.period);
+        title();
+      },
       select,
       title,
     };

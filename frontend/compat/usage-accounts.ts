@@ -1,4 +1,5 @@
 // @ts-nocheck
+import {quotaWindows as readQuotaWindows} from "../../src/shared/usage-presentation";
 // Compatibility controller: retain the validated interactions during the React migration.
 (() => {
   const escape = (s) =>
@@ -37,37 +38,7 @@
   const renderTickets = new WeakMap();
   const activeButtons = (root, disabled) =>
     root.querySelectorAll("button").forEach((b) => (b.disabled = disabled));
-  function quotaWindows(quota) {
-    const buckets = quota?.rateLimitsByLimitId;
-    const main =
-      buckets?.codex ||
-      Object.values(buckets || {}).find((b) => b?.limitId === "codex") ||
-      quota?.rateLimits;
-    return ["primary", "secondary"].flatMap((slot) => {
-      const w = main?.[slot];
-      if (
-        !Number.isFinite(w?.usedPercent) ||
-        !Number.isFinite(w?.windowDurationMins) ||
-        w.windowDurationMins <= 0
-      )
-        return [];
-      const minutes = w.windowDurationMins;
-      return [
-        {
-          slot,
-          minutes,
-          label:
-            minutes === 300
-              ? "5 小时额度"
-              : minutes === 10080
-                ? "每周额度"
-                : `${number(minutes)} 分钟额度`,
-          remaining: Math.max(0, Math.min(100, 100 - w.usedPercent)),
-          reset: Number.isFinite(w.resetsAt) ? w.resetsAt * 1000 : null,
-        },
-      ];
-    });
-  }
+  const quotaWindows = readQuotaWindows;
   const quotaTone = (n) =>
     n === 100 ? "green" : n <= 20 ? "red" : n <= 50 ? "yellow" : "blue";
   function quotaRow(w) {

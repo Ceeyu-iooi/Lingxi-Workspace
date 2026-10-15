@@ -192,6 +192,7 @@
     const fields = {};
     root.querySelectorAll("input[id],textarea[id],select[id]").forEach((el) => {
       if (
+        (root.dataset.module === "usage" && !!el.closest(".usage-toolbar")) ||
         el.type === "password" ||
         el.type === "file" ||
         /key|token|secret|password|credential|ws-editor|ws-proposal|^sum-|^agent-/i.test(
@@ -228,6 +229,7 @@
       active = null;
       snapshots.clear();
       identity = owner;
+      try{const saved=JSON.parse(localStorage.getItem('wb-light-pages')||'null');if(saved?.profileId===window.workbenchRuntime?.profileId&&saved.identity===owner){for(const [key,value] of saved.entries||[])snapshots.set(key,value);localStorage.removeItem('wb-light-pages');}}catch{}
     }
     if (active?.view === view && active.root.isConnected) return active.root;
     if (active) {
@@ -297,5 +299,11 @@
     dispose,
     clear,
     unsaved,
+    checkpoint(){
+      if(active?.root._wbBusy?.())throw Error('请先等待当前保存或识别操作完成');
+      if(unsaved()&&!active?.root._wbSnapshot)throw Error('请先保存或放弃当前编辑，再关闭主窗口');
+      if(active)snapshots.set(active.view,capture(active.root));
+      localStorage.setItem('wb-light-pages',JSON.stringify({profileId:window.workbenchRuntime?.profileId,identity,entries:[...snapshots]}));
+    },
   };
 })();

@@ -858,10 +858,11 @@
   }
   async function usage(root) {
     clearInterval(usageTimer);
+    const surface=root.closest('.module-surface'),restored=surface?._wbSaved?.custom?.usage;
     let valueCurrency =
       window.wbLayoutStorage.getItem("wb-usage-value-currency") || "USD";
     if (!["USD", "CNY"].includes(valueCurrency)) valueCurrency = "USD";
-    let scope = window.wbLayoutStorage.getItem("wb-usage-scope") || "codex",
+    let scope = restored?.scope || window.wbLayoutStorage.getItem("wb-usage-scope") || "codex",
       connections = [],
       generation = 0,
       paintedKey = "",
@@ -870,7 +871,7 @@
       inflight = new Map(),
       controllers = new Map(),
       cacheVersions = new Map(),
-      filters = new Map(),
+      filters = new Map(restored?.filters||[]),
       putCache = (key, value) => {
         const kind = new URLSearchParams(key).get("scope"),
           version = [value.dataVersion, value.valuation?.priceVersion].join(
@@ -1372,8 +1373,16 @@
     window.usageCharts.track(root, () =>
       window.removeEventListener("workbench:features", featureChange),
     );
+    if(restored){
+      dateFilter.restore(restored.dates);
+      const saved=filters.get(scope)||{};
+      ['source','provider','model','project','account'].forEach(k=>{const v=saved[k]||'';window.usageView.options(select(k),v?[v]:[]);select(k).value=v;});
+      modelFilter.set(saved.models||[]);
+    }
+    if(surface)surface._wbSnapshot=()=>{remember();return {usage:{scope,filters:[...filters],dates:dateFilter.params()}};};
     configure();
     await refreshAccounts();
+    if(restored&&body.isConnected){keyFilter.set(restored.filters?.find(([key])=>key===scope)?.[1]?.keys||[]);await update();}
     if (!body.isConnected) return;
     const warmDates = dateFilter.params(),
       warmAccount = select("account").value;

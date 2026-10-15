@@ -62,6 +62,7 @@
     const existing=window.WorkbenchUpdates.state();status.textContent=existing.error||(existing.availableVersion?'发现新版本 '+existing.availableVersion:existing.status==='latest'?'当前已是最新版本':'');
     check.onclick=async()=>{check.disabled=true;status.textContent='正在检查更新…';try{const state=await window.WorkbenchUpdates.check();if(!host.isConnected)return;status.textContent=state.error||(state.status==='checking'?'正在检查更新…':state.status==='latest'?'当前已是最新版本':state.availableVersion?'发现新版本 '+state.availableVersion:'');if(['available','downloaded'].includes(state.status))window.WorkbenchUpdates.open();}catch(error){if(host.isConnected)status.textContent=error.message;}finally{if(check.isConnected)check.disabled=false;}};
     host.querySelector('[data-update-details]').onclick=()=>window.WorkbenchUpdates.open();
+    if(window.workbenchDesktop?.floatingSettings){const card=document.createElement('article');card.className='lingxi-about-card';card.innerHTML='<div><h3>用量悬浮窗</h3><p>独立查看额度与图表，关闭主窗后继续轻量监测。</p></div><button type="button" class="btn">配置悬浮窗</button>';card.querySelector('button').onclick=()=>window.workbenchDesktop.floatingSettings();host.querySelector('.lingxi-about-cards').append(card);}
     const tray=host.querySelector('[data-tray-setting]');if(tray){window.workbenchDesktop.closeState().then(value=>{if(tray.isConnected)tray.checked=value.closeToTray;});tray.onchange=()=>window.workbenchDesktop.closeBehavior(tray.checked).catch(error=>status.textContent=error.message);}
   }
   function resetBatteries(host,resetCredits) {
