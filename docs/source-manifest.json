@@ -1,9 +1,9 @@
 {
-  "version": "0.1.13",
+  "version": "0.1.14",
   "files": [
     {
       "file": "README.md",
-      "sha256": "a72bf85eb8f4399d0a9075722d3a3c2a9d7c58c29920a49c09d4e397735f27eb"
+      "sha256": "61b655f8be9e1411d8856f23997a565cd07dc48cd3e388f141a5d0cb2a02c0e7"
     },
     {
       "file": "LICENSE",
@@ -19,11 +19,11 @@
     },
     {
       "file": "VERSION",
-      "sha256": "976e7492a0ab4e0e742f1c8af5c345fde0d450bfb22c01b0e40c4cf80a42cd10"
+      "sha256": "9940d4b5219de8404015bc18af844c88d7e9e9105682a5d47b1d369d027dbd25"
     },
     {
       "file": "design.md",
-      "sha256": "3b0c292296ce7acef2a09df88e4236571f94f1bf8444e81d8a11c9be1966f395"
+      "sha256": "ad881434366d97bd6232c4385a1aef78d172be744e9ef74270100d66c53b286e"
     },
     {
       "file": "start.bat",
@@ -39,7 +39,7 @@
     },
     {
       "file": "tsconfig.app.json",
-      "sha256": "b196298b75b6e74e080996f65c3afe373020010a97e859713ca35e8f1cc79a52"
+      "sha256": "870d33b1f1149c05b6b8059f8173474d7fbaa532ee0436e4f45adfac36859e69"
     },
     {
       "file": "tsconfig.server.json",
@@ -299,7 +299,7 @@
     },
     {
       "file": "frontend/app/preview.ts",
-      "sha256": "d9c948f72eb8c51694e68740368d137db0a653fe1e91a6353aa5d2b9bead68a2"
+      "sha256": "695b22cf0379701a2eb81c3fbc0c6bec8c1e0c07abf48d3018401c2920753031"
     },
     {
       "file": "frontend/app/prices.html",
@@ -506,36 +506,68 @@
       "sha256": "a6a972765f694fe01a3cd9a563bce1bfcdb67d57e31d69ee0affd703a1c4f247"
     },
     {
-      "file": "static/assets/floating/compact-dark.webp",
-      "sha256": "ea1fbb8c4059e2c76595d359bc8b1ee675f3347fe6829555c77df7d231f16588"
+      "file": "static/assets/floating/compact-horizontal-dark.webp",
+      "sha256": "c2e51a929660f7f129ed903a4d14b8e9630d0253b82e382098ec5be133e24e56"
     },
     {
-      "file": "static/assets/floating/compact-light.webp",
-      "sha256": "d2265d2483f10d22f16d97c3d2286279fd2f59697785286a610ea3435ecf4afb"
+      "file": "static/assets/floating/compact-horizontal-light.webp",
+      "sha256": "236b33cbdc8cded93585692cc6e878e592de06011f642e98a65c9a9702df6000"
     },
     {
-      "file": "static/assets/floating/detail-dark.webp",
-      "sha256": "a556bf1182aa01f1dcbe26e10340156cc72ce844e95a7808ffdd8221b1ee48d8"
+      "file": "static/assets/floating/compact-vertical-dark.webp",
+      "sha256": "0936ef4212370304c151e2204008149e9c67edfb38c8cfe1ef7144af7f8f286c"
     },
     {
-      "file": "static/assets/floating/detail-light.webp",
-      "sha256": "25bd483d664b11d15b9afd1912f76f8ff8ea64fccd8e0ad86cfb3b5939686813"
+      "file": "static/assets/floating/compact-vertical-light.webp",
+      "sha256": "4069cbcc7e9b276269e616be81be27a86afcfdcd1478c426e4ff4f5db80b06b3"
     },
     {
-      "file": "static/assets/floating/rings-dark.webp",
-      "sha256": "7b76940cff35dbfb9af1fb1fe5e6ab78a9edf06cc178e0fe7121e3d1a3c6a1b6"
+      "file": "static/assets/floating/detail-horizontal-dark.webp",
+      "sha256": "daeb80800d5492ffdabd0dbd8c1f7aa55c53b3e7e19924d2f2d142c465db6901"
     },
     {
-      "file": "static/assets/floating/rings-light.webp",
-      "sha256": "376b0f91e0612b2f58997293c80588edac53f2511cd101d0e0e443937aece838"
+      "file": "static/assets/floating/detail-horizontal-light.webp",
+      "sha256": "c4f2d62537177d7cf3999fb69792bd3cbdfc1cd899feb425e22e9dd1dc731615"
     },
     {
-      "file": "static/assets/floating/strip-dark.webp",
-      "sha256": "277f977585181a7195a43206e11b0f20c6de91e42400842fd18ad914d277e04d"
+      "file": "static/assets/floating/detail-vertical-dark.webp",
+      "sha256": "59048371544ebeec8d6cb124044f13420726f472793134f29f439f6eadeba67e"
     },
     {
-      "file": "static/assets/floating/strip-light.webp",
-      "sha256": "39b27ddd0d90530a60f05310aefe4d5d54373898e899e98ed849ee0c33f1cd62"
+      "file": "static/assets/floating/detail-vertical-light.webp",
+      "sha256": "6061517a8ad577a66889f3dbda6dacbf2ca9b3d2191a8c57c395eeb2a878cfe2"
+    },
+    {
+      "file": "static/assets/floating/rings-horizontal-dark.webp",
+      "sha256": "c1f3132bc4e56807438b3a3d5f4012d4bba13e4a57d9f1d5500c18eb7401a6d0"
+    },
+    {
+      "file": "static/assets/floating/rings-horizontal-light.webp",
+      "sha256": "fcbf0f12ab02835d7842be2ec3579babe1d93212eaf1804ac2a644d9ac8679a6"
+    },
+    {
+      "file": "static/assets/floating/rings-vertical-dark.webp",
+      "sha256": "2c16e8c1e426334dbcce8f3e070ac56a537b9a9266ad558196ac051788dbc7f0"
+    },
+    {
+      "file": "static/assets/floating/rings-vertical-light.webp",
+      "sha256": "732599b00040cacdb6fc68045ab34ef499ae4be8befc4a0580f2dba4442734dd"
+    },
+    {
+      "file": "static/assets/floating/strip-horizontal-dark.webp",
+      "sha256": "5f435a7aae487ced3ff448fb38954a1008e9537232396028f4120b99fa07ef0a"
+    },
+    {
+      "file": "static/assets/floating/strip-horizontal-light.webp",
+      "sha256": "ceb3b21b57466aa7a2c6747c7403d4742a3ed7a9d85226fdcd1cb889e59db52a"
+    },
+    {
+      "file": "static/assets/floating/strip-vertical-dark.webp",
+      "sha256": "e0bcfc8002cad183f84facdd977977be004351e707e1746a0aaad62d0bf195ca"
+    },
+    {
+      "file": "static/assets/floating/strip-vertical-light.webp",
+      "sha256": "880a13d1c0f429bcc22e558e71e1fdbf58f7c4c68ca3cb8718ba2a1b14390e6e"
     },
     {
       "file": "static/assets/fonts/LingxiBrush.woff2",
@@ -803,11 +835,11 @@
     },
     {
       "file": "docs/ARCHITECTURE.md",
-      "sha256": "3d01270c309a1af4589ec14b4eda360afd0d2cbe14297f98e01a8f22fbf715be"
+      "sha256": "98a1018e3d62d299eaee3fbfceeeceae76b2bb4595851d4f752fd6a062f4e876"
     },
     {
       "file": "docs/design-coverage.json",
-      "sha256": "73ce0dd7ebfce6f7128a64c5a7b0a6ce80a574801d01db5d9a941fcee70daca4"
+      "sha256": "8de2fbf4b5c1ec0e0b0a85a31e6bb84ccb1f77386ad48931505933659bab1c99"
     },
     {
       "file": "docs/design-reference-audit.json",
@@ -819,7 +851,7 @@
     },
     {
       "file": "docs/FLOATING_REFERENCES.md",
-      "sha256": "28c03540ab941f1dc867a7e6221d966c673d76874d7409d76fa780220f4b54c2"
+      "sha256": "1a84ee5b37dcd887723467fe4ed948a6a9423f6abf304297a724516294b345e8"
     },
     {
       "file": "docs/images/architecture.svg",
@@ -831,7 +863,7 @@
     },
     {
       "file": "docs/product-manifest.json",
-      "sha256": "06a6e856828e74bd4549acbabe24e88f5f63be30c7574e2aee3ae5f674ca0ce6"
+      "sha256": "cdfc37ad3f58cea104a9207cfc191a708d1ada1db5c281ab441ca4ec120a0af3"
     },
     {
       "file": "docs/TYPESCRIPT_MIGRATION.md",

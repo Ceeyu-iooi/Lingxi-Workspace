@@ -17,7 +17,8 @@
       "node",
       "react",
       "react-dom"
-    ]
+    ],
+    "resolveJsonModule": true
   },
   "include": [
     "frontend/app/main.tsx",

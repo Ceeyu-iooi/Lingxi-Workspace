@@ -20,3 +20,9 @@
 实际CSS最终覆盖为纯色并禁用背景模糊，不能称为原生毛玻璃。虽有hover peek辅助函数，当前组件未触发该事件，因此不将其作为已验证交互。其较宽轨道、Logo和状态岛不适合本项目默认双额度8 DIP边签，保留自己的信息容量与工作台主题。曲线cubic-bezier(.22,1,.36,1)与本项目已有曲线一致，继续使用260/200ms时长，不加入第二套动效库。
 
 本项目新增透明原生宿主、DWM材质按状态撤回、内容提交后呈现。Electron官方说明透明窗口必须在构造时开启transparent，且系统原生缩放边框与透明兼容受限；详细面板改用可见尺寸柄及方向键。依据[透明窗口文档](https://www.electronjs.org/docs/latest/tutorial/custom-window-styles)与[原生材质文档](https://www.electronjs.org/docs/latest/api/base-window#winsetbackgroundmaterialmaterial-windows)。源码/隔离协议与真实Windows合成器显示分别验收，不再将setShape成功当作背景已消失的证据。
+
+## TokenMonitor布局与拖动参考（0.1.14）
+
+本轮读取[Michael-OvO/TokenMonitor](https://github.com/Michael-OvO/TokenMonitor)的[FloatBall.svelte](https://github.com/Michael-OvO/TokenMonitor/blob/main/src/lib/components/float-ball/FloatBall.svelte)、[floatBallDragMachine.ts](https://github.com/Michael-OvO/TokenMonitor/blob/main/src/lib/components/float-ball/floatBallDragMachine.ts)及[layout.rs](https://github.com/Michael-OvO/TokenMonitor/blob/main/src-tauri/src/commands/float_ball/layout.rs)。参考紧凑供应商标签／额度行、低频操作、拖动阈值、坐标统一和末次窗口位置权威归属；使用自己的React/Electron实现、工作台表面与已有统计图表，未复制GPL-3.0源码或资源。它的外阴影不适用于本项目透明圆角，未采用。
+
+本项目新增横纵多层布局、同心额度／时间双环、暖可可毛玻璃、透明及自定义原型。拖动轻微缩放、强调边沿与方向提示属于[拖拽反馈](https://vibe-hub.org/drag)；继续使用既有CSS缓动，不声称使用物理弹簧或引入动效库。原生Acrylic没有可调模糊半径，本轮只提供实际支持的表面不透明度。原生合成器黑角观感与真实鼠标仍按本次Setup回执单独验收。
