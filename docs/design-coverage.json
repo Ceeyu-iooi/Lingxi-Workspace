@@ -1,5 +1,5 @@
 {
-  "version": "0.1.11",
+  "version": "0.1.12",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
@@ -179,6 +179,12 @@
     "previewData": "synthetic-only",
     "nativeMaterial": "separate-native-validation",
     "filters": "independent",
-    "lightMode": "renderer-disposal-with-module-checkpoint"
+    "lightMode": "renderer-disposal-with-module-checkpoint",
+    "chrome": "titleless-data-surface",
+    "pointer": "main-process-region-hit-test",
+    "animation": "interruptible-transform-and-native-region",
+    "cache": "2MiB-8-native-entries-2-renderer-results",
+    "research": "docs/FLOATING_REFERENCES.md",
+    "nativeInputValidation": "not-performed-user-source-protocol-only"
   }
 }

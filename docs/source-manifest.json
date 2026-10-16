@@ -1,9 +1,9 @@
 {
-  "version": "0.1.11",
+  "version": "0.1.12",
   "files": [
     {
       "file": "README.md",
-      "sha256": "30633bd20539eafa23299bb5f79ef032de427cf4eb18d7a4025bcc28d0431a71"
+      "sha256": "0198a4f5bb0318423980892deb4786aef8fa859cd20d2ac77ad845e03e235cd5"
     },
     {
       "file": "LICENSE",
@@ -19,11 +19,11 @@
     },
     {
       "file": "VERSION",
-      "sha256": "66d60356172ccafdd334fca9bf33243c8409216a733dcde0d66a24fd70ee8132"
+      "sha256": "0a6c8dc4148eed841498d2c2be544947a62f8f50c381b2e64bcd7ce40461cf34"
     },
     {
       "file": "design.md",
-      "sha256": "522d003619007badf30a6194181e1756bcb841d214602597302e379ddd509f05"
+      "sha256": "f3858a2d0f9bd52ebd81c38f7caee906e67ae6abdeb6efb16d79f92c65ea836e"
     },
     {
       "file": "start.bat",
@@ -299,7 +299,7 @@
     },
     {
       "file": "frontend/app/preview.ts",
-      "sha256": "aa4e8ca14c5304cbd81c80cd26f1b3ac0abedb75681f1742a92ca58e8a8d52ce"
+      "sha256": "d9c948f72eb8c51694e68740368d137db0a653fe1e91a6353aa5d2b9bead68a2"
     },
     {
       "file": "frontend/app/prices.html",
@@ -507,35 +507,35 @@
     },
     {
       "file": "static/assets/floating/compact-dark.webp",
-      "sha256": "c03adc964a490b6851f1ee9eb69de47545a9b998575eb6ba5975e4681cda93e9"
+      "sha256": "ee70695ff45e58ed941bfb319c7d949e3b6c1b39e893e26f46ca624e4fa1562b"
     },
     {
       "file": "static/assets/floating/compact-light.webp",
-      "sha256": "98e7658d59f6ddb1d731010334ad002827e80b6d960e9a82f00fdbb90b4a4958"
+      "sha256": "2c0cf09e16d844cff42591d772a9491ada13d936feda4b0c941071fb5481c554"
     },
     {
       "file": "static/assets/floating/detail-dark.webp",
-      "sha256": "64f71431af18b6f64a804f8be0660787dd7ca26af130521c05b431e2abe246c2"
+      "sha256": "2ce2aa567f3c7de8af099859d25bf13232f68eb9945ace1c5131f153eac561da"
     },
     {
       "file": "static/assets/floating/detail-light.webp",
-      "sha256": "a5213932827b6a113136887a10c7109d1c2155735b41e5ecd4bbd8f9ee625265"
+      "sha256": "0a9c6dfe442cc1f5901f67de2eb7efe52cf618edd450de60c5512fe60dc6dc0e"
     },
     {
       "file": "static/assets/floating/rings-dark.webp",
-      "sha256": "7f13124c6a639b8aff8a291c4df733dea9e3cef91e28ffcf543323c1b9021657"
+      "sha256": "36b2096b072a990d74bf4d3f465a60871401f25e7c02346d5f5f31248e2d010b"
     },
     {
       "file": "static/assets/floating/rings-light.webp",
-      "sha256": "59ec338419e0e93de43712990452d229db4733a387443ba652a3e55a826dc5af"
+      "sha256": "d003cd0eafc05d13da2688a12652561edea4f3871bf0404f1705baec9bc771be"
     },
     {
       "file": "static/assets/floating/strip-dark.webp",
-      "sha256": "d9b0d87da657356306e7549b4338d1d91a6883826aae40e8b5b65c59fb2b811d"
+      "sha256": "1459a98e5e71544c79931310f15f62bbd3542b2e57edce8e98ac542872560cc1"
     },
     {
       "file": "static/assets/floating/strip-light.webp",
-      "sha256": "696568f40078da9b07b6c550682d040d66fbb3523d32b47a209f8dc707722919"
+      "sha256": "5c05a0bc4772172d495795f0a0cc11751de6d15c6f6cad40db789b69cbb9c47d"
     },
     {
       "file": "static/assets/fonts/LingxiBrush.woff2",
@@ -803,11 +803,11 @@
     },
     {
       "file": "docs/ARCHITECTURE.md",
-      "sha256": "35e65694b01a40b48267de8ff64ed269c97df80ed131096ea3c7ac72c57d7f4b"
+      "sha256": "090b27e852e992eb9bce129a3bee36c6ac83e0f4770ca7463426072ed4d2ec04"
     },
     {
       "file": "docs/design-coverage.json",
-      "sha256": "e5ddd16825b370ecea05fed27e7f6291e0d639ea64f60eb98b8ba90dd79cec8a"
+      "sha256": "0ee838d14637b04d823cd1e91cd7e12cc28c73b787530924e1418366143ed608"
     },
     {
       "file": "docs/design-reference-audit.json",
@@ -816,6 +816,10 @@
     {
       "file": "docs/FIRST_RUN_PLAN.md",
       "sha256": "c717a1e84d82fdcf7290c728a7c2555828958b04c324ea06655bd3041604bf96"
+    },
+    {
+      "file": "docs/FLOATING_REFERENCES.md",
+      "sha256": "c21215aed6ec6430b7bb057513b618a37ee6e8d2365d9052e03c76c48f76798a"
     },
     {
       "file": "docs/images/architecture.svg",
@@ -827,7 +831,7 @@
     },
     {
       "file": "docs/product-manifest.json",
-      "sha256": "eaab261a06e0fdd2015e435d3eb7ad96792c74b3eb6a21484250c58d289f65b2"
+      "sha256": "ab222149cd688a370ddb0adb5b1bc950a72432dbf737ce45bb1e25947601df1d"
     },
     {
       "file": "docs/TYPESCRIPT_MIGRATION.md",
