@@ -26,3 +26,18 @@
 本轮读取[Michael-OvO/TokenMonitor](https://github.com/Michael-OvO/TokenMonitor)的[FloatBall.svelte](https://github.com/Michael-OvO/TokenMonitor/blob/main/src/lib/components/float-ball/FloatBall.svelte)、[floatBallDragMachine.ts](https://github.com/Michael-OvO/TokenMonitor/blob/main/src/lib/components/float-ball/floatBallDragMachine.ts)及[layout.rs](https://github.com/Michael-OvO/TokenMonitor/blob/main/src-tauri/src/commands/float_ball/layout.rs)。参考紧凑供应商标签／额度行、低频操作、拖动阈值、坐标统一和末次窗口位置权威归属；使用自己的React/Electron实现、工作台表面与已有统计图表，未复制GPL-3.0源码或资源。它的外阴影不适用于本项目透明圆角，未采用。
 
 本项目新增横纵多层布局、同心额度／时间双环、暖可可毛玻璃、透明及自定义原型。拖动轻微缩放、强调边沿与方向提示属于[拖拽反馈](https://vibe-hub.org/drag)；继续使用既有CSS缓动，不声称使用物理弹簧或引入动效库。原生Acrylic没有可调模糊半径，本轮只提供实际支持的表面不透明度。原生合成器黑角观感与真实鼠标仍按本次Setup回执单独验收。
+
+## Javis603/token-monitor 分层主题与透明模式（0.1.15）
+
+本轮以用户指定的 [Javis603/token-monitor](https://github.com/Javis603/token-monitor) 为实际参考，读取提交 `ccfdcdb4ad9fa25c859815fafb5ff1f12e41e9b6`，许可证为MIT（2026 Javis）。采用信息组织与状态协调思路，未复制源码、资源或引入其依赖。
+
+- [src/electron/renderer/styles.css](https://github.com/Javis603/token-monitor/blob/ccfdcdb4ad9fa25c859815fafb5ff1f12e41e9b6/src/electron/renderer/styles.css)：画布、主表面、次级表面、文字层级。
+- [src/electron/renderer/themePresets.js](https://github.com/Javis603/token-monitor/blob/ccfdcdb4ad9fa25c859815fafb5ff1f12e41e9b6/src/electron/renderer/themePresets.js)：完整语义主题色与图表色。
+- [src/electron/renderer/glassRendering.js](https://github.com/Javis603/token-monitor/blob/ccfdcdb4ad9fa25c859815fafb5ff1f12e41e9b6/src/electron/renderer/glassRendering.js)：透明、原生材质及实色降级区分。
+- [src/electron/floatingBubble.js](https://github.com/Javis603/token-monitor/blob/ccfdcdb4ad9fa25c859815fafb5ff1f12e41e9b6/src/electron/floatingBubble.js)：小窗尺寸、边界和工作区约束。
+- [src/electron/edgeDock/controller.js](https://github.com/Javis603/token-monitor/blob/ccfdcdb4ad9fa25c859815fafb5ff1f12e41e9b6/src/electron/edgeDock/controller.js)：收缩、展开、暂停与释放的状态协调。
+- [src/electron/renderer/edgeDock/dock.css](https://github.com/Javis603/token-monitor/blob/ccfdcdb4ad9fa25c859815fafb5ff1f12e41e9b6/src/electron/renderer/edgeDock/dock.css)：紧凑数据行、数字字体及无材质可读层。
+- [src/electron/edgeDock/mask.js](https://github.com/Javis603/token-monitor/blob/ccfdcdb4ad9fa25c859815fafb5ff1f12e41e9b6/src/electron/edgeDock/mask.js)：透明绘制与命中区域同步。
+- [src/electron/windowsChrome.js](https://github.com/Javis603/token-monitor/blob/ccfdcdb4ad9fa25c859815fafb5ff1f12e41e9b6/src/electron/windowsChrome.js)：原生圆角及合成属性的边界。
+
+本项目使用自己的单悬浮宿主、React图表、受限桥与既有统计；不采用该项目额外边缘窗口、koffi、采集服务或仅macOS可用的材质。Windows原生背景、实际鼠标与DWM观感仍须绑定本次候选包单独验收；网页透明截图不替代该验收。

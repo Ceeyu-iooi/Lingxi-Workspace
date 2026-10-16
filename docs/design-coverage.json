@@ -1,5 +1,5 @@
 {
-  "version": "0.1.14",
+  "version": "0.1.15",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
@@ -19,7 +19,8 @@
       "brand-suites",
       "themes",
       "resources",
-      "floating"
+      "floating",
+      "floating-themes"
     ]
   },
   "businessModules": [
@@ -200,6 +201,11 @@
     "geometry": "desktop/floating-layouts.json",
     "autoHide": "optional-main-process-authoritative-final-cursor",
     "settingsZoom": "80-180-percent-CSS-isolated",
-    "custom": "preset-width-height-ratio-scale-radius-opacity-live-preview"
+    "custom": "preset-width-height-ratio-scale-radius-opacity-live-preview",
+    "detailNavigation": "overview-usage-charts-and-collapsible-groups",
+    "themeEditor": "full-semantic-palette-density-font-opacity",
+    "transparency": "zero-canvas-readable-content-islands",
+    "save": "field-patch-revision-conflict-aware",
+    "updateCheck": "startup-and-main-return-coalesced"
   }
 }

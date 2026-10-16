@@ -67,9 +67,11 @@ function sync() {
   const ticket=++sequence,target=stateKinds();
   syncing=syncing.then(async()=>{
     if(ticket!==sequence)return;
+    const wasOpen=stack.length>0;
     let shared=0;while(shared<stack.length&&shared<target.length&&stack[shared].kind===target[shared])shared++;
     while(stack.length>shared){const layer=stack.pop()!;await new Promise<void>(resolve=>{layer.dialog.addEventListener('close',()=>resolve(),{once:true});layer.dialog.close();if(!layer.dialog.open)resolve();});if(layer.focus instanceof HTMLElement&&layer.focus.isConnected)layer.focus.focus({preventScroll:true});}
     for(let i=shared;i<target.length&&ticket===sequence;i++)await mount(target[i]);
+    if(wasOpen&&stack.length===0)window.dispatchEvent(new Event("workbench:main-return"));
   }).catch(()=>{});
 }
 function open(kind:SurfaceKind,origin?:Element|null) {
