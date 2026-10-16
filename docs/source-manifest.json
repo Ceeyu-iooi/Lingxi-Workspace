@@ -23,7 +23,7 @@
     },
     {
       "file": "design.md",
-      "sha256": "ad881434366d97bd6232c4385a1aef78d172be744e9ef74270100d66c53b286e"
+      "sha256": "6d49cef60b1a9d911e9dfb84692b57086347fc10e8410a4beaeb63a6e65eda59"
     },
     {
       "file": "start.bat",
@@ -507,51 +507,51 @@
     },
     {
       "file": "static/assets/floating/compact-horizontal-dark.webp",
-      "sha256": "c2e51a929660f7f129ed903a4d14b8e9630d0253b82e382098ec5be133e24e56"
+      "sha256": "9ccf7e7e809b45bb6ba853678497b8f5871fdf98b87f6353d5f09e355be1599d"
     },
     {
       "file": "static/assets/floating/compact-horizontal-light.webp",
-      "sha256": "236b33cbdc8cded93585692cc6e878e592de06011f642e98a65c9a9702df6000"
+      "sha256": "796e854b40e8157b600b47a4a53e1dae551c5404400ae0eeef32c31c530b1ff0"
     },
     {
       "file": "static/assets/floating/compact-vertical-dark.webp",
-      "sha256": "0936ef4212370304c151e2204008149e9c67edfb38c8cfe1ef7144af7f8f286c"
+      "sha256": "9cae27937fc9a8b085d2c2652406993654701fd21769f347aa10d4936e87226c"
     },
     {
       "file": "static/assets/floating/compact-vertical-light.webp",
-      "sha256": "4069cbcc7e9b276269e616be81be27a86afcfdcd1478c426e4ff4f5db80b06b3"
+      "sha256": "30458953c6cc046a0009e6bb4945b9511da91f874c845e22952f25487fac2492"
     },
     {
       "file": "static/assets/floating/detail-horizontal-dark.webp",
-      "sha256": "daeb80800d5492ffdabd0dbd8c1f7aa55c53b3e7e19924d2f2d142c465db6901"
+      "sha256": "d1c20b9450127fbaf1952a43ebf74e9ce6074ed882caddd23aa519086ede53fd"
     },
     {
       "file": "static/assets/floating/detail-horizontal-light.webp",
-      "sha256": "c4f2d62537177d7cf3999fb69792bd3cbdfc1cd899feb425e22e9dd1dc731615"
+      "sha256": "8069edd6ed2a43898d70fd4a901c9b15962bd1107a4185c1265e6fb2dc596aea"
     },
     {
       "file": "static/assets/floating/detail-vertical-dark.webp",
-      "sha256": "59048371544ebeec8d6cb124044f13420726f472793134f29f439f6eadeba67e"
+      "sha256": "deed6bd68dd33570e11032d9fa4c47a925fbdcba667dad3eaa596054a37850e4"
     },
     {
       "file": "static/assets/floating/detail-vertical-light.webp",
-      "sha256": "6061517a8ad577a66889f3dbda6dacbf2ca9b3d2191a8c57c395eeb2a878cfe2"
+      "sha256": "bc6ba0ecd2bd738325956e81f35f80c1d92614c755421f23ba0386b5d0185c71"
     },
     {
       "file": "static/assets/floating/rings-horizontal-dark.webp",
-      "sha256": "c1f3132bc4e56807438b3a3d5f4012d4bba13e4a57d9f1d5500c18eb7401a6d0"
+      "sha256": "6e289f9bfb8ce838b032bf9a1074fb10f9de400c2d1e8edbcbef00d2c1e596ce"
     },
     {
       "file": "static/assets/floating/rings-horizontal-light.webp",
-      "sha256": "fcbf0f12ab02835d7842be2ec3579babe1d93212eaf1804ac2a644d9ac8679a6"
+      "sha256": "43539babf6aaa700f72068779d7ede0c0ae75123e29e99a85521d54a0b068b84"
     },
     {
       "file": "static/assets/floating/rings-vertical-dark.webp",
-      "sha256": "2c16e8c1e426334dbcce8f3e070ac56a537b9a9266ad558196ac051788dbc7f0"
+      "sha256": "784d646b38ad210655276d4fd976498ec143ae029d4d9f73850e1c3fbfedffd7"
     },
     {
       "file": "static/assets/floating/rings-vertical-light.webp",
-      "sha256": "732599b00040cacdb6fc68045ab34ef499ae4be8befc4a0580f2dba4442734dd"
+      "sha256": "1dfa28289f3928a41c748b3b4423afecec60a97b2c7466b957074824fbd8cecf"
     },
     {
       "file": "static/assets/floating/strip-horizontal-dark.webp",
