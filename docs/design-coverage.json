@@ -1,5 +1,5 @@
 {
-  "version": "0.1.15",
+  "version": "0.1.16",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
@@ -165,47 +165,21 @@
     "draftNavigation": true
   },
   "floating": {
-    "shapes": [
-      "rings",
-      "strip",
-      "compact",
-      "detail"
-    ],
-    "surfaces": [
-      "standard",
-      "minimal",
-      "accent",
-      "glass",
-      "chocolate",
-      "transparent",
-      "custom"
-    ],
-    "previewData": "synthetic-only",
-    "nativeMaterial": "separate-native-validation",
-    "filters": "independent",
-    "lightMode": "renderer-disposal-with-module-checkpoint",
-    "chrome": "titleless-data-surface",
-    "pointer": "main-process-region-hit-test",
-    "animation": "interruptible-transform-and-native-region",
-    "cache": "2MiB-8-native-entries-2-renderer-results-released-when-hidden",
-    "research": "docs/FLOATING_REFERENCES.md",
-    "nativeInputValidation": "see-current-version-bound-release-receipt",
-    "nativeTransparency": "rounded-paint-and-hit-region-material-withdrawal-commit-handshake",
-    "collapsedTab": "8x48-or-48x8-DIP",
-    "ringsLayout": "two-concentric-quota-remaining-and-reset-time",
-    "detailResize": "bounded-grip-and-keyboard",
-    "orientations": [
-      "horizontal",
-      "vertical"
+    "entry": "native-taskbar-two-concentric-rings",
+    "details": [
+      "overview",
+      "limits",
+      "usage",
+      "charts",
+      "model-detail"
     ],
     "geometry": "desktop/floating-layouts.json",
-    "autoHide": "optional-main-process-authoritative-final-cursor",
-    "settingsZoom": "80-180-percent-CSS-isolated",
-    "custom": "preset-width-height-ratio-scale-radius-opacity-live-preview",
-    "detailNavigation": "overview-usage-charts-and-collapsible-groups",
-    "themeEditor": "full-semantic-palette-density-font-opacity",
-    "transparency": "zero-canvas-readable-content-islands",
-    "save": "field-patch-revision-conflict-aware",
-    "updateCheck": "startup-and-main-return-coalesced"
+    "transparency": "no-per-content-backing",
+    "filters": "independent-source-account-date-multiple-models",
+    "nativeIntegration": "child-HWND-with-near-taskbar-fallback",
+    "animation": "anchored-interruptible-260-200-160ms",
+    "settings": "field-patch-revision-safe-and-CSS-zoom",
+    "research": "docs/FLOATING_REFERENCES.md",
+    "nativeAcceptance": "see-version-and-candidate-bound-receipt"
   }
 }

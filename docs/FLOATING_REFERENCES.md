@@ -41,3 +41,11 @@
 - [src/electron/windowsChrome.js](https://github.com/Javis603/token-monitor/blob/ccfdcdb4ad9fa25c859815fafb5ff1f12e41e9b6/src/electron/windowsChrome.js)：原生圆角及合成属性的边界。
 
 本项目使用自己的单悬浮宿主、React图表、受限桥与既有统计；不采用该项目额外边缘窗口、koffi、采集服务或仅macOS可用的材质。Windows原生背景、实际鼠标与DWM观感仍须绑定本次候选包单独验收；网页透明截图不替代该验收。
+
+## 任务栏与两层详情（0.1.16）
+
+继续使用用户明确给出的Javis603/token-monitor，研究提交d2817dba989111b60d11fcc732708589cc09e085的renderer/styles.css、themePresets.js、edgeDock/presentation.js等，参考页面分层、完整主题和数据身份；未复制源码、资产或增加采集服务。MIT许可。
+
+任务栏可行性实际读取[Deskband11Lib](https://github.com/airtaxi/Deskband11Lib)的TaskbarContentHostBase.cs、Internal/TaskbarButtonReader.cs和TaskbarLayoutCalculator.cs，参考真实父窗口、空位避让和任务栏重建思路，未引入.NET依赖或复制其实现。独立Win32/GDI+子窗口，遵循[逐像素透明窗口](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features#layered-windows)、[UI Automation](https://learn.microsoft.com/en-us/windows/win32/winauto/entry-uiauto-win32)及[SetParent](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setparent)的兼容边界；不注入Explorer、不移动系统图标。Windows支持清单是子窗口分层透明的必要条件。
+
+本版按用户要求取消透明内容底色，图表和文字都不再由局部背景块保护。展开采用[气泡面板](https://vibe-hub.org/popover)的锚定关系与既有260/200ms缓动，切页用项目已有Motion，未引入第二套动画库。
