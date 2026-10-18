@@ -332,8 +332,8 @@
       const measure = document.createElement("canvas").getContext("2d");
       measure.font = "12px " + getComputedStyle(svg).fontFamily;
       const left = Math.max(
-          96,
-          Math.ceil(measure.measureText(value(host, upper)).width) + 18,
+          host.dataset.axisInset === "compact" ? 38 : 96,
+          Math.ceil(measure.measureText(value(host, upper)).width) + (host.dataset.axisInset === "compact" ? 10 : 18),
         ),
         right = width - 16;
       const times = rows.map((r) => Date.parse(r.date)),

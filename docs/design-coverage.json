@@ -1,5 +1,5 @@
 {
-  "version": "0.1.18",
+  "version": "0.1.19",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
@@ -165,24 +165,23 @@
     "draftNavigation": true
   },
   "floating": {
-    "entry": "native-taskbar-two-concentric-rings",
+    "entry": "native-thicker-rings-percent-reset-rounded-highlight",
     "details": [
       "overview",
-      "limits",
       "usage",
       "charts",
       "model-detail"
     ],
     "geometry": "desktop/floating-layouts.json",
-    "transparency": "no-per-content-backing",
-    "filters": "independent-source-account-date-multiple-models",
+    "transparency": "single-canvas-alpha-light22-dark64;no-content-backing",
+    "filters": "two-equal-date-model-popovers;stable-order;OpenAI-GPT-combination",
     "nativeIntegration": "child-HWND-with-near-taskbar-fallback",
     "animation": "anchored-interruptible-260-200-160ms",
     "settings": "field-patch-revision-safe-and-CSS-zoom",
     "research": "docs/FLOATING_REFERENCES.md",
     "nativeAcceptance": "see-version-and-candidate-bound-receipt",
     "positionValidation": "post-repaint-native-screen-bounds-and-own-window-hit",
-    "lifecycle": "immediate-outside-hide;single-30s-warm-window;dispose-hidden-chart-interactions",
+    "lifecycle": "hover-preview-click-latch;anchored-200ms-outside-close;portals-unmount;single-30s-warm-window",
     "data": "local-codex-consistent;quota-only-poll;token-snapshots-no-periodic-chart-refresh"
   }
 }
