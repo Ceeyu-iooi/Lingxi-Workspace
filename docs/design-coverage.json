@@ -165,7 +165,7 @@
     "draftNavigation": true
   },
   "floating": {
-    "entry": "native-thicker-rings-percent-reset-rounded-highlight",
+    "entry": "black-percent-side-reset-optional-font10-18",
     "details": [
       "overview",
       "usage",
@@ -174,14 +174,19 @@
     ],
     "geometry": "desktop/floating-layouts.json",
     "transparency": "single-canvas-alpha-light22-dark64;no-content-backing",
-    "filters": "two-equal-date-model-popovers;stable-order;OpenAI-GPT-combination",
+    "filters": "equal-date-model;API-supplier-selector;inline-save-failure",
     "nativeIntegration": "child-HWND-with-near-taskbar-fallback",
-    "animation": "anchored-interruptible-260-200-160ms",
-    "settings": "field-patch-revision-safe-and-CSS-zoom",
+    "animation": "anchored-260-200;row420-stagger70-cap280;shared-workbench-number280",
+    "settings": "three-sections-folded-advanced-field-patch-css-zoom",
     "research": "docs/FLOATING_REFERENCES.md",
     "nativeAcceptance": "see-version-and-candidate-bound-receipt",
     "positionValidation": "post-repaint-native-screen-bounds-and-own-window-hit",
-    "lifecycle": "hover-preview-click-latch;anchored-200ms-outside-close;portals-unmount;single-30s-warm-window",
-    "data": "local-codex-consistent;quota-only-poll;token-snapshots-no-periodic-chart-refresh"
+    "lifecycle": "hover-tooltip-click-toggle;no-enable-prewarm;10s-renderer-release",
+    "data": "local-codex-consistent;quota-only-poll;token-snapshots-no-periodic-chart-refresh",
+    "menu": "badge-only-static-own-window-minimal-bridge-outside-blur-close",
+    "surfaces": [
+      "standard",
+      "transparent"
+    ]
   }
 }

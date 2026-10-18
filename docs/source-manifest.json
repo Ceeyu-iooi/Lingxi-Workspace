@@ -1,9 +1,9 @@
 {
-  "version": "0.1.19",
+  "version": "0.1.20",
   "files": [
     {
       "file": "README.md",
-      "sha256": "772ff6f0ed66b4e81905c93621317c85303025af26e1114ae97319ce4f378700"
+      "sha256": "7d0ec4f761326726c93636d8921243b92a06c88c9919ab7bb517cd4d0cb2b385"
     },
     {
       "file": "LICENSE",
@@ -11,7 +11,7 @@
     },
     {
       "file": "THIRD_PARTY_NOTICES.md",
-      "sha256": "d6e52aad59d48a9a4dc8bb8e58c546570dacb7b270cc595e2e9c854243a28fcc"
+      "sha256": "8b022b6f2e192167d119c280ff343e491dd8fbce77a847f0ca6d1906607b17e1"
     },
     {
       "file": "TOKEN_ACCOUNTING.md",
@@ -19,11 +19,11 @@
     },
     {
       "file": "VERSION",
-      "sha256": "b6961620d618f9cb3418be09f15e730af410a3e0a3e1d3a649c8892bfa7317d4"
+      "sha256": "a93167bc7b1e6cf2ffcbba0f51fea8122c7e61252cefe1f5152bee90beacd8b4"
     },
     {
       "file": "design.md",
-      "sha256": "81c72225801c0768c7a5c3b1df54cda9ec4f767022209d757aa1d099e0465b0d"
+      "sha256": "117395d6e31c56146d30d51b3c512a1f8a2c8fc1c58fc0727a680f0608291a54"
     },
     {
       "file": "start.bat",
@@ -282,6 +282,10 @@
       "sha256": "e16e7a273aacb208ecf60c80ce0adeae2de552bb39d2c2fa64dfe438165d923d"
     },
     {
+      "file": "frontend/app/number-motion.ts",
+      "sha256": "771e608edd7eb7decf8de512fa8f1f6fde51ad82e883dca93c9c527e58621484"
+    },
+    {
       "file": "frontend/app/overlay.ts",
       "sha256": "2adff53eb81572c18c77be88c766fdd5e64ae37a153e78a8dbc67f186bd0b51f"
     },
@@ -299,7 +303,7 @@
     },
     {
       "file": "frontend/app/preview.ts",
-      "sha256": "860b2e8a0ea89a408b3e53eab9c04523cf728a6620bab18578652bf29764bc43"
+      "sha256": "190ad4e8af4dce3c3d165f271b504dc5df8f90d7ac999b529d6f3e449f859d06"
     },
     {
       "file": "frontend/app/prices.html",
@@ -439,7 +443,7 @@
     },
     {
       "file": "frontend/compat/workbench-design.ts",
-      "sha256": "ada6c7b46cedde42a7159eb1395747006bc436e4a6c0cb382a1b55e1cfa83a55"
+      "sha256": "d5936b81170adb37b2f8dba45a724ed3e7496e8e258459fec8e4a394eec02918"
     },
     {
       "file": "frontend/compat/workbench-ui.ts",
@@ -506,48 +510,40 @@
       "sha256": "a6a972765f694fe01a3cd9a563bce1bfcdb67d57e31d69ee0affd703a1c4f247"
     },
     {
-      "file": "static/assets/floating/cocoa-dark.webp",
-      "sha256": "6842b7e620d8495a226885fcee570750a8597e5a3cdf5252d343cc6517fc4583"
-    },
-    {
-      "file": "static/assets/floating/cocoa-light.webp",
-      "sha256": "1dfa067a3b594b3babd1bfecb1d11ae6af66021c5da5ab392ec28fa45bb683ad"
-    },
-    {
       "file": "static/assets/floating/panel-charts-dark.webp",
-      "sha256": "111e3ad1f71c255cec8ddeef65015d483f5ac167e4f0f80e1cf488ebf7686c8e"
+      "sha256": "58821d85282d081acb3b5f81385352ede38963d3d29baa60465df8c033159642"
     },
     {
       "file": "static/assets/floating/panel-charts-light.webp",
-      "sha256": "bdf8bd85e32a0c09d7a07bfb8efa4adb8c8e463c9f447ea43b2bba250db0bb7b"
+      "sha256": "c31288b757c07e19bb33067cec78fb2ba2d347876283ab4d0d4175fc3be07801"
     },
     {
       "file": "static/assets/floating/panel-overview-dark.webp",
-      "sha256": "8322e652c8ae6a73ce4eea616f72490ddd5cb1825420ae1c1ee02779c8763102"
+      "sha256": "64f5acf23126294468e238af94ad69d0dcb0a4fab84c90cd929a47a1ffc853e5"
     },
     {
       "file": "static/assets/floating/panel-overview-light.webp",
-      "sha256": "ea0a39eb2dfb9e9de444145f9ac945e9e7f5ec6ede7bd5d40bb4c365c3aaf9ef"
+      "sha256": "ac11bd0ebfe3af5018f426a59ccad65483a089d4bd0c818fff4efc10e267345c"
     },
     {
       "file": "static/assets/floating/panel-usage-dark.webp",
-      "sha256": "f1d09f25938cff1d421f08c75674db34354b5a07d0d3ecfb73b223cb1d5bb089"
+      "sha256": "64df9c136eadae1cbee9b57c360356d95ee169fa8e784478719d94c36c9c294c"
     },
     {
       "file": "static/assets/floating/panel-usage-light.webp",
-      "sha256": "2c8f7f4628f113efac065218afae984256a671f92403b6b11663aa5d8db8061d"
+      "sha256": "82dce658e3254d139b768972170e13632dca1c82dbb3cfa1a598411ebc07a38e"
     },
     {
       "file": "static/assets/floating/taskbar-entry.webp",
-      "sha256": "e65d4267ac636f3ab1354a4f7e33aa210ca13f4c5b5fbe4f623b61e73db74392"
+      "sha256": "032340cc635e5610a03d5e1f2a623b12825217d5016d5b4580d8b89a6a9560f7"
     },
     {
       "file": "static/assets/floating/transparent-dark.webp",
-      "sha256": "b55811ea4e299f656e6494ae6a9151ef974b2b5aece0e3229a0253d1dab0b526"
+      "sha256": "e0cf1a447d3f74eaa99303bb6e856df44b763bd265cc4fee256f283a3a39c502"
     },
     {
       "file": "static/assets/floating/transparent-light.webp",
-      "sha256": "0488e4a2764d158082628dea6138404aa40a3bf465b50aee35fb0a966e9e7362"
+      "sha256": "5812cac716983c0a0540a737458292572ce941c3511d43d600e99a2bee697668"
     },
     {
       "file": "static/assets/fonts/LingxiBrush.woff2",
@@ -819,7 +815,7 @@
     },
     {
       "file": "docs/design-coverage.json",
-      "sha256": "a1bcbf3ce8dde0bb09ab696be8ae28ed2040f8a43eacb6770e6a421b8c29ae83"
+      "sha256": "86d5a52b00b6c6e53879b55dd396c286e1a17f8ea9469b3fa30a53d90225b338"
     },
     {
       "file": "docs/design-reference-audit.json",
@@ -843,7 +839,7 @@
     },
     {
       "file": "docs/product-manifest.json",
-      "sha256": "f91b3099751bc38481f9e79436af8c56cc8b399708b1c43e739fbccff918d620"
+      "sha256": "44887644d09119f87b78f34440448485a0041b65fe4cd5efa3ab4e8e105929b2"
     },
     {
       "file": "docs/TYPESCRIPT_MIGRATION.md",

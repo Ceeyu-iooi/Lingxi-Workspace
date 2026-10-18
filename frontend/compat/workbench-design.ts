@@ -1,4 +1,5 @@
 // @ts-nocheck
+import {animateNumber} from "../app/number-motion";
 // Compatibility controller: retain the validated interactions during the React migration.
 (() => {
   "use strict";
@@ -115,35 +116,7 @@
     reconcile(root, template.content);
     window.roundedSelects?.scan();
   }
-  function number(node, text, replay=false) {
-    const previous = node.textContent;
-    if (!replay && previous === String(text)) return;
-    node.textContent = text;
-    if (
-      !reduced() &&
-      previous &&
-      (replay || /\d/.test(previous)) &&
-      /\d/.test(String(text))
-    ) {
-      node.dataset.oldValue = previous;
-      node.getAnimations?.().forEach((a) => a.cancel());
-      node.classList.remove("wb-count");
-      node.animate?.(
-        [{ transform: "translateY(4px)" }, { transform: "translateY(0)" }],
-        { duration: 280, easing: "cubic-bezier(.2,.7,.3,1)" },
-      );
-      node.classList.add("wb-count");
-      node.animate?.(
-        [{ transform: "translateY(0)" }, { transform: "translateY(-110%)" }],
-        {
-          duration: 280,
-          pseudoElement: "::before",
-          fill: "forwards",
-          easing: "cubic-bezier(.2,.7,.3,1)",
-        },
-      );
-    }
-  }
+  function number(node,text,replay=false){animateNumber(node,String(text),replay,reduced())}
   function geometry(node, attr, value) {
     const previous = node.getAttribute(attr) || "";
     if (previous === value) return;
