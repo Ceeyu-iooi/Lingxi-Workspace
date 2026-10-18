@@ -1,9 +1,9 @@
 {
-  "version": "0.1.17",
+  "version": "0.1.18",
   "files": [
     {
       "file": "README.md",
-      "sha256": "31139d6a48ea1b1f6a6aafaee208620bd0c26c744a5761bf42aaf0cead27d604"
+      "sha256": "6c0d590b87c74e288fd288bb0fb1fa430d4047d21724db239ba99b402862c023"
     },
     {
       "file": "LICENSE",
@@ -19,11 +19,11 @@
     },
     {
       "file": "VERSION",
-      "sha256": "bd270b0ddecef6c53cde260e7964048b1186147606e6643d2ccb8cf04e167bd1"
+      "sha256": "447836d46f39c5900faf74ad6a6554b8e1fafeca1f78de0416d5f05c6e09a080"
     },
     {
       "file": "design.md",
-      "sha256": "1d41e14aa6b9d178187bd49b862545c42304386c2e24a36c13b6b9b3003541db"
+      "sha256": "4553e01f5762549f2e348c3d4d1c54966c2d17055b6c0583b15fc4001404f71d"
     },
     {
       "file": "start.bat",
@@ -299,7 +299,7 @@
     },
     {
       "file": "frontend/app/preview.ts",
-      "sha256": "c4990ff9c1c57a38a5ec3a9a6312a789e4874972252d7c505144065518c811ea"
+      "sha256": "7996b7e75d09f01ec062378045382fabb71edd89d09d5fa30b057aaa4c851268"
     },
     {
       "file": "frontend/app/prices.html",
@@ -423,7 +423,7 @@
     },
     {
       "file": "frontend/compat/usage-charts.ts",
-      "sha256": "7342c8632fb766f3b7aa4b127e6c04e6b1e12a89327491439397cab9f484809c"
+      "sha256": "f3c7399d1300f83f918b3ed35645c619a37952a2b42b54ed0057b2582bc26dd2"
     },
     {
       "file": "frontend/compat/usage-filters.ts",
@@ -823,11 +823,11 @@
     },
     {
       "file": "docs/ARCHITECTURE.md",
-      "sha256": "cfc3949c9f26eb3df685a98eb1b74185ec29df42d416524737c1abc747db88b1"
+      "sha256": "5f9ad0e2abc8fc3459f21a548be1cd0ee9bd84a3c66c3d59516f328bdfb25f3f"
     },
     {
       "file": "docs/design-coverage.json",
-      "sha256": "19f5738f1392147ddb5c16ea3e7b530745f9525a659de45e487321ad5f939b03"
+      "sha256": "32bd5d8f1d23ee449b89f0eab7b89d5d2a63e3cd540e1e98a7313076e081e9f7"
     },
     {
       "file": "docs/design-reference-audit.json",
@@ -851,7 +851,7 @@
     },
     {
       "file": "docs/product-manifest.json",
-      "sha256": "a99e4b1b622b8419b24190aaef053be9e652cb92224fc7475467d22ebb048c96"
+      "sha256": "a7b2e7d472dbeb24796669e50405193b8f462b9dc427cbac1ce796b1bf1d9326"
     },
     {
       "file": "docs/TYPESCRIPT_MIGRATION.md",

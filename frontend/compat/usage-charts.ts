@@ -447,6 +447,7 @@
         vertical &&
         oldGeometry.size &&
         !(
+          host.closest('[data-chart-motion="static"]') ||
           document.documentElement.dataset.motion === "reduced" ||
           matchMedia("(prefers-reduced-motion: reduce)").matches
         )
@@ -502,6 +503,7 @@
       } else if (
         !animated &&
         !(
+          host.closest('[data-chart-motion="static"]') ||
           document.documentElement.dataset.motion === "reduced" ||
           matchMedia("(prefers-reduced-motion: reduce)").matches
         )
@@ -516,6 +518,7 @@
       if (
         previous &&
         !(
+          host.closest('[data-chart-motion="static"]') ||
           document.documentElement.dataset.motion === "reduced" ||
           matchMedia("(prefers-reduced-motion: reduce)").matches
         )
@@ -760,7 +763,8 @@
       segments = [...svg.querySelectorAll(".usage-segment")];
       host.querySelector(".usage-legend").innerHTML = legendHTML(rows, host);
       if (!(
-        document.documentElement.dataset.motion === "reduced" ||
+        host.closest('[data-chart-motion="static"]') ||
+          document.documentElement.dataset.motion === "reduced" ||
         matchMedia("(prefers-reduced-motion: reduce)").matches
       )) {
         animation = svg.animate(
