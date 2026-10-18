@@ -1,9 +1,9 @@
 {
-  "version": "0.1.16",
+  "version": "0.1.17",
   "files": [
     {
       "file": "README.md",
-      "sha256": "369c32c00d4bb1eec3c867cba09e747f3e9a6de36a3118e9b711f5fb75e8a9c9"
+      "sha256": "31139d6a48ea1b1f6a6aafaee208620bd0c26c744a5761bf42aaf0cead27d604"
     },
     {
       "file": "LICENSE",
@@ -19,11 +19,11 @@
     },
     {
       "file": "VERSION",
-      "sha256": "7470694a0b5af87394b523c1a640e2ad099efbe0e6d9e6d2f7a70703e4d04457"
+      "sha256": "bd270b0ddecef6c53cde260e7964048b1186147606e6643d2ccb8cf04e167bd1"
     },
     {
       "file": "design.md",
-      "sha256": "112dd03a4d43b81bc4dda3a766bcd9a329fd3310de8aab4285b368d7598ab93f"
+      "sha256": "1d41e14aa6b9d178187bd49b862545c42304386c2e24a36c13b6b9b3003541db"
     },
     {
       "file": "start.bat",
@@ -299,7 +299,7 @@
     },
     {
       "file": "frontend/app/preview.ts",
-      "sha256": "e701c66ebe91b59488d8812cf1484f98b8be9c0efc44da5ea1e972ce5601ea52"
+      "sha256": "c4990ff9c1c57a38a5ec3a9a6312a789e4874972252d7c505144065518c811ea"
     },
     {
       "file": "frontend/app/prices.html",
@@ -827,7 +827,7 @@
     },
     {
       "file": "docs/design-coverage.json",
-      "sha256": "76ee95ad575e309dbaacf07d25b6d9fa9521a8dc4a491ace0b4e874fba85fc6b"
+      "sha256": "19f5738f1392147ddb5c16ea3e7b530745f9525a659de45e487321ad5f939b03"
     },
     {
       "file": "docs/design-reference-audit.json",
@@ -851,7 +851,7 @@
     },
     {
       "file": "docs/product-manifest.json",
-      "sha256": "6a60efb094c64fd43956c776aa72b578b94e0928e529fb0beda08a5594ecee89"
+      "sha256": "a99e4b1b622b8419b24190aaef053be9e652cb92224fc7475467d22ebb048c96"
     },
     {
       "file": "docs/TYPESCRIPT_MIGRATION.md",

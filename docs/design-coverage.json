@@ -1,5 +1,5 @@
 {
-  "version": "0.1.16",
+  "version": "0.1.17",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
@@ -180,6 +180,7 @@
     "animation": "anchored-interruptible-260-200-160ms",
     "settings": "field-patch-revision-safe-and-CSS-zoom",
     "research": "docs/FLOATING_REFERENCES.md",
-    "nativeAcceptance": "see-version-and-candidate-bound-receipt"
+    "nativeAcceptance": "see-version-and-candidate-bound-receipt",
+    "positionValidation": "post-repaint-native-screen-bounds-and-own-window-hit"
   }
 }
