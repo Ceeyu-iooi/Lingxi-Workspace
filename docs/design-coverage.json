@@ -165,7 +165,7 @@
     "draftNavigation": true
   },
   "floating": {
-    "entry": "two-rings-center-two-line-black-time-configurable;native-tooltip-compatible-V2",
+    "entry": "measured-stable-reset-column-4dip-gaps;two-rings-black-time;native-tooltip-V2",
     "details": [
       "overview",
       "usage",
@@ -198,6 +198,8 @@
     "fileImport": true,
     "manualEntry": false,
     "stableFilterNodes": true,
-    "importFinallyRestoresActions": true
+    "importFinallyRestoresActions": true,
+    "layout": "compact-filter-band;primary-expense-secondary-income-net;220px-trend-side-donut-legend;42px-table-rows",
+    "responsive": "container850-single-analysis;450-stacked-summary-and-donut;table-local-scroll"
   }
 }
