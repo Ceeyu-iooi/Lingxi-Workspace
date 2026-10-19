@@ -75,6 +75,8 @@
         (cleanups.get(host) || []).forEach((fn) => fn());
         cleanups.delete(host);
         hosts.delete(host);
+        delete host.dataset.chartMounted;
+        host.querySelectorAll('[data-chart-mounted]').forEach(node=>delete node.dataset.chartMounted);
       });
   }
   new MutationObserver(() => {

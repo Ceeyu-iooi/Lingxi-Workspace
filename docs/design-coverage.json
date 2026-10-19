@@ -165,28 +165,39 @@
     "draftNavigation": true
   },
   "floating": {
-    "entry": "black-percent-side-reset-optional-font10-18",
+    "entry": "two-rings-center-two-line-black-time-configurable;native-tooltip-compatible-V2",
     "details": [
       "overview",
       "usage",
       "charts",
       "model-detail"
     ],
-    "geometry": "desktop/floating-layouts.json",
+    "geometry": "420-fixed-width-height380-1200-no-vertical",
     "transparency": "single-canvas-alpha-light22-dark64;no-content-backing",
     "filters": "equal-date-model;API-supplier-selector;inline-save-failure",
     "nativeIntegration": "child-HWND-with-near-taskbar-fallback",
-    "animation": "anchored-260-200;row420-stagger70-cap280;shared-workbench-number280",
-    "settings": "three-sections-folded-advanced-field-patch-css-zoom",
+    "animation": "nav-row420;source-stable;shared-number320-cleanup;radial-theme-material650",
+    "settings": "three-nav-pages-white-surfaces-height-only-logo",
     "research": "docs/FLOATING_REFERENCES.md",
     "nativeAcceptance": "see-version-and-candidate-bound-receipt",
     "positionValidation": "post-repaint-native-screen-bounds-and-own-window-hit",
-    "lifecycle": "hover-tooltip-click-toggle;no-enable-prewarm;10s-renderer-release",
+    "lifecycle": "settings-closes-detail;hover-tooltip-click-only;10s-release",
     "data": "local-codex-consistent;quota-only-poll;token-snapshots-no-periodic-chart-refresh",
     "menu": "badge-only-static-own-window-minimal-bridge-outside-blur-close",
     "surfaces": [
       "standard",
       "transparent"
-    ]
+    ],
+    "name": "任务栏插件",
+    "preview": "light-entry-and-compact-detail"
+  },
+  "finance": {
+    "sharedUsageCharts": true,
+    "dateCategoryAmountSearchSort": true,
+    "tablePageSize": 50,
+    "fileImport": true,
+    "manualEntry": false,
+    "stableFilterNodes": true,
+    "importFinallyRestoresActions": true
   }
 }

@@ -1,9 +1,9 @@
 {
-  "version": "0.1.20",
+  "version": "0.1.21",
   "files": [
     {
       "file": "README.md",
-      "sha256": "7d0ec4f761326726c93636d8921243b92a06c88c9919ab7bb517cd4d0cb2b385"
+      "sha256": "d1816342a86773332c42abfb767836e85e4f126e78da9720dd8f0f7950603c7d"
     },
     {
       "file": "LICENSE",
@@ -19,11 +19,11 @@
     },
     {
       "file": "VERSION",
-      "sha256": "a93167bc7b1e6cf2ffcbba0f51fea8122c7e61252cefe1f5152bee90beacd8b4"
+      "sha256": "b436859fb641d04afbc4796b5df155639d6685280c4a0e8fe8791363d977f222"
     },
     {
       "file": "design.md",
-      "sha256": "117395d6e31c56146d30d51b3c512a1f8a2c8fc1c58fc0727a680f0608291a54"
+      "sha256": "a9fa00d643aba151d2472b0252b3d113f8e8ac1a03266ababada7b9914b4b1e5"
     },
     {
       "file": "start.bat",
@@ -35,7 +35,7 @@
     },
     {
       "file": "vite.app.config.mts",
-      "sha256": "3dda3eb88a02b971aac8ea53330841a0d67b9bd5f0a61e95c014f9fae78231fa"
+      "sha256": "5ab5549b70122a39567a2bb0cd6f3c3381ad9a5f383970387a49198cc8294716"
     },
     {
       "file": "tsconfig.app.json",
@@ -282,8 +282,12 @@
       "sha256": "e16e7a273aacb208ecf60c80ce0adeae2de552bb39d2c2fa64dfe438165d923d"
     },
     {
+      "file": "frontend/app/number-motion.css",
+      "sha256": "ffd076362681757dd82547ae513eab0f5ae3a3c670cf53e01ff9884fe270cedb"
+    },
+    {
       "file": "frontend/app/number-motion.ts",
-      "sha256": "771e608edd7eb7decf8de512fa8f1f6fde51ad82e883dca93c9c527e58621484"
+      "sha256": "3176572da4dee6c83f9b10c8030e84b9a1a00589d2575936cf97268b5a65da8d"
     },
     {
       "file": "frontend/app/overlay.ts",
@@ -303,7 +307,7 @@
     },
     {
       "file": "frontend/app/preview.ts",
-      "sha256": "190ad4e8af4dce3c3d165f271b504dc5df8f90d7ac999b529d6f3e449f859d06"
+      "sha256": "e4a1e44086ccc9b28cf993bdadfc5ad40b33840fc830e8ad3287ae83ba0d6078"
     },
     {
       "file": "frontend/app/prices.html",
@@ -343,7 +347,7 @@
     },
     {
       "file": "frontend/compat/app.ts",
-      "sha256": "3665070e639442f6bc6d0130e15e2b17051d74dea5e61b3cd6fd2407ac8a848c"
+      "sha256": "b7a53954769969153faef77e1fb06eb51e1f5b961b2dd90c814d093f5f423b92"
     },
     {
       "file": "frontend/compat/commands.ts",
@@ -355,7 +359,7 @@
     },
     {
       "file": "frontend/compat/control-center.ts",
-      "sha256": "3bc694fda16f579b6e31acf62df16b7a3dc9befc6c6a3460ef22d145d2e4b63c"
+      "sha256": "30b3ffc86701ad422a5a12f4645573ca664d168a1b1bf38c69e08a5f5cfc29da"
     },
     {
       "file": "frontend/compat/dialogs.ts",
@@ -371,7 +375,7 @@
     },
     {
       "file": "frontend/compat/lingxi-design.ts",
-      "sha256": "9190b0f73e2a4a8597c48bdd288e8da96370e0910525512600eb866b27b7fa29"
+      "sha256": "ef1b82ddbba4864afe3509b4a34e4d3223d8d03078e19d266813375d37dbf56f"
     },
     {
       "file": "frontend/compat/news-board.ts",
@@ -427,7 +431,7 @@
     },
     {
       "file": "frontend/compat/usage-charts.ts",
-      "sha256": "9646c4ce88e3c0cb5ee6e1da179ea3bf4049448836d89a1a5d7691503108c1d2"
+      "sha256": "a25f11d7ca51e15d41adb443285b512edc8f6715715b996b2a379a8115b58e84"
     },
     {
       "file": "frontend/compat/usage-filters.ts",
@@ -510,40 +514,12 @@
       "sha256": "a6a972765f694fe01a3cd9a563bce1bfcdb67d57e31d69ee0affd703a1c4f247"
     },
     {
-      "file": "static/assets/floating/panel-charts-dark.webp",
-      "sha256": "58821d85282d081acb3b5f81385352ede38963d3d29baa60465df8c033159642"
-    },
-    {
-      "file": "static/assets/floating/panel-charts-light.webp",
-      "sha256": "c31288b757c07e19bb33067cec78fb2ba2d347876283ab4d0d4175fc3be07801"
-    },
-    {
-      "file": "static/assets/floating/panel-overview-dark.webp",
-      "sha256": "64f5acf23126294468e238af94ad69d0dcb0a4fab84c90cd929a47a1ffc853e5"
-    },
-    {
-      "file": "static/assets/floating/panel-overview-light.webp",
-      "sha256": "ac11bd0ebfe3af5018f426a59ccad65483a089d4bd0c818fff4efc10e267345c"
-    },
-    {
-      "file": "static/assets/floating/panel-usage-dark.webp",
-      "sha256": "64df9c136eadae1cbee9b57c360356d95ee169fa8e784478719d94c36c9c294c"
-    },
-    {
-      "file": "static/assets/floating/panel-usage-light.webp",
-      "sha256": "82dce658e3254d139b768972170e13632dca1c82dbb3cfa1a598411ebc07a38e"
+      "file": "static/assets/floating/plugin-detail.webp",
+      "sha256": "08d41bf3f6cd8225d2c0588d2893c5f69b900f68315df1123147f13adddcfe95"
     },
     {
       "file": "static/assets/floating/taskbar-entry.webp",
-      "sha256": "032340cc635e5610a03d5e1f2a623b12825217d5016d5b4580d8b89a6a9560f7"
-    },
-    {
-      "file": "static/assets/floating/transparent-dark.webp",
-      "sha256": "e0cf1a447d3f74eaa99303bb6e856df44b763bd265cc4fee256f283a3a39c502"
-    },
-    {
-      "file": "static/assets/floating/transparent-light.webp",
-      "sha256": "5812cac716983c0a0540a737458292572ce941c3511d43d600e99a2bee697668"
+      "sha256": "c09de634e4d0f7ff941f9e26969aeb34349712c2b1ef3f366d3349a28bcf43e7"
     },
     {
       "file": "static/assets/fonts/LingxiBrush.woff2",
@@ -791,7 +767,7 @@
     },
     {
       "file": "static/workbench-design.css",
-      "sha256": "f2fb3d8d30917109685008527aa40a3a66feace887870e62a988a0247605618e"
+      "sha256": "8362626fbdfcc35f4732208e97c6649d973f30888ca35018a7a7131d2f2fe863"
     },
     {
       "file": "static/workbench-ui.css",
@@ -815,7 +791,7 @@
     },
     {
       "file": "docs/design-coverage.json",
-      "sha256": "86d5a52b00b6c6e53879b55dd396c286e1a17f8ea9469b3fa30a53d90225b338"
+      "sha256": "b82e5ee44318ffc11e7e96b66af00fcab0d4bb0fa9ec7f44cc6bdaacdaa2a907"
     },
     {
       "file": "docs/design-reference-audit.json",
@@ -839,7 +815,7 @@
     },
     {
       "file": "docs/product-manifest.json",
-      "sha256": "44887644d09119f87b78f34440448485a0041b65fe4cd5efa3ab4e8e105929b2"
+      "sha256": "6c64ebf1876228b79ba3eca65b1e78a8bca8f4fd661ceb816b3938ef9d8e6dbb"
     },
     {
       "file": "docs/TYPESCRIPT_MIGRATION.md",

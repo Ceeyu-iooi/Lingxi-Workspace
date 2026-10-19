@@ -528,207 +528,38 @@ function renderSettings(root) {
 
 const financeColors = { 餐饮: "var(--color-usage-chart-1)", 交通: "var(--color-usage-chart-2)", 购物: "var(--color-usage-chart-3)", 学习: "var(--color-usage-chart-6)", 居住: "var(--color-usage-chart-5)", 娱乐: "var(--color-usage-chart-4)", 医疗: "var(--color-finance-medical)", 其他: "var(--color-foreground-subtle)", 收入: "var(--color-success)" };
 const categoryColor = name => Object.hasOwn(financeColors, name) ? financeColors[name] : financeColors.其他;
-let billPreview = null;
-let financeMonth = monthStr();
-let financeVisible = 100;
-function setFinanceMonth(month) {
-  financeMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(month) ? month : monthStr();
-  layoutStorage.setItem("wb-finance-month", financeMonth);
-}
-const money = (n) =>
-  Number(n || 0).toLocaleString("zh-CN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-function renderFinance(root) {
-  const savedMonth = layoutStorage.getItem("wb-finance-month");
-  financeMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(savedMonth || "")
-    ? savedMonth
-    : monthStr();
-  const rows = (state.transactions || []).filter((r) =>
-    r.date.startsWith(financeMonth),
-  );
-  const ledgerQuery=root._financeQuery||'',ledgerKind=root._financeKind||'';
-  const ledgerRows=rows.filter(r=>(!ledgerQuery||(r.title+' '+r.category+' '+r.date).toLocaleLowerCase().includes(ledgerQuery.toLocaleLowerCase()))&&(!ledgerKind||r.kind===ledgerKind));
-  const expense = rows.filter((r) => r.kind === "expense");
-  const income = rows.filter((r) => r.kind === "income");
-  const spent = expense.reduce((s, r) => s + Number(r.amount), 0);
-  const earned = income.reduce((s, r) => s + Number(r.amount), 0);
-  const byCategory = {};
-  expense.forEach((r) => {
-    byCategory[r.category] = (byCategory[r.category] || 0) + Number(r.amount);
-  });
-  const total = Object.values(byCategory).reduce((a, b) => a + b, 0);
-  let offset = 0;
-  const wedges = Object.entries(byCategory)
-    .sort((a, b) => b[1] - a[1])
-    .map(([name, value]) => {
-      const start = offset;
-      offset += (value / total) * 100;
-      return `${categoryColor(name)} ${start}% ${offset}%`;
-    });
-  const [year, month] = financeMonth.split("-").map(Number);
-  const days = new Date(year, month, 0).getDate();
-  const daily = Array(days).fill(0);
-  expense.forEach((r) => {
-    const d = Number(r.date.slice(8, 10));
-    if (d >= 1 && d <= days) daily[d - 1] += Number(r.amount);
-  });
-  const peak = Math.max(1, ...daily);
-  const points = daily
-    .map(
-      (v, i) =>
-        `${((i / Math.max(1, days - 1)) * 600).toFixed(1)},${(132 - (v / peak) * 110).toFixed(1)}`,
-    )
-    .join(" ");
-  const dayDots = daily
-    .map(
-      (v, i) =>
-        `<circle cx="${((i / Math.max(1, days - 1)) * 600).toFixed(1)}" cy="${(132 - (v / peak) * 110).toFixed(1)}" r="5" fill="transparent"><title>${i + 1} 日支出 ¥${money(v)}</title></circle>`,
-    )
-    .join("");
-  (window.workbenchDesign?.paint || ((node, html) => (node.innerHTML = html)))(
-    root,
-    `
-  <div class="greet"><div><h2>记账</h2><p>账单留在本机，识别后核对再导入</p></div>
-    <input type="month" id="finance-month" value="${financeMonth}" aria-label="选择账单月份" style="margin-left:auto">
-    <label class="btn upload-btn">导入账单<input id="bill-file" type="file" accept=".csv,.tsv,.xlsx" hidden></label></div>
-  <div class="finance-stats"><div><small>本月支出</small><strong>¥ ${money(spent)}</strong></div><div><small>本月收入</small><strong>¥ ${money(earned)}</strong></div><div><small>结余</small><strong>¥ ${money(earned - spent)}</strong></div></div>
-  <div class="finance-grid">
-    <section class="card"><h3>支出趋势<span class="meta">每日金额 · ${financeMonth}</span></h3>
-      ${expense.length ? `<div class="trend-wrap"><div class="chart-peak">单日最高 ¥${money(peak)}</div><svg viewBox="0 0 620 165" role="img" aria-label="${financeMonth} 每日支出曲线"><path d="M0 132H600" stroke="var(--line)"/><path class="finance-area" d="M0 132 L${points.replaceAll(" ", " L")} L600 132 Z"/><polyline points="${points}" fill="none" stroke="var(--color-usage-chart-1)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${dayDots}</svg><div class="chart-axis"><span>1 日</span><span>${days} 日</span></div></div>` : `<div class="empty">这个月还没有支出记录。导入账单后会显示每日曲线。</div>`}</section>
-    <section class="card"><h3>资金去向<span class="meta">按支出类型</span></h3>
-      ${
-        expense.length
-          ? `<div class="pie-layout"><div class="donut" style="background:conic-gradient(${wedges.join(",")})"><span>¥ ${money(spent)}</span></div><div class="legend">${Object.entries(
-              byCategory,
-            )
-              .sort((a, b) => b[1] - a[1])
-              .map(
-                ([name, value]) =>
-                  `<div><i style="background:${categoryColor(name)}"></i><span>${esc(name)}</span><b>¥${money(value)} · ${((value / total) * 100).toFixed(1)}%</b></div>`,
-              )
-              .join("")}</div></div>`
-          : `<div class="empty">分类占比会在导入账单后出现。</div>`
-      }</section>
-  </div>
-  <section class="card finance-ledger"><h3>交易明细<span class="meta">${rows.length} 笔</span></h3>
-    <div class="finance-toolbar"><input id="txn-date" type="date" aria-label="新交易日期" value="${new Date().toLocaleDateString("sv-SE")}"><input id="txn-title" maxlength="120" placeholder="交易说明" aria-label="交易说明"><input id="txn-amount" type="number" min="0.01" step="0.01" placeholder="金额" aria-label="金额"><select id="txn-kind" aria-label="收支"><option value="expense">支出</option><option value="income">收入</option></select><select id="txn-category" aria-label="类型">${Object.keys(
-      financeColors,
-    )
-      .map((c) => `<option>${c}</option>`)
-      .join(
-        "",
-      )}</select><button class="btn small" id="txn-add">添加</button></div>
-    <div class="ledger-filter-toolbar"><input type="search" id="finance-query" aria-label="搜索交易" placeholder="搜索交易、分类或日期" value="${esc(ledgerQuery)}"><select id="finance-kind-filter" aria-label="交易收支筛选"><option value="">全部收支</option><option value="expense" ${ledgerKind==='expense'?'selected':''}>支出</option><option value="income" ${ledgerKind==='income'?'selected':''}>收入</option></select></div><div class="ledger-list">${
-      ledgerRows.length
-        ? ledgerRows
-            .slice()
-            .sort((a, b) => b.date.localeCompare(a.date))
-            .slice(0, financeVisible)
-            .map(
-              (r) =>
-                `<div class="ledger-row" data-id="${esc(r.id)}"><span class="ledger-dot" style="background:${categoryColor(r.category)}"></span><time>${esc(r.date)}</time><span class="ledger-title">${esc(r.title)}</span><span class="ledger-cat">${esc(r.category)}</span><b class="${r.kind}">${r.kind === "income" ? "+" : "−"} ¥${money(r.amount)}</b><button class="del txn-del" data-id="${esc(r.id)}" aria-label="删除 ${esc(r.title)}">×</button></div>`,
-            )
-            .join("")
-        : `<div class="empty">暂无交易。可以手动添加，或上传 CSV / XLSX 账单。</div>`
-    }</div>${ledgerRows.length > financeVisible ? `<button class="btn small ghost" id="txn-more">显示更多（已显示 ${financeVisible} / ${ledgerRows.length}）</button>` : ""}</section>
-  <dialog id="bill-dialog" class="bill-dialog"><h3>核对识别结果</h3><p id="bill-count"></p><div id="bill-rows" class="bill-rows"></div><div id="bill-pagination"></div><div class="dialog-actions"><button class="btn ghost" id="bill-cancel">取消</button><button class="btn" id="bill-confirm">确认导入</button></div></dialog>`,
-  );
-  $("#finance-query").oninput=(e)=>{root._financeQuery=e.target.value;financeVisible=100;renderFinance(root);};
-  $("#finance-kind-filter").onchange=(e)=>{root._financeKind=e.target.value;financeVisible=100;renderFinance(root);};
-  $("#finance-month").onchange = (e) => {
-    setFinanceMonth(e.target.value);
-    financeVisible = 100;
-    renderFinance(root);
-  };
-  const more = $("#txn-more");
-  if (more)
-    more.onclick = () => {
-      financeVisible += 100;
-      renderFinance(root);
-    };
-  $("#txn-kind").onchange = () => {
-    const income = $("#txn-kind").value === "income",
-      category = $("#txn-category");
-    category.disabled = income;
-    if (income) category.value = "收入";
-    else if (category.value === "收入") category.value = "其他";
-  };
-  $("#txn-category option:last-child").disabled = true;
-  $("#txn-kind").onchange();
-  $("#txn-add").onclick = async () => {
-    const row = {
-      date: $("#txn-date").value,
-      title: $("#txn-title").value.trim(),
-      amount: Number($("#txn-amount").value),
-      kind: $("#txn-kind").value,
-      category:
-        $("#txn-kind").value === "income" ? "收入" : $("#txn-category").value,
-    };
-    if (
-      !row.date ||
-      !row.title ||
-      !Number.isFinite(row.amount) ||
-      row.amount < 0.01
-    ) {
-      toast("请填写日期、说明和金额", {kind:"warning"});
-      return;
-    }
-    const identity = user?.username,
-      selectedMonth = financeMonth,
-      originalTitle = $("#txn-title").value,
-      originalAmount = $("#txn-amount").value,
-      button = $("#txn-add");
-    if (button.disabled) return;
-    button.disabled = true;
-    try {
-      await api("POST", "/api/transactions", {
-        rows: [row],
-        allowDuplicate: true,
-      });
-      if (user?.username !== identity) return;
-      if (root.isConnected && financeMonth === selectedMonth)
-        setFinanceMonth(row.date.slice(0, 7));
-      await refresh();
-      if (user?.username !== identity || !root.isConnected) return;
-      ["txn-title", "txn-amount"].forEach((id) => {
-        const input = $("#" + id, root);
-        if (
-          input.value === (id === "txn-title" ? originalTitle : originalAmount)
-        ) {
-          input.value = "";
-          delete input.dataset.wbDirty;
-        }
-      });
-      renderFinance(root);
-      toast("交易已添加", {kind:"success"});
-    } catch (e) {
-      if (user?.username === identity) toast(e.message, {kind:"error"});
-    } finally {
-      if (button.isConnected) button.disabled = false;
-    }
-  };
-  $$(".txn-del", root).forEach(
-    (btn) =>
-      (btn.onclick = async () => {
-        if (btn.disabled || !confirm("删除这笔交易？")) return;
-        btn.disabled = true;
-        try {
-          await api(
-            "POST",
-            `/api/transactions/${encodeURIComponent(btn.dataset.id)}`,
-            {},
-          );
-          await refresh();
-          if (root.isConnected) renderFinance(root);
-        } catch (error) {
-          if (root.isConnected) toast(error.message, {kind:"error"});
-        } finally {
-          if (btn.isConnected) btn.disabled = false;
-        }
-      }),
-  );
+let billPreview=null,financeMonth=monthStr();
+function setFinanceMonth(month){financeMonth=/^\d{4}-(0[1-9]|1[0-2])$/.test(month)?month:monthStr();layoutStorage.setItem('wb-finance-month',financeMonth)}
+const money=n=>Number(n||0).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
+function renderFinance(root){
+ const saved=layoutStorage.getItem('wb-finance-month');financeMonth=/^\d{4}-(0[1-9]|1[0-2])$/.test(saved||'')?saved:monthStr();
+ if(!root.querySelector('.finance-workspace')){
+ root.innerHTML=`<div class="finance-workspace usage-host"><header class="greet"><div><h2>记账</h2></div><label class="btn upload-btn">导入账单<input id="bill-file" type="file" accept=".csv,.tsv,.xlsx" hidden></label></header><section class="control-section finance-filters"><div class="usage-table-tools"><label>开始日期<input id="finance-start" type="date"></label><label>结束日期<input id="finance-end" type="date"></label><label>分类<select id="finance-category"><option value="">全部分类</option></select></label><label>收支<select id="finance-kind"><option value="">全部收支</option><option value="expense">支出</option><option value="income">收入</option></select></label></div></section><div class="finance-stats"><div><small>支出</small><strong data-finance-total="expense">—</strong></div><div><small>收入</small><strong data-finance-total="income">—</strong></div><div><small>结余</small><strong data-finance-total="net">—</strong></div></div><div class="usage-charts finance-charts"><section class="control-section"><h3>支出趋势</h3>${window.usageCharts.trend([],'每日支出')}</section><section class="control-section"><h3>资金去向</h3><div class="usage-pie-layout usage-interactive-pie" data-models="[]"><div class="usage-donut interactive"><svg viewBox="0 0 200 200" role="group" aria-label="支出分类占比"></svg><strong>—</strong></div><div class="usage-legend"></div></div></section></div><section class="control-section usage-table-panel finance-ledger"><h3>交易明细 <small data-finance-count></small></h3><div class="usage-table-tools finance-table-tools"><label>关键词<input id="finance-query" type="search" placeholder="搜索交易"></label><label>最低金额<input id="finance-min" type="number" min="0" step="0.01"></label><label>最高金额<input id="finance-max" type="number" min="0" step="0.01"></label><label>排序<select id="finance-sort"><option value="date-desc">日期 · 降序</option><option value="date-asc">日期 · 升序</option><option value="amount-desc">金额 · 降序</option><option value="amount-asc">金额 · 升序</option></select></label></div><p role="alert" class="finance-error" hidden></p><div class="control-table-wrap"><table class="control-table"><thead><tr><th>日期</th><th>交易</th><th>分类</th><th>收支</th><th class="numeric">金额</th><th></th></tr></thead><tbody id="finance-rows"></tbody></table></div><div class="finance-pagination"><button class="btn ghost" data-finance-prev>上一页</button><span data-finance-page></span><button class="btn ghost" data-finance-next>下一页</button></div></section><dialog id="bill-dialog" class="bill-dialog"><h3>核对账单</h3><p id="bill-count"></p><div id="bill-rows" class="bill-rows"></div><div id="bill-pagination"></div><p role="status" id="bill-status"></p><div class="dialog-actions"><button class="btn ghost" id="bill-cancel">取消</button><button class="btn" id="bill-confirm">确认导入</button></div></dialog></div>`;
+ root._financePage=0;let timer;const update=()=>{clearTimeout(timer);root._financePage=0;timer=setTimeout(()=>root._financeUpdate?.(),120)};
+ root.querySelectorAll('.finance-filters input,.finance-filters select,.finance-table-tools input,.finance-table-tools select').forEach(el=>el.addEventListener(el.tagName==='SELECT'||el.type==='date'?'change':'input',update,{signal:root._wbAbort?.signal}));
+ $('[data-finance-prev]',root).onclick=()=>{root._financePage--;root._financeUpdate()};$('[data-finance-next]',root).onclick=()=>{root._financePage++;root._financeUpdate()};
+ root._wbDispose=()=>{clearTimeout(timer);window.usageCharts.dispose(root);billPreview=null};
+ for(const chart of root.querySelectorAll('.usage-plot,.usage-interactive-pie'))Object.assign(chart.dataset,{metric:'cost',currency:'CNY',unit:'',transition:'vertical'});window.usageCharts.mount(root);
+ }
+ if(root._financeMonth!==financeMonth){root._financeMonth=financeMonth;$('#finance-start',root).value=financeMonth+'-01';const [y,m]=financeMonth.split('-').map(Number);$('#finance-end',root).value=financeMonth+'-'+new Date(y,m,0).getDate();root._financePage=0}
+ const selected=$('#finance-category',root).value,categories=[...new Set((state.transactions||[]).map(r=>r.category))].sort();$('#finance-category',root).innerHTML='<option value="">全部分类</option>'+categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');$('#finance-category',root).value=selected;
+ window.usageCharts.mount(root);
+ const cents=r=>BigInt(Math.round(Number(r.amount)*100)),cash=v=>{const negative=v<0n;if(negative)v=-v;return (negative?'−':'')+'¥'+(v/100n).toLocaleString('zh-CN')+'.'+String(v%100n).padStart(2,'0')};
+ root._financeUpdate=()=>{
+ const start=$('#finance-start',root).value,end=$('#finance-end',root).value,category=$('#finance-category',root).value,kind=$('#finance-kind',root).value,query=$('#finance-query',root).value.trim().toLocaleLowerCase(),min=$('#finance-min',root).value,max=$('#finance-max',root).value,sort=$('#finance-sort',root).value;
+ const error=$('.finance-error',root);error.hidden=true;if(start&&end&&start>end||min!==''&&max!==''&&Number(min)>Number(max)||Number(min)<0||Number(max)<0){error.textContent='请检查日期或金额范围';error.hidden=false;return}
+ const rows=(state.transactions||[]).filter(r=>(!start||r.date>=start)&&(!end||r.date<=end)&&(!category||r.category===category)&&(!kind||r.kind===kind)&&(!query||(r.title+' '+r.category+' '+r.date).toLocaleLowerCase().includes(query))&&(min===''||Number(r.amount)>=Number(min))&&(max===''||Number(r.amount)<=Number(max)));
+ let spent=0n,earned=0n;const daily=new Map(),groups=new Map();for(const r of rows){const v=cents(r);if(r.kind==='income')earned+=v;else{spent+=v;daily.set(r.date,(daily.get(r.date)||0n)+v);groups.set(r.category,(groups.get(r.category)||0n)+v)}}
+ for(const [key,v]of [['expense',spent],['income',earned],['net',earned-spent]])window.workbenchDesign.number($(`[data-finance-total="${key}"]`,root),cash(v));
+ let series=[];if(start&&end){const first=Date.parse(start+'T00:00:00Z'),last=Date.parse(end+'T00:00:00Z'),days=Math.floor((last-first)/86400000)+1,step=Math.max(1,Math.ceil(days/120));const buckets=new Map();for(const [date,n]of daily){const i=Math.floor((Date.parse(date+'T00:00:00Z')-first)/86400000/step);buckets.set(i,(buckets.get(i)||0n)+n)}for(let i=0;i<days;i+=step)series.push({date:new Date(first+i*86400000).toISOString().slice(0,10),total:Number(buckets.get(i/step)||0n)/100})}else series=[...daily].sort(([a],[b])=>a.localeCompare(b)).map(([date,n])=>({date,total:Number(n)/100}));
+ const plot=$('.usage-plot',root),signature=JSON.stringify(series);if(plot.dataset.series!==signature){plot.dataset.series=signature;window.usageCharts.update(plot)}
+ const pie=$('.usage-interactive-pie',root),models=window.usageCharts.models([...groups].map(([model,n])=>({model,provider:'',total:Number(n)/100}))).map(r=>({...r,color:financeColors[r.model]||r.color})),modelSignature=JSON.stringify(models);if(pie.dataset.models!==modelSignature){pie.dataset.models=modelSignature;window.usageCharts.update(pie)}window.workbenchDesign.number($('.usage-donut strong',root),cash(spent));
+ rows.sort((a,b)=>{const n=sort.startsWith('amount')?Number(a.amount)-Number(b.amount):a.date.localeCompare(b.date);return(sort.endsWith('asc')?n:-n)||a.id.localeCompare(b.id)});const pages=Math.max(1,Math.ceil(rows.length/50));root._financePage=Math.max(0,Math.min(root._financePage,pages-1));const offset=root._financePage*50;
+ $('#finance-rows',root).innerHTML=rows.slice(offset,offset+50).map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.title)}</td><td>${esc(r.category)}</td><td>${r.kind==='income'?'收入':'支出'}</td><td class="numeric">${r.kind==='income'?'+':'−'}${cash(cents(r))}</td><td><button class="btn ghost txn-del" data-id="${esc(r.id)}" aria-label="删除 ${esc(r.title)}">×</button></td></tr>`).join('')||'<tr><td colspan="6" class="empty">没有符合条件的交易</td></tr>';
+ $('[data-finance-count]',root).textContent=rows.length+' 笔';$('[data-finance-page]',root).textContent=(root._financePage+1)+' / '+pages;$('[data-finance-prev]',root).disabled=!root._financePage;$('[data-finance-next]',root).disabled=root._financePage>=pages-1;
+ $$('.txn-del',root).forEach(btn=>btn.onclick=async()=>{if(btn.disabled||!confirm('删除这笔交易？'))return;btn.disabled=true;try{await api('POST','/api/transactions/'+encodeURIComponent(btn.dataset.id),{});await refresh();if(root.isConnected)root._financeUpdate()}catch(e){toast(e.message,{kind:'error'});if(btn.isConnected)btn.disabled=false}});
+ };
+ root._financeUpdate();
   const billDialog = $("#bill-dialog");
   $("#bill-file").onchange = async (e) => {
     const identity = user?.username,
@@ -828,29 +659,38 @@ function renderFinance(root) {
     if (btn.disabled) return;
     const preview = billPreview;
     btn.disabled = true;
+    const cancel = $("#bill-cancel", root);
+    cancel.disabled = true;
+    billDialog.oncancel = event => event.preventDefault();
+    $("#bill-status", root).textContent = "正在导入…";
     try {
       const result = await api("POST", "/api/transactions", {
         rows: preview.rows,
       });
       if (user?.username !== identity) return;
-      if (billDialog.isConnected) billDialog.close();
       if (billPreview === preview) billPreview = null;
       setFinanceMonth(
         preview.rows
           .reduce((latest, row) => (row.date > latest ? row.date : latest), "")
           .slice(0, 7) || financeMonth,
       );
-      financeVisible = 100;
+
       await refresh();
       if (user?.username !== identity || !root.isConnected) return;
       renderFinance(root);
+      if (billDialog.isConnected) billDialog.close();
       toast(
         `已导入 ${result.added} 笔，去重 ${result.duplicates} 笔 · ${financeMonth}`,
         {kind:"success"},
       );
     } catch (err) {
       if (user?.username === identity) toast("导入失败：" + err.message,{kind:"error"});
+    } finally {
       if (btn.isConnected) btn.disabled = false;
+      if (cancel.isConnected) cancel.disabled = false;
+      billDialog.oncancel = null;
+      const status = $("#bill-status", root);
+      if (status) status.textContent = "";
     }
   };
 }

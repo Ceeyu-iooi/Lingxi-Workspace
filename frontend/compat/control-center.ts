@@ -7,6 +7,7 @@
     ["appearance", "外观", "Appearance", "account"],
     ["modelProvider", "AI 服务", "AI services", "services"],
     ["usage", "用量与实验", "Usage", "services"],
+    ...(window.workbenchDesktop?.floatingSettings?[["taskbar", "任务栏插件", "Taskbar plugin", "services"]]:[]),
     ["data", "数据与备份", "Data", "account"],
     ["shortcuts", "快捷键", "Shortcuts", "account"],
     ["about", "关于", "About", "account"],
@@ -220,6 +221,7 @@
       window.LingxiDesign.mountAbout(panel);
       return;
     }
+    if(selected[0]==="taskbar"){panel.innerHTML='<header class="control-heading"><h2>任务栏插件</h2></header><section class="control-section"><button class="btn" data-plugin-settings>打开插件设置</button></section>';q("[data-plugin-settings]",panel).onclick=()=>window.workbenchDesktop.floatingSettings();return;}
     if (selected[0] === "general") return accountSettings(panel);
     if (selected[0] === "data") return dataSettings(panel);
     if (selected[0] === "appearance") return appearance(panel);
