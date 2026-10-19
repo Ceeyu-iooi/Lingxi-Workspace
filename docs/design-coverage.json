@@ -165,7 +165,7 @@
     "draftNavigation": true
   },
   "floating": {
-    "entry": "measured-stable-reset-column-4dip-gaps;two-rings-black-time;native-tooltip-V2",
+    "entry": "compact-dual-rings-no-hover-tooltip;independent-percent-color",
     "details": [
       "overview",
       "usage",
@@ -176,7 +176,7 @@
     "transparency": "single-canvas-alpha-light22-dark64;no-content-backing",
     "filters": "equal-date-model;API-supplier-selector;inline-save-failure",
     "nativeIntegration": "child-HWND-with-near-taskbar-fallback",
-    "animation": "nav-row420;source-stable;shared-number320-cleanup;radial-theme-material650",
+    "animation": "latest-state-view-transition;old-snapshot-fade;standard-opaque-transparent-alpha",
     "settings": "three-nav-pages-white-surfaces-height-only-logo",
     "research": "docs/FLOATING_REFERENCES.md",
     "nativeAcceptance": "see-version-and-candidate-bound-receipt",
@@ -193,13 +193,45 @@
   },
   "finance": {
     "sharedUsageCharts": true,
-    "dateCategoryAmountSearchSort": true,
+    "sharedUsageDateRange": true,
+    "sharedJellyRadio": true,
+    "trend": [
+      "expense",
+      "income",
+      "net",
+      "line",
+      "bar",
+      "signed-axis"
+    ],
+    "distribution": [
+      "expense",
+      "income"
+    ],
+    "datePresets": [
+      "month",
+      "last-month",
+      "custom-month-first",
+      "custom-days"
+    ],
+    "tableSort": "all-headers;date-desc-default",
+    "transactionDelete": false,
     "tablePageSize": 50,
     "fileImport": true,
     "manualEntry": false,
-    "stableFilterNodes": true,
-    "importFinallyRestoresActions": true,
-    "layout": "compact-filter-band;primary-expense-secondary-income-net;220px-trend-side-donut-legend;42px-table-rows",
-    "responsive": "container850-single-analysis;450-stacked-summary-and-donut;table-local-scroll"
-  }
+    "metrics": [
+      "count",
+      "daily-average",
+      "largest-expense",
+      "active-days"
+    ],
+    "modules": [
+      "trend",
+      "distribution",
+      "largest-expenses",
+      "transactions"
+    ],
+    "layout": "one-chart-per-row",
+    "stableFilterNodes": true
+  },
+  "pageZoom": "100%=legacy115%;one-time-profile-and-browser-baseline-migration"
 }

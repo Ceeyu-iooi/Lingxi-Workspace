@@ -21,6 +21,7 @@
   "summary-board.ts",
   "news-board.ts",
   "overview-board.ts",
+  "finance-workspace.ts",
   "app.ts",
   "settings-center.ts",
   "context-menu.ts",

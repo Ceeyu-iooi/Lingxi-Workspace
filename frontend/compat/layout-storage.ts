@@ -91,13 +91,16 @@
             .forEach((key) => {
               if (!(key in values)) pending[key] = localStorage.getItem(key);
             });
+          if(!Object.hasOwn(values,'wb-page-zoom')&&Object.hasOwn(pending,'wb-page-zoom'))pending['wb-page-zoom-baseline']=localStorage.getItem('wb-page-zoom-baseline');
         }
       } catch (_) {}
       Object.entries(pending).forEach(([key, value]) => {
         if (value === null) delete values[key];
         else values[key] = value;
       });
-      window.WorkbenchPageZoom?.set(Number(values['wb-page-zoom'])||100,false);
+      const zoom=window.WorkbenchPageZoom?.migrate(values['wb-page-zoom'],values['wb-page-zoom-baseline'])||100;
+      values['wb-page-zoom']=String(zoom);values['wb-page-zoom-baseline']='115';
+      window.WorkbenchPageZoom?.set(zoom,false);
       persist();
       await flush();
     },

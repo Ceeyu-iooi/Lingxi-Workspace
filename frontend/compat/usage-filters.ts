@@ -46,19 +46,19 @@
     '<svg class="usage-filter-chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const caption = (text) =>
     '<span class="usage-filter-label">' + e(text) + "</span>" + chevron;
-  function range(root, changed) {
-    const select = root.querySelector("#usage-days"),
+  function range(root, changed, options = {}) {
+    const select = root.querySelector(options.selector || "#usage-days"),
       label = select.parentElement;
     select.innerHTML = presets
       .map(([v, t]) => `<option value="${v}">${t}</option>`)
       .join("");
-    select.value = "30";
+    select.value = options.initial || "30";
     select.hidden = true;
     const shell = document.createElement("div");
     shell.className = "usage-date-range";
     shell.innerHTML =
       '<button type="button" class="usage-filter-button" aria-expanded="false">' +
-      caption("近 30 天") +
+      caption(presets.find(([value])=>value===select.value)?.[1]||"近 30 天") +
       '</button><div class="usage-date-popover" data-custom="false" hidden><div class="usage-date-presets"></div><div class="usage-date-body" aria-hidden="true"><div class="usage-calendars"></div><p class="usage-date-error" role="status"></p></div></div>';
     label.append(shell);
     const button = shell.querySelector("button"),
@@ -123,6 +123,20 @@
           `<section data-calendar="${role}"><div class="usage-calendar-heading"><button type="button" data-nav="-1" aria-label="${role === "start" ? "起始" : "终止"}上一月">‹</button><strong></strong><button type="button" data-nav="1" aria-label="${role === "start" ? "起始" : "终止"}下一月">›</button></div><div class="usage-calendar-grid"></div></section>`,
       )
       .join("");
+    let monthYear=Number(today().slice(0,4));
+    const monthPicker=options.monthFirst?document.createElement("section"):null;
+    const renderMonths=()=>{
+      if(!monthPicker)return;
+      monthPicker.innerHTML='<div class="usage-calendar-heading"><button type="button" data-year="-1" aria-label="上一年">‹</button><strong>'+monthYear+'年</strong><button type="button" data-year="1" aria-label="下一年" '+(monthYear>=Number(today().slice(0,4))?'disabled':'')+'>›</button></div><div class="usage-month-grid">'+Array.from({length:12},(_,i)=>{const m=monthYear+'-'+String(i+1).padStart(2,'0');return '<button type="button" data-month="'+m+'" '+(m>today().slice(0,7)?'disabled':'')+'>'+(i+1)+'月</button>'}).join('')+'</div><button type="button" class="btn ghost" data-pick-days>按日期选择</button>';
+    };
+    if(monthPicker){
+      monthPicker.className='usage-month-picker';calendars.before(monthPicker);calendars.hidden=true;renderMonths();
+      monthPicker.onclick=event=>{const b=event.target.closest('button');if(!b||b.disabled)return;
+        if(b.dataset.year){monthYear+=Number(b.dataset.year);renderMonths();return}
+        if(b.hasAttribute('data-pick-days')){monthPicker.hidden=true;calendars.hidden=false;render();return}
+        if(b.dataset.month){const [y,m]=b.dataset.month.split('-').map(Number);start=b.dataset.month+'-01';end=date(new Date(Date.UTC(y,m,0)));applied={period:'custom',start_date:start,end_date:end};select.value='custom';title();close(true);changed();}
+      };
+    }
     const render = () => {
       const focused = document.activeElement,
         role = focused?.closest("[data-calendar]")?.dataset.calendar,
@@ -184,6 +198,7 @@
       if (!choice) return;
       if (choice.dataset.preset === "custom") {
         expand(true);
+        if(monthPicker){monthPicker.hidden=false;calendars.hidden=true;renderMonths();}
         render();
         return;
       }
@@ -251,7 +266,7 @@
           ? { ...applied }
           : { period: select.value },
       restore(value){
-        if(value?.start_date&&value?.end_date){applied={start_date:value.start_date,end_date:value.end_date};select.value='custom';}
+        if(value?.start_date&&value?.end_date){applied={period:"custom",start_date:value.start_date,end_date:value.end_date};select.value='custom';}
         else if([...select.options].some(o=>o.value===String(value?.period)))select.value=String(value.period);
         title();
       },

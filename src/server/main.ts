@@ -396,15 +396,6 @@ export async function startServer(
   app.post("/api/transactions", (request) =>
     business.transactions(body(request)),
   );
-  app.post("/api/transactions/:id", (request) => {
-    profile.write(
-      "transactions",
-      profile
-        .read<JsonObject[]>("transactions", [])
-        .filter((r) => r.id !== (request.params as JsonObject).id),
-    );
-    return { ok: true };
-  });
   app.get("/api/summary/draft", (request) =>
     business.summary(qs(request).month),
   );

@@ -262,7 +262,7 @@
       morphFrame,
       geometry = new Map();
     const valid = (r) =>
-      typeof r.total === "number" && Number.isFinite(r.total) && r.total >= 0;
+      typeof r.total === "number" && Number.isFinite(r.total) && (host.dataset.signed === "true" || r.total >= 0);
     const reset = () => {
       active = -1;
       tip.hide();
@@ -306,7 +306,7 @@
     const clipId = "usage-reveal-" + ++sequence;
     const draw = () => {
       if (!host.isConnected) return;
-      const width = Math.max(220, Math.round(svg.clientWidth || 700));
+      const width = Math.max(128, Math.round(svg.clientWidth || 700));
       if (drawWidth === width) return;
       drawWidth = width;
       animation?.cancel();
@@ -322,22 +322,25 @@
       const height = 260,
         top = 30,
         bottom = 215;
+      const signed = host.dataset.signed === "true";
+      const minimum = signed ? Math.min(0,...rows.filter(valid).map(r=>r.total)) : 0;
       const max = Math.max(
           host.dataset.metric === "cost" ? 0.000001 : 1,
           ...rows.filter(valid).map((r) => r.total),
         ),
-        rough = max / 4,
+        rough = (max - minimum) / 4,
         unitSize = 10 ** Math.floor(Math.log10(rough));
       const step = Math.max(
           host.dataset.metric === "cost" ? 0.0000001 : 1,
           [1, 2, 5, 10].find((n) => n * unitSize >= rough) * unitSize,
         ),
-        upper = Math.ceil(max / step) * step;
+        upper = Math.ceil(max / step) * step,
+        lower = Math.floor(minimum / step) * step;
       const measure = document.createElement("canvas").getContext("2d");
       measure.font = "12px " + getComputedStyle(svg).fontFamily;
       const left = Math.max(
           host.dataset.axisInset === "compact" ? 38 : 96,
-          Math.ceil(measure.measureText(value(host, upper)).width) + (host.dataset.axisInset === "compact" ? 10 : 18),
+          Math.ceil(Math.max(measure.measureText(value(host, upper)).width,measure.measureText(value(host, lower)).width)) + (host.dataset.axisInset === "compact" ? 10 : 18),
         ),
         right = width - 16;
       const times = rows.map((r) => Date.parse(r.date)),
@@ -357,7 +360,7 @@
               barPad +
               (dated ? (times[i] - times[0]) / span : i / (rows.length - 1)) *
                 (right - left - 2 * barPad),
-        y: (n) => bottom - (n / upper) * (bottom - top),
+        y: (n) => bottom - ((n - lower) / (upper - lower)) * (bottom - top),
       };
       layout.nearest = (x) => {
         const ratio = Math.max(
@@ -377,8 +380,8 @@
       };
       baseLayout = layout;
       const ticks = Array.from(
-          { length: Math.round(upper / step) + 1 },
-          (_, i) => i * step,
+          { length: Math.round((upper - lower) / step) + 1 },
+          (_, i) => lower + i * step,
         ),
         count = Math.min(width < 420 ? 3 : 5, rows.length);
       const indices = [
@@ -398,7 +401,8 @@
         rows.forEach((row, i) => {
           if (!valid(row)) return;
           let cumulative = 0;
-          const models = row.models.length
+          if(signed){const target=layout.y(row.total),zero=layout.y(0),y=Math.min(target,zero),h=Math.abs(zero-target),key=JSON.stringify([row.date,"net"]);geometry.set(key,{y,h});chart+=`<rect class="usage-bar" tabindex="0" role="img" data-interactive="true" data-geometry="${escape(key)}" data-day="${i}" data-model="净结余" data-total="${row.total}" aria-label="${escape(row.date)} 净结余 ${value(host,row.total)}" x="${layout.x(i)-barWidth/2}" y="${y}" width="${barWidth}" height="${h}" fill="${row.total<0?"var(--danger,#e5484d)":"var(--accent)"}"/>`;return;}
+          const models = row.models?.length
             ? [...row.models]
             : [{ model: "未区分模型", provider: "", total: row.total }];
           models
@@ -421,7 +425,7 @@
         const emit = () => {
           if (!part.length) return;
           parts.push({ points: part, dates });
-          chart += `<path class="usage-chart-area" style="fill:url(#${clipId}-area)" d="${smooth(part)} L ${part.at(-1)[0]} ${bottom} L ${part[0][0]} ${bottom} Z"/><path class="usage-smooth-line" d="${smooth(part)}"/>`;
+          chart += `<path class="usage-chart-area" style="fill:url(#${clipId}-area)" d="${smooth(part)} L ${part.at(-1)[0]} ${layout.y(0)} L ${part[0][0]} ${layout.y(0)} Z"/><path class="usage-smooth-line" d="${smooth(part)}"/>`;
           if (part.length === 1)
             chart += `<circle class="usage-trend-point" cx="${part[0][0]}" cy="${part[0][1]}" r="3"/>`;
           part = [];
@@ -464,7 +468,7 @@
           dots = [...svg.querySelectorAll(".usage-trend-point")];
         const paint = (t) => {
           for (const [key, to] of targets) {
-            const from = oldGeometry.get(key) || { y: bottom, h: 0 };
+            const from = oldGeometry.get(key) || { y: layout.y(0), h: 0 };
             geometry.set(key, {
               y: from.y + (to.y - from.y) * t,
               h:
@@ -489,7 +493,7 @@
             areas[i].setAttribute(
               "d",
               d +
-                ` L ${points.at(-1)[0]} ${bottom} L ${points[0][0]} ${bottom} Z`,
+                ` L ${points.at(-1)[0]} ${layout.y(0)} L ${points[0][0]} ${layout.y(0)} Z`,
             );
             if (points.length === 1)
               dots[dot++]?.setAttribute("cy", points[0][1]);
@@ -576,7 +580,7 @@
     });
     const stretch = () => {
       if (!baseLayout || !host.isConnected) return;
-      const width = Math.max(220, Math.round(svg.clientWidth || 700)),
+      const width = Math.max(128, Math.round(svg.clientWidth || 700)),
         { left } = baseLayout,
         right = width - 16,
         scale = (right - left) / (baseLayout.right - left);
@@ -612,6 +616,10 @@
           n.setAttribute("x2", x);
         } else n.setAttribute("x", x);
       });
+      const labels=[...svg.querySelectorAll('.usage-date-tick')],keep=new Set(right-left<96?[labels.length-1]:[0,labels.length-1]);
+      if(right-left>=240)keep.add(Math.floor((labels.length-1)/2));
+      if(right-left>=420)labels.forEach((_,i)=>keep.add(i));
+      labels.forEach((label,i)=>label.style.display=keep.has(i)?'':'none');
       svg.querySelector(".usage-date-axis-label")?.setAttribute("x", right);
       svg
         .querySelector(".usage-no-data")

@@ -1,5 +1,5 @@
 {
-  "version": "0.1.22",
+  "version": "0.1.23",
   "files": [
     {
       "file": "README.md",
@@ -19,11 +19,11 @@
     },
     {
       "file": "VERSION",
-      "sha256": "b0569383609842116bc78ee560cb5a7aee44bdbe59d85efc7b7316cb72389862"
+      "sha256": "76f75753f47c5f9a402427e4ee481b463e5a164edabccbfeab33964eea31913e"
     },
     {
       "file": "design.md",
-      "sha256": "4bc40620cb8487cc2ccda7e591df9d008c7bcf5a20141023369210803fa9e026"
+      "sha256": "ce24077c3e710eb88d689e55f8d3bad45d5722f0b1ffa712de69a01f07df4816"
     },
     {
       "file": "start.bat",
@@ -127,7 +127,7 @@
     },
     {
       "file": "src/server/main.ts",
-      "sha256": "9b0ade02a1888804061f7ccb85379db5575f79573b446dbe88f5bf8e018c3f4c"
+      "sha256": "c584a869f96e6d2f06d0fb93248b00e413312abc22a7a870c360c9d86d5dc2ed"
     },
     {
       "file": "src/server/maintain.ts",
@@ -263,7 +263,7 @@
     },
     {
       "file": "frontend/app/controller-order.json",
-      "sha256": "c08e91f7d56d3e96449b7f7cced562fb06abbf5a0186dddb2acd520899bb2781"
+      "sha256": "b05709067ca3818a6d3af4cf3b80527a7d6403d790016d3b78dadcb626d531a9"
     },
     {
       "file": "frontend/app/design-themes.ts",
@@ -295,7 +295,7 @@
     },
     {
       "file": "frontend/app/page-zoom.ts",
-      "sha256": "1f480b227a75777b5d94ea4a3219e8e2f09b671a27ab0dc1777d1f5b600eb08b"
+      "sha256": "19ec5a5e984d6d90f04c2265f70028302f1007984254ae6ee340df2ccb1baf01"
     },
     {
       "file": "frontend/app/preview-dark.html",
@@ -307,7 +307,7 @@
     },
     {
       "file": "frontend/app/preview.ts",
-      "sha256": "56d167bec6ade89e6fc82f94340c8cfdd8cd44defdc644cf88fae0d2dc4421bf"
+      "sha256": "359f5d330c3c5ae14dc0d4102b8a8cf3ab77bb08843f93b5c0cbd436694147e6"
     },
     {
       "file": "frontend/app/prices.html",
@@ -347,7 +347,7 @@
     },
     {
       "file": "frontend/compat/app.ts",
-      "sha256": "bee7512e9bafd5e10f1230b432f22b4a17834108001d92024990f4dc4edc4860"
+      "sha256": "0d3d32bf3e60f8e2e30b0b97c527222d5b6fff79293de53256b1fcd0113ace26"
     },
     {
       "file": "frontend/compat/commands.ts",
@@ -366,8 +366,12 @@
       "sha256": "7b79a2fb1c8d5b943858c235349ad299a8735207629a736a3b19355e9994ca30"
     },
     {
+      "file": "frontend/compat/finance-workspace.ts",
+      "sha256": "9b80c572f61ea75aec3075c7a967fda999633d6bd44125fa71edbcefb4b3c371"
+    },
+    {
       "file": "frontend/compat/layout-storage.ts",
-      "sha256": "82677d0b81b310a6c83f20acecf11c5e7bd72b0df768b1c58fadfaa71c87bff6"
+      "sha256": "3451b6a0c0eb40935107c119b079c5d8a6532a208109c27c95e39ac9ac4aa6d3"
     },
     {
       "file": "frontend/compat/library-views.ts",
@@ -431,11 +435,11 @@
     },
     {
       "file": "frontend/compat/usage-charts.ts",
-      "sha256": "a4a888aed350077a0f50896036c3612988b1f93e6bf3761c25438dc077c29037"
+      "sha256": "5239446f51f5c8fb093dcf64de489d3c8edfaf0e9dad562e081371145820acc5"
     },
     {
       "file": "frontend/compat/usage-filters.ts",
-      "sha256": "b8f3bb0e518cea36b1d003601f7a68ba6fcf523a15e25208555dc3e7b3bb9ca7"
+      "sha256": "f7887a1fdfb06301aad15e562a7774a440bc1f926ef2ef2d0ee86cf374a5366e"
     },
     {
       "file": "frontend/compat/usage-radios.ts",
@@ -767,7 +771,7 @@
     },
     {
       "file": "static/workbench-design.css",
-      "sha256": "93fea718a1f7b73915e7b097b81463e41978dfbd7d2a9c0e6b10ccdadb24f61f"
+      "sha256": "4a10e83a30ac95aca9ab05e620a7c7b80dd7eb5e40db20c444f93c8475ebf663"
     },
     {
       "file": "static/workbench-ui.css",
@@ -791,7 +795,7 @@
     },
     {
       "file": "docs/design-coverage.json",
-      "sha256": "ec79b360171555dbc472fa4d9b464058cc393bfd5fd4b6a984d8b4236aaeba13"
+      "sha256": "858cfc1e5386b9f5eb1fd4a7767822a93481a681c158c601877724ffb61b22a6"
     },
     {
       "file": "docs/design-reference-audit.json",
@@ -815,7 +819,7 @@
     },
     {
       "file": "docs/product-manifest.json",
-      "sha256": "4d9846d6a733e69e4d913138e45aab503963cb19f8e4abe2e9d1a6a639a68d33"
+      "sha256": "9196ef27a8e938627ba877df1596200f2fb561b65c871a061beeb67de7745c0b"
     },
     {
       "file": "docs/TYPESCRIPT_MIGRATION.md",
