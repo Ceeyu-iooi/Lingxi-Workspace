@@ -431,7 +431,7 @@
     },
     {
       "file": "frontend/compat/usage-charts.ts",
-      "sha256": "a25f11d7ca51e15d41adb443285b512edc8f6715715b996b2a379a8115b58e84"
+      "sha256": "a4a888aed350077a0f50896036c3612988b1f93e6bf3761c25438dc077c29037"
     },
     {
       "file": "frontend/compat/usage-filters.ts",

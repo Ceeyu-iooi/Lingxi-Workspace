@@ -244,6 +244,8 @@
   function mountTrend(host) {
     if (host.dataset.chartMounted) return;
     host.dataset.chartMounted = "true";
+    const abort=new AbortController(),listen=(node,type,callback)=>node.addEventListener(type,callback,{signal:abort.signal});register(host,()=>abort.abort());
+
     host.classList.add("usage-chart-host");
     const svg = host.querySelector("svg");
     svg.setAttribute("preserveAspectRatio", "none");
@@ -440,10 +442,10 @@
       svg
         .querySelectorAll(".usage-bar[data-interactive=true]")
         .forEach((bar) => {
-          bar.addEventListener("focus", () =>
+          listen(bar,"focus", () =>
             show(Number(bar.dataset.day), undefined, undefined, bar),
           );
-          bar.addEventListener("blur", reset);
+          listen(bar,"blur", reset);
         });
       if (
         vertical &&
@@ -552,14 +554,14 @@
       const p = point(svg, ev.clientX, ev.clientY);
       if (p) show(layout.nearest(p.x), ev.clientX, ev.clientY, bar);
     };
-    svg.addEventListener("pointermove", move);
-    svg.addEventListener("pointerdown", move);
-    svg.addEventListener("pointerleave", (ev) => {
+    listen(svg,"pointermove", move);
+    listen(svg,"pointerdown", move);
+    listen(svg,"pointerleave", (ev) => {
       if (ev.pointerType !== "touch") reset();
     });
-    svg.addEventListener("pointercancel", reset);
-    svg.addEventListener("blur", reset);
-    svg.addEventListener("keydown", (ev) => {
+    listen(svg,"pointercancel", reset);
+    listen(svg,"blur", reset);
+    listen(svg,"keydown", (ev) => {
       let index = active < 0 ? 0 : active;
       if (ev.key === "ArrowRight") index++;
       else if (ev.key === "ArrowLeft") index--;
@@ -702,6 +704,8 @@
   function mountDonut(host) {
     if (host.dataset.chartMounted) return;
     host.dataset.chartMounted = "true";
+    const abort=new AbortController(),listen=(node,type,callback)=>node.addEventListener(type,callback,{signal:abort.signal});register(host,()=>abort.abort());
+
     const svg = host.querySelector("svg");
     let rows = [],
       segments = [],
@@ -795,13 +799,13 @@
         ev.clientY,
       );
     };
-    svg.addEventListener("pointermove", move);
-    svg.addEventListener("pointerdown", move);
-    svg.addEventListener("pointerleave", (ev) => {
+    listen(svg,"pointermove", move);
+    listen(svg,"pointerdown", move);
+    listen(svg,"pointerleave", (ev) => {
       if (ev.pointerType !== "touch") reset();
     });
-    svg.addEventListener("pointercancel", reset);
-    svg.addEventListener("focusin", (ev) => {
+    listen(svg,"pointercancel", reset);
+    listen(svg,"focusin", (ev) => {
       const segment = ev.target.closest(".usage-segment");
       if (segment) {
         const r = segment.getBoundingClientRect();
@@ -812,8 +816,8 @@
         );
       }
     });
-    svg.addEventListener("focusout", reset);
-    svg.addEventListener("keydown", (ev) => {
+    listen(svg,"focusout", reset);
+    listen(svg,"keydown", (ev) => {
       const segment = ev.target.closest(".usage-segment");
       if (!segment) return;
       const i = Number(segment.dataset.pieIndex);
@@ -825,14 +829,12 @@
         ].focus();
       } else if (ev.key === "Escape") reset();
     });
-    host
-      .querySelector(".usage-legend")
-      .addEventListener("pointerover", (ev) => {
+    listen(host.querySelector(".usage-legend"),"pointerover", (ev) => {
         const el = ev.target.closest("[data-pie-legend]");
         if (el) show(Number(el.dataset.pieLegend), ev.clientX, ev.clientY);
       });
-    host.querySelector(".usage-legend").addEventListener("pointerleave", reset);
-    host.querySelector(".usage-legend").addEventListener("focusin", (ev) => {
+    listen(host.querySelector(".usage-legend"),"pointerleave", reset);
+    listen(host.querySelector(".usage-legend"),"focusin", (ev) => {
       const el = ev.target.closest("[data-pie-legend]");
       if (el) {
         const r = el.getBoundingClientRect();
@@ -843,7 +845,7 @@
         );
       }
     });
-    host.querySelector(".usage-legend").addEventListener("focusout", reset);
+    listen(host.querySelector(".usage-legend"),"focusout", reset);
     updates.set(host, draw);
     register(host, () => {
       animation?.cancel();
@@ -855,6 +857,8 @@
     if (map.dataset.chartMounted || !map.children.length) return;
     map.dataset.chartMounted = "true";
     const host = map.parentElement;
+    const abort=new AbortController(),listen=(node,type,callback)=>node.addEventListener(type,callback,{signal:abort.signal});register(host,()=>abort.abort());
+
     let selected;
     const resize = () => {
       const columns = Math.ceil(map.children.length / 7),
@@ -895,15 +899,15 @@
           ev?.clientY ?? rect.top + rect.height / 2,
         );
       };
-      cell.addEventListener("pointerenter", show);
-      cell.addEventListener("pointermove", show);
-      cell.addEventListener("pointerdown", show);
-      cell.addEventListener("pointerleave", (ev) => {
+      listen(cell,"pointerenter", show);
+      listen(cell,"pointermove", show);
+      listen(cell,"pointerdown", show);
+      listen(cell,"pointerleave", (ev) => {
         if (ev.pointerType !== "touch") reset();
       });
-      cell.addEventListener("pointercancel", reset);
-      cell.addEventListener("focus", () => show());
-      cell.addEventListener("blur", reset);
+      listen(cell,"pointercancel", reset);
+      listen(cell,"focus", () => show());
+      listen(cell,"blur", reset);
     });
     updates.set(map, () => {
       if (selected) {
