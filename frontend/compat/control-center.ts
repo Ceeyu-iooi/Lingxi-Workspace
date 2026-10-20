@@ -221,7 +221,7 @@
       window.LingxiDesign.mountAbout(panel);
       return;
     }
-    if(selected[0]==="taskbar"){panel.innerHTML='<header class="control-heading"><h2>任务栏插件</h2></header><section class="control-section"><button class="btn" data-plugin-settings>打开插件设置</button></section>';q("[data-plugin-settings]",panel).onclick=()=>window.workbenchDesktop.floatingSettings();return;}
+    if(selected[0]==="taskbar"){void window.mountTaskbarSettings(panel);return;}
     if (selected[0] === "general") return accountSettings(panel);
     if (selected[0] === "data") return dataSettings(panel);
     if (selected[0] === "appearance") return appearance(panel);
@@ -852,6 +852,7 @@
     });
   }
   function usageIcon(id) {
+    if(id==="dsh")return '<img class="usage-tab-icon usage-dsh-logo" src="assets/dsh-logo.svg" alt="">';
     if (id === "codex")
       return '<img class="usage-tab-icon usage-codex-logo" src="assets/openai-blossom-black.svg" alt="">';
     return id === "zcode"

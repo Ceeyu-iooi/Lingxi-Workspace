@@ -47,5 +47,12 @@
     "sha256": "ce1f2ac07efcfff80904a9582578b5db8fdd14a3118a5c7b58f408ed06df18e1",
     "bytes": 2010,
     "use": "供应商身份识别，原样标识；商标归原所有者"
+  },
+  {
+    "file": "../dsh-logo.svg",
+    "source": "https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/web/public/favicon.svg",
+    "sha256": "9e983b4f649c25c6ca0623a50be1a6e705fd8f49f756638b980fa13b40575ab6",
+    "bytes": 3634,
+    "use": "DSH 来源身份标识，保留官方原图；许可见 static/vendor/dsh/LICENSE"
   }
 ]

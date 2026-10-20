@@ -1,5 +1,5 @@
 {
-  "version": "0.1.19",
+  "version": "0.1.24",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
@@ -20,7 +20,8 @@
       "themes",
       "resources",
       "floating",
-      "floating-themes"
+      "floating-themes",
+      "filter-contract"
     ]
   },
   "businessModules": [
@@ -233,5 +234,28 @@
     "layout": "one-chart-per-row",
     "stableFilterNodes": true
   },
-  "pageZoom": "100%=legacy115%;one-time-profile-and-browser-baseline-migration"
+  "pageZoom": "100%=legacy115%;one-time-profile-and-browser-baseline-migration",
+  "sharedFilters": {
+    "triggerWidth": "fill-row;workspace-and-model-wider",
+    "panelWidth": "match-trigger",
+    "maxHeight": 320,
+    "familyGroups": [
+      "OpenAI",
+      "DeepSeek",
+      "GLM"
+    ],
+    "search": false,
+    "checkbox": "circle",
+    "removedPeriods": [
+      "today",
+      "yesterday"
+    ]
+  },
+  "providerStatus": [
+    "ready",
+    "absent",
+    "error"
+  ],
+  "pluginCountMotion": "shared-usage-280ms-numeric-interpolation",
+  "mainPluginSettings": "inline-draft-with-config-revision-check"
 }

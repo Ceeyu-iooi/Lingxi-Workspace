@@ -24,8 +24,6 @@
     );
   const presets = [
     ["all", "全部"],
-    ["today", "今天"],
-    ["yesterday", "昨天"],
     ["7", "近 7 天"],
     ["30", "近 30 天"],
     ["month", "本月"],
@@ -72,7 +70,7 @@
       start: new Date(today().slice(0, 8) + "01T00:00:00Z"),
       end: new Date(today().slice(0, 8) + "01T00:00:00Z"),
     };
-    const panelWidth=()=>{const rect=button.getBoundingClientRect(),scale=rect.width/Math.max(1,button.offsetWidth);return popup.dataset.custom==='true'?Math.min(720*scale,innerWidth-24):142*scale;};
+    const panelWidth=()=>{const rect=button.getBoundingClientRect(),scale=rect.width/Math.max(1,button.offsetWidth);return popup.dataset.custom==='true'?Math.min(720*scale,innerWidth-24):rect.width;};
     body.inert = true;body.hidden=true;
     const expand = (value) => {
       popup.dataset.custom = String(value);
@@ -353,10 +351,10 @@
     shell.innerHTML =
       '<summary class="usage-filter-button" aria-haspopup="true" aria-expanded="false">' +
       caption("全部模型") +
-      '</summary><div class="usage-model-popover"><input class="usage-model-search" type="search" placeholder="搜索模型" aria-label="搜索模型"><div class="usage-model-options"><label class="usage-model-all"><input type="checkbox" data-all>全部模型</label></div><p class="usage-model-empty" hidden>没有匹配的模型</p></div>';
+      '</summary><div class="usage-model-popover"><div class="usage-model-families"></div><div class="usage-model-options"><label class="usage-model-all"><input type="checkbox" data-all>全部模型</label></div><p class="usage-model-empty" hidden>没有匹配的模型</p></div>';
     select.before(shell);
     const summary = shell.querySelector("summary"),
-      search = shell.querySelector("input[type=search]"),
+      families = shell.querySelector(".usage-model-families"),
       list = shell.querySelector(".usage-model-options"),
       allBox = shell.querySelector("[data-all]"),
       empty = shell.querySelector(".usage-model-empty"),
@@ -366,15 +364,7 @@
       if (storage())
         window.wbLayoutStorage?.setItem(storage(), JSON.stringify(values));
     };
-    const filter = () => {
-      const term = search.value.toLocaleLowerCase();
-      let visible = 0;
-      nodes.forEach((label, value) => {
-        label.hidden = !value.toLocaleLowerCase().includes(term);
-        if (!label.hidden) visible++;
-      });
-      empty.hidden = !!visible;
-    };
+    const filter = () => {empty.hidden=rows.length>0;};
     const paint = () => {
       summary.querySelector(".usage-filter-label").textContent =
         values.length === 1
@@ -390,6 +380,7 @@
         input.checked = values.includes(value);
         label.classList.toggle("selected", input.checked);
       });
+      families.querySelectorAll('input').forEach(input=>{const group=modelFamilies(rows).find(g=>g.label===input.value),n=group?.models.filter(m=>values.includes(m)).length||0;input.checked=!!group&&n===group.models.length;input.indeterminate=n>0&&!input.checked;});
       select.value = values[0] || "";
     };
     const load = () => {
@@ -405,10 +396,11 @@
       } catch {
         values = [];
       }
-      search.value = "";
+
       paint();
     };
     const set = (next = [], persist = true) => {
+      if(next.length>100){window.workbenchNotify?.("最多选择100个模型，请缩小范围");paint();return false;}
       values = [
         ...new Set(next.filter((v) => typeof v === "string" && v)),
       ].sort();
@@ -418,11 +410,13 @@
     const update = (next) => {
       load();
       rows = [...new Set(next)].sort();
+      families.innerHTML=modelFamilies(rows).map(g=>'<label><input type="checkbox" value="'+g.label+'">'+g.label+'</label>').join('');
+      families.querySelectorAll('input').forEach(input=>input.onchange=()=>{const group=modelFamilies(rows).find(g=>g.label===input.value);if(!group)return;set(input.checked?[...new Set([...values,...group.models])]:values.filter(m=>!group.models.includes(m)));changed();});
       let removed = false;
       nodes.forEach((label, value) => {
         if (!rows.includes(value)) {
           if (label.contains(document.activeElement))
-            search.focus({ preventScroll: true });
+            summary.focus({ preventScroll: true });
           label.remove();
           nodes.delete(value);
         }
@@ -433,7 +427,7 @@
           input = document.createElement("input");
         input.type = "checkbox";
         input.value = value;
-        label.append(input, document.createTextNode(value));
+        const caption=document.createElement("span");caption.textContent=value;caption.title=value;label.append(input,caption);
         list.append(label);
         nodes.set(value, label);
         input.onchange = () => {
@@ -458,7 +452,7 @@
       set([]);
       changed();
     };
-    search.oninput = filter;
+
     window.usageCharts.track(root,window.WorkbenchOverlay.disclosure(shell,shell.querySelector(".usage-model-popover")));
     select.addEventListener("change", () => {
       set(select.value ? [select.value] : []);
@@ -475,11 +469,11 @@
       if (event.target === summary && event.key === "ArrowDown") {
         event.preventDefault();
         shell.open = true;
-        search.focus();
+        allBox.focus();
         return;
       }
       const inputs = [
-          allBox,
+          allBox, ...families.querySelectorAll("input"),
           ...[...nodes.values()]
             .filter((label) => !label.hidden)
             .map((label) => label.querySelector("input")),

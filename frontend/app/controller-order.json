@@ -13,6 +13,7 @@
   "usage-view.ts",
   "usage-filters.ts",
   "standalone-ui.ts",
+  "taskbar-settings.ts",
   "control-center.ts",
   "shell-navigation.ts",
   "profile-management.ts",

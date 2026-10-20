@@ -90,4 +90,4 @@ static/assets/providers保存OpenRouter、硅基流动、Moonshot、MiniMax、LM
 
 全屏检测程序为本项目实现，仅链接Windows系统接口；使用MinGW-w64构建，不携带额外Node、PowerShell或C++运行时DLL。二进制发行所需MinGW-w64 runtime版权说明、GCC Runtime Library Exception 3.1及GPL-3.0全文随包保存在resources/floating/licenses，构建来源副本位于desktop/native/licenses。许可例外适用于符合条件的GCC运行库组合，不改变应用自身许可证。
 
-The DSH source selector uses the existing DeepSeek whale asset, verified against the official [DSH favicon](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/web/public/favicon.svg). This identifies the data source; it is not the Lingxi application mark.
+The DSH source selector uses the unmodified official Harness favicon at `static/assets/dsh-logo.svg`, distinct from the DeepSeek API whale. Source: [DSH favicon](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/web/public/favicon.svg). This identifies the data source; it is not the Lingxi application mark.

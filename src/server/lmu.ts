@@ -27,7 +27,7 @@ export class LMU {
       typeof data.data !== "object" ||
       Array.isArray(data.data)
     )
-      throw new Error("LMU 查询失败，请核对登录或查询权限");
+      throw new Error("LMU 未完成查询，请核对账户授权后重试");
     return data.data as JsonObject;
   }
   load() {
@@ -171,6 +171,7 @@ export class LMU {
           data.temp_token.length > 8192
         )
           throw new Error("LMU 二次验证响应不正确");
+        if(owner!==this.control.profile.owner)throw new Error("Profile 已切换");
         const keys = this.control.profile.credentials();
         keys["lmu:pending"] = data.temp_token;
         this.control.profile.saveCredentials(keys);
@@ -178,11 +179,11 @@ export class LMU {
       }
     }
     const credentials = this.tokens(data),
-      user = await this.fetch("auth/me", credentials.access_token);
+      identity = await this.fetch("auth/me", credentials.access_token),
+      user = identity.user || identity;
     if (!platformInteger(user.id)) throw new Error("LMU 未返回账户标识");
-    const keys = this.control.profile.credentials();
-    for (const row of connections)
-      await this.keyId(keys["usage:" + row.id] || "", credentials.access_token);
+    // Platform authentication is independent of individual Key availability.
+    // Each Key is verified during its own sync; a stale Key must not reject login.
     if (owner !== this.control.profile.owner) throw new Error("Profile 已切换");
     this.store(credentials);
     const current = this.control.profile.credentials();

@@ -139,68 +139,15 @@
   ];
   function number(el, value, raw = false, suffix = "", replay = false) {
     if (!el) return;
-    const previous = counters.get(el);
-    if (
-      !replay && previous?.target === value &&
-      previous.raw === raw &&
-      previous.suffix === suffix &&
-      previous.currency === el.dataset.currency
-    )
-      return;
-    if (previous) cancelAnimationFrame(previous.frame);
-    if(replay&&Number.isFinite(value)&&!quiet())el.animate([{transform:"translateY(4px)"},{transform:"translateY(0)"}],{duration:280,easing:"cubic-bezier(.2,.7,.3,1)"});
-    const state = {
-      target: value,
-      raw,
-      suffix,
-      currency: el.dataset.currency,
-      current: replay ? 0 : previous?.current ?? value,
-      frame: 0,
-    };
-    counters.set(el, state);
-    el.dataset.value = Number.isFinite(value) ? String(value) : "";
-    if (raw)
-      el.style.setProperty(
-        "--number-chars",
-        String(
-          Number.isFinite(value)
-            ? (raw === "money"
-                ? money(value, el.dataset.currency)
-                : full(Math.round(value)) + suffix
-              ).length
-            : 1,
-        ),
-      );
-    const paint = (v) => {
-      state.current = v;
-      el.textContent =
-        (Number.isFinite(v)
-          ? raw === "money"
-            ? money(v, el.dataset.currency)
-            : raw
-              ? full(Math.round(v))
-              : fmt(Math.round(v))
-          : "—") + suffix;
-    };
-    if (
-      (!previous && !replay) ||
-      !Number.isFinite(value) ||
-      !Number.isFinite(state.current) ||
-      quiet()
-    ) {
-      paint(value);
-      return;
-    }
-    const start = performance.now(),
-      from = state.current;
-    const tick = (now) => {
-      if (!el.isConnected) return;
-      const p = Math.min(1, (now - start) / 280);
-      paint(from + (value - from) * (1 - (1 - p) ** 3));
-      if (p < 1) state.frame = requestAnimationFrame(tick);
-    };
-    state.frame = requestAnimationFrame(tick);
+    const previous=counters.get(el), signature=JSON.stringify([value,raw,suffix,el.dataset.currency]);
+    if(!replay&&previous===signature)return;
+    counters.set(el,signature);
+    el.dataset.value=Number.isFinite(value)?String(value):"";
+    const format=v=>(Number.isFinite(v)?raw==="money"?money(v,el.dataset.currency):raw?full(Math.round(v)):fmt(Math.round(v)):"—")+suffix;
+    if(raw)el.style.setProperty("--number-chars",String(format(value).length));
+    animateCount(el,Number.isFinite(value)?value:null,format,replay,quiet());
   }
+
   function options(select, values, first = "全部") {
     const current = select.value,
       signature = JSON.stringify([first, values]);

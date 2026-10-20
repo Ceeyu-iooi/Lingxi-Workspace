@@ -17,6 +17,7 @@ export default defineConfig({
     {
       name: "lingxi-interaction-runtime",
       resolveId(id) {
+        if(id === "virtual:lingxi-count-motion")return resolve(root,"frontend/app/count-motion.ts");
         if(id === "virtual:lingxi-number-motion")return resolve(root,"frontend/app/number-motion.ts");
         if(id === "virtual:lingxi-theme-presets")return resolve(root,"src/shared/theme-presets.ts");
         if(id === "virtual:lingxi-accent-colors")return resolve(root,"src/shared/accent-colors.ts");
@@ -48,7 +49,7 @@ export default defineConfig({
               ).replace(/^\/\/ @ts-nocheck\s*/, "").replace(/^import .*?;\s*$/gm, ""),
             )
             .join("\n;\n");
-        return `import {animateNumber} from "virtual:lingxi-number-motion"; import {quotaWindows as readQuotaWindows} from "../../src/shared/usage-presentation"; import {marked} from "marked"; import DOMPurify from "dompurify"; import {themePresets,presetPalette} from "virtual:lingxi-theme-presets"; import {accentColors} from "virtual:lingxi-accent-colors"; export function ${standalone ? "installStandalone" : "installRuntime"}(){\nfunction onReady(callback){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',callback,{once:true});else queueMicrotask(()=>callback(new Event('DOMContentLoaded')));}\n${source}\n${standalone ? "" : "return appReady.then(()=>({render,refresh,getUser:()=>user}));"}\n}`;
+        return `import {animateNumber} from "virtual:lingxi-number-motion"; import {animateCount} from "virtual:lingxi-count-motion"; import {modelFamilies} from "../../src/shared/model-families"; import {quotaWindows as readQuotaWindows} from "../../src/shared/usage-presentation"; import {marked} from "marked"; import DOMPurify from "dompurify"; import {themePresets,presetPalette} from "virtual:lingxi-theme-presets"; import {accentColors} from "virtual:lingxi-accent-colors"; export function ${standalone ? "installStandalone" : "installRuntime"}(){\nfunction onReady(callback){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',callback,{once:true});else queueMicrotask(()=>callback(new Event('DOMContentLoaded')));}\n${source}\n${standalone ? "" : "return appReady.then(()=>({render,refresh,getUser:()=>user}));"}\n}`;
       },
     },
   ],
