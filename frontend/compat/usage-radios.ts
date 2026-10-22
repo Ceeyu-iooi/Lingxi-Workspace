@@ -101,7 +101,7 @@
       ["metricChart", "charts"],
     ]) {
       const button = root.querySelector("button[data-metric=" + key + "]");
-      s[name].root.hidden = button.hidden;
+      s[name].root.hidden = button.hidden || key==="charts"&&root.dataset.trendPeriod==="hour";
       s[name].set(
         button.getAttribute("aria-pressed") === "true" ? "cost" : "token",
         "费用",

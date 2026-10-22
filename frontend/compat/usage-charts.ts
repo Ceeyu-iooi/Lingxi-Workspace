@@ -1,4 +1,5 @@
 // @ts-nocheck
+import {hourStateLabel} from "../../src/shared/usage-trend";
 // Compatibility controller: retain the validated interactions during the React migration.
 (() => {
   const escape = (s) =>
@@ -184,12 +185,14 @@
     }
     return rows.map((r) => ({ ...r, caption: r.date }));
   }
-  function trend(rows, label = "每日 Token 趋势", mode = "line", groups = []) {
-    const series = rows.map((r) => ({
-      date: r.date || r.startDate,
-      total: r.total ?? r.tokens ?? null,
-      models: r.models || [],
+  const seriesRows = rows => rows.map((r) => ({...r,
+      date:r.date||r.startDate,
+      total:typeof r.total==='string'?Number(r.total):r.total??r.tokens??null,
+      exactTotal:r.exactTotal||(typeof r.total==='string'?r.total:undefined),
+      models:(r.models||[]).map(m=>({...m,total:typeof m.total==='string'?Number(m.total):m.total,exactTotal:typeof m.total==='string'?m.total:undefined})),
     }));
+  function trend(rows, label = "每日 Token 趋势", mode = "line", groups = []) {
+    const series=seriesRows(rows);
     const keys = [...new Set(groups.map(modelKey))].sort((a, b) =>
       a.localeCompare(b),
     );
@@ -249,7 +252,7 @@
     host.classList.add("usage-chart-host");
     const svg = host.querySelector("svg");
     svg.setAttribute("preserveAspectRatio", "none");
-    let rows = JSON.parse(host.dataset.series),
+    let rows = seriesRows(JSON.parse(host.dataset.series)),
       mode = host.dataset.mode,
       keys = JSON.parse(host.dataset.modelKeys || "[]"),
       active = -1,
@@ -300,8 +303,11 @@
       let text = valid(row)
         ? `${row.date}\n${row.provided === false ? "已知 " : ""}${value(host, row.total)}${unit(host)}${host.dataset.experimental === "true" ? " · API 等价值（实验）" : ""}`
         : `${row.date}\n${host.dataset.experimental === "true" ? "该日等价值未知" : "平台未返回该日" + (host.dataset.metric === "cost" ? "费用" : "用量")}`;
-      const detailRows = segment ? [{ label: segment.dataset.model, value: value(host, Number(segment.dataset.total)) + unit(host), color: segment.getAttribute("fill") || "#2563EB" }] : (row.models || []).slice().sort((a,b)=>b.total-a.total || modelKey(a).localeCompare(modelKey(b))).map(m=>({ label:m.model, value:value(host,m.total)+unit(host), color:modelColor(modelKey(m)) }));
-      tip.show({primary:valid(row)?value(host,row.total)+unit(host):"未返回",date:row.date,rows:detailRows}, clientX ?? screen.x, clientY ?? screen.y);
+      const detailRows = segment ? [{ label: segment.dataset.model, value: value(host, Number(segment.dataset.total)) + unit(host), color: segment.getAttribute("fill") || "#2563EB" }] : (row.models || []).slice().sort((a,b)=>b.total-a.total || modelKey(a).localeCompare(modelKey(b))).map(m=>({ label:m.model, value:m.total==null?"未知":(m.exactTotal?full(m.exactTotal):value(host,m.total))+unit(host), color:modelColor(modelKey(m)) }));
+      const hour=host.dataset.granularity==='hour',state=hourStateLabel[row.state],exact=row.exactTotal?full(row.exactTotal):value(host,row.total);
+      if(hour&&row.state==='unknown')detailRows.push({label:'已知部分',value:full(row.knownTotal??0)+' Token',color:''});
+      if(hour&&!['future','unobserved'].includes(row.state)){for(const [field,label] of [['input','输入'],['output','输出'],['cached','缓存'],['reasoning','推理']])detailRows.push({label,value:row.unknownFields?.[field]?'未知':full(row[field]??0),color:''});detailRows.push({label:'请求',value:String(row.requestCount??0),color:''});}
+      tip.show({primary:valid(row)?(hour&&row.provided===false?'已知 ':'')+exact+unit(host):state||"未返回",date:row.caption||row.date,rows:hour&&row.state!=='known'&&row.state!=='zero'?[{label:'状态',value:state||'未知',color:''},...detailRows]:detailRows}, clientX ?? screen.x, clientY ?? screen.y);
     };
     const clipId = "usage-reveal-" + ++sequence;
     const draw = () => {
@@ -384,7 +390,7 @@
           (_, i) => lower + i * step,
         ),
         count = Math.min(width < 420 ? 3 : 5, rows.length);
-      const indices = [
+      const indices = host.dataset.granularity==='hour'&&rows.length===24?(width<420?[0,12,23]:[0,6,12,18,23]):[
         ...new Set(
           Array.from({ length: count }, (_, i) =>
             Math.round((i / Math.max(1, count - 1)) * (rows.length - 1)),
@@ -442,7 +448,7 @@
         emit();
       }
       svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-      svg.innerHTML = `<defs><linearGradient id="${clipId}-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="var(--accent, #1683ff)" stop-opacity=".34"/><stop offset="100%" stop-color="var(--accent, #1683ff)" stop-opacity=".03"/></linearGradient><clipPath id="${clipId}" clipPathUnits="userSpaceOnUse"><rect class="usage-reveal" x="${left - 2}" y="0" width="${right - left + 4}" height="260"/></clipPath></defs><text class="usage-chart-label" x="${left}" y="16">${escape(host.dataset.axisLabel || (host.dataset.format === "rate" ? "CNY / USD" : host.dataset.metric === "cost" ? (host.dataset.currency === "USD" ? "$" : "￥") : "Token"))}</text>${ticks.map((v) => `<line class="usage-gridline" x1="${left}" x2="${right}" y1="${layout.y(v)}" y2="${layout.y(v)}"/><text class="usage-chart-label" text-anchor="end" x="${left - 8}" y="${layout.y(v) + 4}">${escape(tickLabel(v))}</text>`).join("")}<path class="usage-coordinate-axis usage-main-axis" d="M ${left} ${top - 8} V ${bottom} H ${right + 7}"/><path class="usage-axis-arrow" d="M ${left - 4} ${top - 3} L ${left} ${top - 9} L ${left + 4} ${top - 3} M ${right + 2} ${bottom - 4} L ${right + 8} ${bottom} L ${right + 2} ${bottom + 4}"/>${indices.map((i) => `<line class="usage-coordinate-axis usage-date-mark" data-base-x="${layout.x(i)}" x1="${layout.x(i)}" x2="${layout.x(i)}" y1="${bottom}" y2="${bottom + 4}"/><text class="usage-chart-label usage-date-tick" data-base-x="${layout.x(i)}" text-anchor="${i === 0 ? "start" : i === rows.length - 1 ? "end" : "middle"}" x="${layout.x(i)}" y="${bottom + 20}">${escape(String(rows[i].date).slice(5))}</text>`).join("")}<text class="usage-chart-label usage-date-axis-label" text-anchor="end" x="${right}" y="255">日期</text><g class="usage-chart-data" clip-path="url(#${clipId})">${chart}</g>${!rows.some(valid) ? '<text class="usage-chart-label usage-no-data" text-anchor="middle" x="' + (left + right) / 2 + '" y="120">暂无用量</text>' : ""}<g class="usage-crosshair" visibility="hidden"><line y1="${top}" y2="${bottom}"/><circle r="4"/></g>`;
+      svg.innerHTML = `<defs><linearGradient id="${clipId}-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="var(--accent, #1683ff)" stop-opacity=".34"/><stop offset="100%" stop-color="var(--accent, #1683ff)" stop-opacity=".03"/></linearGradient><clipPath id="${clipId}" clipPathUnits="userSpaceOnUse"><rect class="usage-reveal" x="${left - 2}" y="0" width="${right - left + 4}" height="260"/></clipPath></defs><text class="usage-chart-label" x="${left}" y="16">${escape(host.dataset.axisLabel || (host.dataset.format === "rate" ? "CNY / USD" : host.dataset.metric === "cost" ? (host.dataset.currency === "USD" ? "$" : "￥") : "Token"))}</text>${ticks.map((v) => `<line class="usage-gridline" x1="${left}" x2="${right}" y1="${layout.y(v)}" y2="${layout.y(v)}"/><text class="usage-chart-label" text-anchor="end" x="${left - 8}" y="${layout.y(v) + 4}">${escape(tickLabel(v))}</text>`).join("")}<path class="usage-coordinate-axis usage-main-axis" d="M ${left} ${top - 8} V ${bottom} H ${right + 7}"/><path class="usage-axis-arrow" d="M ${left - 4} ${top - 3} L ${left} ${top - 9} L ${left + 4} ${top - 3} M ${right + 2} ${bottom - 4} L ${right + 8} ${bottom} L ${right + 2} ${bottom + 4}"/>${indices.map((i) => `<line class="usage-coordinate-axis usage-date-mark" data-base-x="${layout.x(i)}" x1="${layout.x(i)}" x2="${layout.x(i)}" y1="${bottom}" y2="${bottom + 4}"/><text class="usage-chart-label usage-date-tick" data-base-x="${layout.x(i)}" text-anchor="${i === 0 ? "start" : i === rows.length - 1 ? "end" : "middle"}" x="${layout.x(i)}" y="${bottom + 20}">${escape(rows[i].label||String(rows[i].date).slice(5))}</text>`).join("")}<text class="usage-chart-label usage-date-axis-label" text-anchor="end" x="${right}" y="255">${host.dataset.granularity==='hour'?'上海时间':'日期'}</text><g class="usage-chart-data" clip-path="url(#${clipId})">${chart}</g>${host.dataset.granularity==='hour'?rows.map((r,i)=>!valid(r)?`<line class="usage-gap-mark" data-state="${escape(r.state)}" x1="${layout.x(i)}" x2="${layout.x(i)}" y1="${bottom-5}" y2="${bottom}"/>`:"").join(""):""}${!rows.some(valid) ? '<text class="usage-chart-label usage-no-data" text-anchor="middle" x="' + (left + right) / 2 + '" y="120">' +(host.dataset.granularity==='hour'?'暂无已核验小时数据':'暂无用量')+'</text>' : ""}<g class="usage-crosshair" visibility="hidden"><line y1="${top}" y2="${bottom}"/><circle r="4"/></g>`;
       svg
         .querySelectorAll(".usage-bar[data-interactive=true]")
         .forEach((bar) => {
@@ -641,7 +647,7 @@
     });
     updates.set(host, () => {
       reset();
-      rows = JSON.parse(host.dataset.series);
+      rows = seriesRows(JSON.parse(host.dataset.series));
       mode = host.dataset.mode;
       keys = JSON.parse(host.dataset.modelKeys || "[]");
       drawWidth = null;

@@ -860,6 +860,7 @@
       : '<svg class="usage-tab-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   }
   async function usage(root) {
+    window.usageCharts?.dispose(root);
     clearInterval(usageTimer);
     const surface=root.closest('.module-surface'),restored=surface?._wbSaved?.custom?.usage;
     let valueCurrency =
@@ -1357,6 +1358,7 @@
       request();
     });
     body.addEventListener("usage-value-refresh", () => {
+      body.dispatchEvent(new CustomEvent('usage-trend-refresh'));
       cache.clear();
       request();
     });
@@ -1403,13 +1405,14 @@
           })
           .catch(() => {});
       });
-    let refreshing=false;
+    let refreshing=false,collectionKey='';
     const timer=setInterval(async()=>{
       if(!body.isConnected){clearInterval(timer);clearTimeout(scheduled);return;}
       if(document.hidden||refreshing||(!body.closest('dialog[open]')&&!location.hash.startsWith('#/usage')))return;
       refreshing=true;try{const activeScope=scope,collection=await call('GET','/api/usage/collection');
         if(activeScope!==scope||!body.isConnected)return;
         const current=collection[scope];const note=q('#usage-sync-result',root);
+        const nextCollectionKey=JSON.stringify([scope,current]);if(collectionKey!==nextCollectionKey){collectionKey=nextCollectionKey;body.dispatchEvent(new CustomEvent('usage-trend-refresh'))}
         if(current?.status==='collecting')note.textContent='正在自动读取日志，已出现的用量会继续补齐历史…';
         else if(current?.status==='error')note.textContent=current.error;
         else if(current?.status==='ready')note.textContent=current.error||'已自动同步 '+new Date(current.syncedAt).toLocaleTimeString();

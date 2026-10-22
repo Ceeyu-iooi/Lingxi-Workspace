@@ -317,85 +317,20 @@
       q("[data-table-sort]", section).onchange = () =>
         table(root, state, i, true);
     });
-    state.trendViewport = null;
-    state.trendRows = null;
-    state.trendTicket = 0;
-    window.usageCharts.track(root, () => {
-      clearTimeout(state.trendTimer);
-      state.trendAbort?.abort();
+    const trendHost=document.createElement('div');q('.usage-plot',root).before(trendHost);
+    state.trendControl=mountTrendControl(trendHost,{
+      radio:(host,value,onChange)=>window.WorkbenchUI.radio(host,{label:'趋势时间粒度',items:[['day','按日'],['hour','按小时']],value,onChange}),
+      load:(date,signal)=>{const params=new URLSearchParams();for(const [k,v] of Object.entries(state.snapshot?.query||{})){if(Array.isArray(v))v.forEach(x=>params.append(k,x));else if(v!=null)params.set(k,String(v));}params.set('scope',state.scope);params.set('granularity','hour');params.set('metric','tokens');params.set('date',date);params.set('timezone','Asia/Shanghai');return window.workbenchRequest('GET','/api/usage/chart?'+params,undefined,{signal})},
+      commit:()=>{state.signatures.trend=null;charts(root,state)},
+      disposeRadio:()=>window.WorkbenchReact.unmount?.(trendHost.querySelector('.trend-period'))
     });
+    const refreshTrend=()=>state.trendControl.refresh();root.addEventListener('usage-trend-refresh',refreshTrend);
+    window.usageCharts.track(root,()=>root.removeEventListener('usage-trend-refresh',refreshTrend));
+    window.usageCharts.track(root,()=>state.trendControl.dispose());
     window.usageCharts.mount(root);
     window.usageRadios?.mount(root);
     window.usageRadios?.sync(root);
     return state;
-  }
-  async function loadTrend(root, state) {
-    const snapshot = state.snapshot;
-    if (!snapshot || !state.trendViewport) return;
-    state.trendAbort?.abort();
-    const abort = new AbortController();
-    state.trendAbort = abort;
-    const ticket = ++state.trendTicket,
-      valued = valueSnapshot(state),
-      cash = !!valued && state.metrics.charts;
-    const params = new URLSearchParams();
-    Object.entries(snapshot.query || {}).forEach(([k, v]) => {
-      if (
-        [
-          "period",
-          "start_date",
-          "end_date",
-          "valuation_enabled",
-          "include_all",
-        ].includes(k) ||
-        !v
-      )
-        return;
-      if (Array.isArray(v)) v.forEach((x) => params.append(k, x));
-      else params.set(k, String(v));
-    });
-    params.set("scope", state.scope);
-    params.set("start", state.trendViewport.start);
-    params.set("end", state.trendViewport.end);
-    params.set("metric", cash ? "value" : "tokens");
-    params.set("currency", valued?.costCurrency || "USD");
-    params.set(
-      "points",
-      String(Math.max(60, Math.floor(q(".usage-plot", root).clientWidth))),
-    );
-    const stop = window.WorkbenchUI.busy(
-      q(".usage-trend-viewport", root),
-      "读取历史…",
-    );
-    try {
-      const result = await window.workbenchRequest(
-        "GET",
-        "/api/usage/chart?" + params,
-        undefined,
-        { signal: abort.signal },
-      );
-      if (!root.isConnected || ticket !== state.trendTicket) return;
-      if (result.warming) {
-        state.trendTimer = setTimeout(() => loadTrend(root, state), 500);
-        return;
-      }
-      state.trendRows = result.series;
-      state.trendBounds = result.bounds;
-      state.trendGranularity = result.granularity;
-      state.trendLastMetric = [
-        cash,
-        cash ? result.currency : "",
-        state.snapshot.dataVersion,
-      ].join(":");
-      state.signatures.trend = null;
-      charts(root, state);
-    } catch (error) {
-      if (error.name !== "AbortError" && root.isConnected)
-        q(".usage-updated", root).textContent =
-          error.message + "；原图保留";
-    } finally {
-      stop();
-    }
   }
   async function valueDetails(root, state) {
     if (state.valueDialog?.isConnected) {
@@ -696,43 +631,33 @@
             agentScope(state.scope),
           )
         : s.groups;
-    const filterKey = JSON.stringify([
-      state.scope,
-      Object.fromEntries(
-        Object.entries(s.query || {}).filter(
-          ([k]) => !["value_currency", "cost_currency"].includes(k),
-        ),
-      ),
-      s.range?.start,
-      s.range?.end,
-    ]);
-    if (state.trendFilterKey && state.trendFilterKey !== filterKey) {
-      state.trendRows = null;
-      state.trendViewport = null;
-      state.trendAbort?.abort();
-      state.trendTicket++;
-    }
-    state.trendFilterKey = filterKey;
-    const trendDaily = state.trendRows || daily,
+    const filterKey=JSON.stringify([state.scope,s.query,s.dataVersion,Math.floor(Date.now()/3600000)]);
+    state.trendControl.update({scope:state.scope,start:s.range.start,end:s.range.end,key:filterKey});
+    const hourly=state.trendControl.period==='hour',hourResult=state.trendControl.result,trendCash=cash&&!hourly;
+    root.dataset.trendPeriod=hourly?'hour':'day';
+    const trendDaily=hourly?(hourResult?.series||[]):daily,
       plot = q(".usage-plot", root),
       button = q("[data-chart-mode]", root),
       pie = q(".usage-interactive-pie", root),
       series = trendDaily.map((r) => ({
+        ...r,
         date: r.date,
         endDate: r.endDate,
-        total: r.total,
+        total: typeof r.total==="string"?Number(r.total):r.total,
+        exactTotal: typeof r.total==="string"?r.total:undefined,
         models: r.models || [],
         provided: r.provided,
       }));
-    plot.dataset.experimental = String(cash && agentScope(state.scope));
+    plot.dataset.granularity=hourly?'hour':'day';
+    plot.dataset.experimental = String(trendCash && agentScope(state.scope));
     pie.dataset.experimental = String(cash && agentScope(state.scope));
     plot.dataset.transition =
-      plot.dataset.metric && plot.dataset.metric !== (cash ? "cost" : "token")
+      plot.dataset.metric && plot.dataset.metric !== (trendCash ? "cost" : "token")
         ? "vertical"
         : "reveal";
-    plot.dataset.metric = cash ? "cost" : "token";
+    plot.dataset.metric = trendCash ? "cost" : "token";
     pie.dataset.metric = cash ? "cost" : "token";
-    q(".usage-chart-heading h3", root).textContent = cash
+    q(".usage-chart-heading h3", root).textContent = trendCash
       ? "每日费用趋势"
       : "每日 Token 趋势";
     q(".usage-pie-heading h3", root).textContent = cash
@@ -768,14 +693,15 @@
     button.title = button.getAttribute("aria-label");
     root.dataset.chartViewMode = state.mode;
     if (cash && agentScope(state.scope)) {
-      q(".usage-chart-heading h3", root).textContent = "每日 API 等价值 · 实验";
+      if(!hourly)q(".usage-chart-heading h3", root).textContent = "每日 API 等价值 · 实验";
       q(".usage-pie-heading h3", root).textContent =
         "模型等价值占比" + (valued.summary.costUnknown ? "（已知）" : "");
     }
     if (plot.dataset.valueCurrency && plot.dataset.valueCurrency !== currency)
       plot.dataset.transition = "vertical";
     plot.dataset.valueCurrency = currency || "";
-    const trendKey = JSON.stringify([series, state.mode, keys, cash, currency]);
+    if(hourly){q('.usage-chart-heading h3',root).textContent='每小时 Token 趋势';plot.querySelector('svg').setAttribute('aria-label','每小时Token趋势，左右方向键查看小时用量');}
+    const trendKey = JSON.stringify([series, state.mode, keys, trendCash, currency]);
     if (state.signatures.trend !== trendKey) {
       plot.dataset.series = JSON.stringify(series);
       plot.dataset.mode = state.mode;
@@ -802,15 +728,15 @@
     q(".usage-pie-empty", root).textContent = cash
       ? "暂无模型费用"
       : "暂无模型用量";
-    q("[data-trend-start]", root).textContent = trendDaily[0]?.date || "—";
+    q("[data-trend-start]", root).textContent = hourly?(hourResult?.date||state.trendControl.date):trendDaily[0]?.date||"—";
     q("[data-trend-end]", root).textContent =
-      trendDaily.at(-1)?.endDate || trendDaily.at(-1)?.date || "—";
+      hourly?"00–23时 · 上海":trendDaily.at(-1)?.endDate||trendDaily.at(-1)?.date||"—";
     window.usageRadios?.sync(root);
-    const known = trendDaily.filter((r) => Number.isFinite(r.total));
+    const known = series.filter((r) => Number.isFinite(r.total));
     q("[data-trend-peak]", root).textContent =
-      (cash && known.length < trendDaily.length ? "已知峰值 " : "视窗峰值 ") +
+      (trendCash && known.length < trendDaily.length ? "已知峰值 " : "视窗峰值 ") +
       (known.length
-        ? cash
+        ? trendCash
           ? money(Math.max(0, ...known.map((r) => r.total)))
           : fmt(Math.max(0, ...known.map((r) => r.total)))
         : "—");
@@ -1119,10 +1045,7 @@
     all("[data-metric],[data-table-money]", root).forEach((b) =>
       b.setAttribute("aria-pressed", "false"),
     );
-    state.trendAbort?.abort();
-    state.trendTicket++;
-    state.trendRows = null;
-    state.trendValueKey = "";
+
     update(root, {
       ...state.snapshot,
       pricing: { ...state.snapshot.pricing, enabled: false },

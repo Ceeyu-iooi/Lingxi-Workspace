@@ -265,7 +265,6 @@ function render() {
   $("#main")._columnResizeObserver?.disconnect();
   $("#main")._columnResizeAbort?.abort();
   window.roundedSelects?.close();
-  if(view!=="finance"||!$("#main").querySelector(".finance-workspace"))window.usageCharts?.dispose($("#main"));
   window.controlCenter?.dispose?.();
   $("#main")._workspaceDispose?.();
   $("#main")._workspaceDispose = null;

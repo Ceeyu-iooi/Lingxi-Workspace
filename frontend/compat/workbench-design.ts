@@ -233,6 +233,7 @@ import {animateNumber} from "../app/number-motion";
     reveal(root);
   }
   function dispose(root) {
+    window.usageCharts?.dispose(root);
     root._motionDispose?.();clearTimeout(root._sidebarSettle);
     root._wbAbort?.abort();
     root._columnResizeObserver?.disconnect();

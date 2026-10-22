@@ -9,6 +9,7 @@ import {
   type JsonObject,
 } from "./profile.ts";
 import { Dataset, FIELDS, shanghaiDay } from "./usage-summary.ts";
+import {hourlyTrend} from "./usage-hourly.ts";
 import { UsageCube } from "./usage-cube.ts";
 import { isUsageEventRecord } from "../shared/contracts.ts";
 import { ResponseCache } from "./response-cache.ts";
@@ -259,6 +260,12 @@ export class Monitor {
           .get(this.profile.owner) as JsonObject | undefined
       )?.version || 0
     );
+  }
+  hourly(params:JsonObject,collection:JsonObject={}){
+    const now=Date.now(),coverage=this.accounting?.(params.scope||'codex')||{incomplete:true};
+    const key=canonical(['hour',this.profile.owner,this.version(),params,coverage,collection,Math.floor(now/60000)]);
+    const cached=this.responseCache.get(key);if(cached)return cached;
+    const data=hourlyTrend(this.profile,params,coverage,collection,now);data.dataVersion=String(this.version());this.responseCache.put(key,data);return data;
   }
   snapshot(params: JsonObject = {}, rowsOverride?: JsonObject[]) {
     const version = this.version(),

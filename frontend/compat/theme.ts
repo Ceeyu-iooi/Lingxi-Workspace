@@ -30,7 +30,7 @@ import {accentColors} from '../../src/shared/accent-colors';
     if (["light", "dark", "zai-light", "zai-dark", "system"].includes(saved))
       preference = saved;
   } catch (_) {}
-  function apply(value, origin) {
+  function apply(value, origin, broadcast=true) {
     const previous = theme;
     preference =
       value === "light" ? "zai-light" : value === "dark" ? "zai-dark" : value;
@@ -68,7 +68,7 @@ import {accentColors} from '../../src/shared/accent-colors';
           label.textContent = next === "dark" ? "浅色模式" : "深色模式";
       }
       window.dispatchEvent(new Event("workbench:appearance"));
-      publish();
+      if(broadcast)publish();
     };
     transition?.skipTransition();
     const reduced =
@@ -141,6 +141,9 @@ import {accentColors} from '../../src/shared/accent-colors';
         return;
       apply(value, origin);
     },
+    previewLocalTheme(value, origin) {
+      if(value==='light'||value==='dark')apply(value,origin,false);
+    },
     previewFontSize(size) {
       const value = Math.max(12, Math.min(18, Number(size) || 14));
       document.documentElement.style.setProperty(
@@ -202,6 +205,14 @@ import {accentColors} from '../../src/shared/accent-colors';
       palette();
       try{localStorage.setItem('wb-theme-preset',preset);}catch{}
       publish(true);
+    },
+    previewConfig(value = {}) {
+      const previousReceiving=receiving;receiving=true;
+      try {
+        if(value.theme)apply(value.theme);
+        if(value.uiFontSize)this.previewFontSize(value.uiFontSize);
+        this.details(value);
+      } finally {receiving=previousReceiving;}
     },
   };
   apply(preference);

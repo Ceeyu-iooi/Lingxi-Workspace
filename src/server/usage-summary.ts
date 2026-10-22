@@ -61,7 +61,7 @@ export function dateRange(
   return [start, end];
 }
 Decimal.set({ precision: 100 });
-export function summarize(rows: JsonObject[], currency = "CNY"): JsonObject {
+export function summaryAccumulator(currency = "CNY") {
   const result: JsonObject = Object.fromEntries(FIELDS.map((k) => [k, 0])),
     missing: JsonObject = Object.fromEntries(FIELDS.map((k) => [k, 0])),
     totals: Record<string, bigint> = Object.fromEntries(
@@ -76,9 +76,9 @@ export function summarize(rows: JsonObject[], currency = "CNY"): JsonObject {
     costUnknown = 0,
     requests = 0,
     requestsKnown = true,observations=0;
-  for (const row of rows) {
+  return {add(row:JsonObject){
     const aggregated=row._aggregate;const count=aggregated?.observations??1;observations+=count;
-    if(aggregated){for(const key of FIELDS){totals[key]+=BigInt(row[key]??0);missing[key]+=aggregated.unknownFields[key]||0;}failures+=aggregated.failures;unknown+=aggregated.unknown;priced+=aggregated.pricedRequests;costUnknown+=aggregated.costUnknown;requests+=count;for(const [key,value] of Object.entries(aggregated.valueIssues||{}))issues[key]=(issues[key]||0)+Number(value);if(aggregated.pricedRequests)(costs[row.currency]||(costs[row.currency]=new ExactSum())).add(row.cost);for(const [key,value] of Object.entries(row.valueParts||{}))(parts[key]||(parts[key]=new ExactSum())).add(value);continue;}
+    if(aggregated){for(const key of FIELDS){totals[key]+=BigInt(row[key]??0);missing[key]+=aggregated.unknownFields[key]||0;}failures+=aggregated.failures;unknown+=aggregated.unknown;priced+=aggregated.pricedRequests;costUnknown+=aggregated.costUnknown;requests+=count;for(const [key,value] of Object.entries(aggregated.valueIssues||{}))issues[key]=(issues[key]||0)+Number(value);if(aggregated.pricedRequests)(costs[row.currency]||(costs[row.currency]=new ExactSum())).add(row.cost);for(const [key,value] of Object.entries(row.valueParts||{}))(parts[key]||(parts[key]=new ExactSum())).add(value);return;}
     for (const key of FIELDS) {
       if (row[key] == null) missing[key]++;
       else totals[key] += BigInt(row[key]);
@@ -99,7 +99,7 @@ export function summarize(rows: JsonObject[], currency = "CNY"): JsonObject {
     if (n == null && (row.granularity || "request") === "request") n = 1;
     if (n == null) requestsKnown = false;
     else requests += Number(n);
-  }
+  },result():JsonObject{
   for (const key of FIELDS)
     result[key] = totals[key] <= BigInt(Number.MAX_SAFE_INTEGER)
       ? Number(totals[key])
@@ -129,7 +129,9 @@ export function summarize(rows: JsonObject[], currency = "CNY"): JsonObject {
     platformRequests: requestsKnown ? requests : null,
     valueIssues: issues,
   };
+}};
 }
+export function summarize(rows:Iterable<JsonObject>,currency="CNY"):JsonObject{const sum=summaryAccumulator(currency);for(const row of rows)sum.add(row);return sum.result();}
 export class Dataset {
   readonly rows: JsonObject[];
   constructor(

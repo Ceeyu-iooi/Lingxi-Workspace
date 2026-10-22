@@ -14,7 +14,7 @@
 .usage-stable .usage-summary{grid-template-columns:repeat(5,minmax(0,1fr))}
 .usage-stable .usage-summary>div{height:108px;container-type:inline-size;box-sizing:border-box;min-width:0}
 .usage-stable .usage-summary strong{height:30px;line-height:30px;font-size:clamp(13px,calc(160cqw / var(--number-chars,11)),23px);white-space:nowrap;font-variant-numeric:tabular-nums}
-.usage-stable .usage-charts>.control-section{height:440px;box-sizing:border-box;display:flex;flex-direction:column}
+.usage-stable .usage-charts>.control-section{height:auto;min-height:440px;box-sizing:border-box;display:flex;flex-direction:column}
 .usage-stable .usage-chart-heading{min-height:34px;flex-shrink:0}
 .usage-stable .usage-plot{flex-shrink:0}
 .usage-stable .usage-pie-layout{position:relative;flex:1;min-height:0;overflow:hidden}
@@ -46,7 +46,6 @@
   .usage-stable .usage-table-tools [data-table-count]{grid-column:1/-1;line-height:16px}
 }
 @media(max-width:480px){
-  .usage-stable .usage-charts>.control-section{height:440px}
   .usage-stable .usage-pie-layout{grid-template-rows:minmax(0,1fr) 140px;padding-top:4px}
   .usage-stable .usage-donut.interactive{width:72%;max-width:230px;align-self:center}
   .usage-stable .usage-legend{height:140px;max-height:140px}

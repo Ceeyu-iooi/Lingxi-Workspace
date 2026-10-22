@@ -1,5 +1,5 @@
 {
-  "version": "0.1.24",
+  "version": "0.1.25",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
@@ -21,7 +21,8 @@
       "resources",
       "floating",
       "floating-themes",
-      "filter-contract"
+      "filter-contract",
+      "hourly-usage"
     ]
   },
   "businessModules": [
@@ -257,5 +258,28 @@
     "error"
   ],
   "pluginCountMotion": "shared-usage-280ms-numeric-interpolation",
-  "mainPluginSettings": "inline-draft-with-config-revision-check"
+  "mainPluginSettings": "inline-draft-with-config-revision-check",
+  "hourlyUsage": {
+    "scopes": [
+      "codex",
+      "zcode",
+      "dsh"
+    ],
+    "metric": "tokens",
+    "timezone": "Asia/Shanghai",
+    "buckets": 24,
+    "controls": "shared-typed-controller",
+    "renderer": "usageCharts",
+    "states": [
+      "known",
+      "zero",
+      "partial",
+      "unknown",
+      "unobserved",
+      "future"
+    ],
+    "preview": "hourly-usage",
+    "unsupportedSources": "daily-only",
+    "money": "daily-only"
+  }
 }

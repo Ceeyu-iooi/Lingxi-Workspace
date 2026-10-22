@@ -1031,6 +1031,7 @@ export async function startServer(
     const params = qs(request),
       scope = params.scope || "codex",
       metric = params.metric || "tokens";
+    if(params.granularity==='hour')return monitor.hourly(params,scheduler.state()[scope]||{});
     params.valuation_enabled =
       scope === "codex" && !!valuation.status("codex").coverage;
     const snapshot =
