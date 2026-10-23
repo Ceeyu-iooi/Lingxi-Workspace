@@ -21,6 +21,8 @@ import { ProfileStore, hash, type JsonObject } from "./profile.ts";
 import { Jobs } from "./control.ts";
 import {packText,unpackText,compactSkillCatalog} from './compressed-text.ts';
 
+import {skillPresentation,type SkillPresentation} from "../shared/skill-presentation.ts";
+
 const inside = (path: string, root: string) => {
   const rel = relative(root, path);
   return rel !== ".." && !rel.startsWith(".." + sep) && !isAbsolute(rel);
@@ -31,7 +33,7 @@ export class Skills {
     readonly jobs: Jobs,
   ) {
     profile.db.exec(
-      "CREATE TABLE IF NOT EXISTS skill_sources(owner TEXT,id TEXT,config TEXT,PRIMARY KEY(owner,id));CREATE TABLE IF NOT EXISTS skill_catalog(owner TEXT,id TEXT,title TEXT,description TEXT,body TEXT,meta TEXT,fingerprint TEXT,PRIMARY KEY(owner,id));CREATE TABLE IF NOT EXISTS skill_scan_state(owner TEXT PRIMARY KEY,value TEXT);CREATE INDEX IF NOT EXISTS skill_catalog_owner ON skill_catalog(owner,title)",
+      "CREATE TABLE IF NOT EXISTS skill_presentations(owner TEXT,id TEXT,title TEXT,description TEXT,PRIMARY KEY(owner,id));CREATE TABLE IF NOT EXISTS skill_sources(owner TEXT,id TEXT,config TEXT,PRIMARY KEY(owner,id));CREATE TABLE IF NOT EXISTS skill_catalog(owner TEXT,id TEXT,title TEXT,description TEXT,body TEXT,meta TEXT,fingerprint TEXT,PRIMARY KEY(owner,id));CREATE TABLE IF NOT EXISTS skill_scan_state(owner TEXT PRIMARY KEY,value TEXT);CREATE INDEX IF NOT EXISTS skill_catalog_owner ON skill_catalog(owner,title)",
     );
     profile.transaction(()=>compactSkillCatalog(profile.db,128));
   }
@@ -84,7 +86,7 @@ export class Skills {
     ).map((r) => JSON.parse(r.config));
     return (rows.length ? rows : this.defaults()).map((r) => ({
       ...r,
-      exists: existsSync(r.path) && statSync(r.path).isDirectory(),
+      exists: (()=>{try{return statSync(r.path).isDirectory()}catch{return false}})(),
     }));
   }
   source(body: JsonObject) {
@@ -117,6 +119,7 @@ export class Skills {
       return { id: row.id, enabled: row.enabled };
     }
     if (body.delete) {
+      if(this.sources().find(r=>r.id===body.id)?.kind!=="custom")throw new Error("只能移除自定义来源");
       db.prepare("DELETE FROM skill_sources WHERE owner=? AND id=?").run(
         owner,
         body.id,
@@ -334,29 +337,41 @@ export class Skills {
       return result;
     });
   }
+  presentation(body:JsonObject){
+    this.get(String(body.id||""));
+    const title=String(body.title||"").trim(),description=String(body.description||"").trim();
+    if(!title||title.length>80||!/[\u3400-\u9fff]/.test(title)||!description||description.length>320||!/[\u3400-\u9fff]/.test(description))throw new Error("请填写中文名称（80字以内）与中文简介（320字以内）");
+    this.profile.db.prepare("INSERT INTO skill_presentations VALUES(?,?,?,?) ON CONFLICT(owner,id) DO UPDATE SET title=excluded.title,description=excluded.description").run(this.profile.owner,body.id,title,description);
+    return this.get(body.id);
+  }
+  private localized(row:JsonObject,overrides?:Map<string,SkillPresentation>){
+    const custom=overrides?overrides.get(row.id):this.profile.db.prepare("SELECT title,description FROM skill_presentations WHERE owner=? AND id=?").get(this.profile.owner,row.id) as SkillPresentation|undefined;
+    const display=skillPresentation(row.title,row.description,custom);
+    return {displayTitle:display.title,displayDescription:display.description,presentationSource:display.source};
+  }
   search(params: JsonObject) {
     const registered = this.sources(),
       allowed = registered
         .filter((r) => r.enabled !== false)
-        .map((r) => resolve(r.path)),
+        .map((r) => {try{return realpathSync(r.path)}catch{return resolve(r.path)}}),
       ids = new Set(
         registered.filter((r) => r.enabled !== false).map((r) => r.id),
       ),
       q = String(params.q || "").toLowerCase(),
       items: JsonObject[] = [];
+    const overrides=new Map((this.profile.db.prepare("SELECT id,title,description FROM skill_presentations WHERE owner=?").all(this.profile.owner) as {id:string;title:string;description:string}[]).map(row=>[row.id,row]));
     for (const row of this.profile.db
       .prepare(
-        "SELECT * FROM skill_catalog WHERE owner=? ORDER BY title COLLATE NOCASE",
+        "SELECT id,title,description,meta FROM skill_catalog WHERE owner=? ORDER BY title COLLATE NOCASE",
       )
       .all(this.profile.owner) as JsonObject[]) {
       const meta = JSON.parse(unpackText(row.meta));
       if (!allowed.some((r) => inside(meta.path, r))) continue;
       meta.sources = meta.sources.filter((s: JsonObject) => ids.has(s.id));
+      const display=this.localized(row,overrides);
       if (
         q &&
-        !(row.title + "\n" + row.description + "\n" + unpackText(row.body))
-          .toLowerCase()
-          .includes(q)
+        !(display.displayTitle+"\n"+display.displayDescription+"\n"+row.title + "\n" + row.description).toLowerCase().includes(q)
       )
         continue;
       if (
@@ -371,6 +386,7 @@ export class Skills {
         )
       )
         continue;
+      if(params.kind&&!meta.sources.some((s:JsonObject)=>s.kind===params.kind))continue;
       if (
         params.project &&
         !meta.sources.some((s: JsonObject) => s.project === params.project)
@@ -379,14 +395,17 @@ export class Skills {
       if (["true", "1"].includes(params.duplicates) && meta.duplicateCount < 2)
         continue;
       items.push({
+        ...display,
         id: row.id,
         title: row.title,
         description: row.description,
         meta,
       });
     }
-    const offset = Math.max(0, Number(params.offset) || 0),
-      limit = Math.min(100, Math.max(1, Number(params.limit) || 40)),
+    items.sort((a,b)=>a.displayTitle.localeCompare(b.displayTitle,"zh-CN")||a.title.localeCompare(b.title));
+    const requestedOffset=Number(params.offset),requestedLimit=Number(params.limit);
+    const offset = Number.isSafeInteger(requestedOffset)&&requestedOffset>=0?requestedOffset:0,
+      limit = Number.isFinite(requestedLimit)&&requestedLimit>0?Math.min(100,Math.max(1,Math.floor(requestedLimit))):40,
       scan = this.profile.db
         .prepare("SELECT value FROM skill_scan_state WHERE owner=?")
         .get(this.profile.owner) as JsonObject | undefined;
@@ -414,6 +433,7 @@ export class Skills {
     if (!allowed.some((r) => inside(path, r)))
       throw new Error("技能来源已移除");
     return {
+      ...this.localized(row),
       id,
       title: row.title,
       description: row.description,

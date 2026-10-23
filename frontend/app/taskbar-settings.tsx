@@ -1,0 +1,74 @@
+import React, {useEffect,useRef,useState} from "react";
+import {createRoot} from "react-dom/client";
+import type {Config,State} from "../../src/shared/taskbar-plugin";
+import {floatingAppearance} from "../../src/shared/taskbar-appearance";
+import {themePresets} from "../../src/shared/theme-presets";
+import "./taskbar-settings.css";
+
+type SwitchProps={checked:boolean;label:string;onChange:(checked:boolean)=>void};
+type Props={state:State;save:(config:Config,fields:string[],revision?:number)=>Promise<State>;onSaved:(state:State)=>void;onClose?:()=>void;onDirty?:(dirty:boolean)=>void;Switch:React.ComponentType<SwitchProps>;zoom?:number;onZoomReset?:()=>void;onRetryHelper?:()=>Promise<unknown>};
+const names={metrics:{total:"Token 总量",input:"输入 Token",output:"输出 Token",cached:"缓存 Token",reasoning:"推理 Token",requests:"请求数",cost:"费用",balance:"账户余额"},charts:{trend:"Token 趋势",models:"模型分布",activity:"活动热图"}};
+const equal=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
+
+export function TaskbarSettings({state,save:commit,onSaved,onClose,onDirty,Switch,zoom=1,onZoomReset,onRetryHelper}:Props){
+ const [draft,setDraft]=useState(()=>structuredClone(state.config)),[tab,setTab]=useState("entry"),[busy,setBusy]=useState(false),[message,setMessage]=useState(""),[failed,setFailed]=useState(false),[conflicts,setConflicts]=useState<(keyof Config)[]>([]);
+ const live=useRef(state),baseline=useRef(structuredClone(state.config)),dirty=useRef(new Map<keyof Config,number>()),sequence=useRef(0),pending=useRef<Config|null>(null),alive=useRef(true),draftRef=useRef(draft),saving=useRef(false);
+ live.current=state;draftRef.current=draft;
+ useEffect(()=>()=>{alive.current=false},[]);
+ const patch=(value:Partial<Config>)=>{sequence.current++;for(const key of Object.keys(value) as (keyof Config)[])dirty.current.set(key,sequence.current);setDraft(current=>({...current,...value}));setMessage("修改待保存");setFailed(false);onDirty?.(true)};
+ useEffect(()=>{
+  const incoming=state.config,current=draftRef.current;
+  setConflicts(previous=>[...new Set([...previous,...[...dirty.current.keys()].filter(key=>!equal(incoming[key],baseline.current[key])&&!equal(incoming[key],current[key])&&!(pending.current&&equal(incoming[key],pending.current[key])))] )].filter(key=>dirty.current.has(key)&&!equal(incoming[key],current[key])));
+  setDraft(value=>Object.fromEntries(Object.keys(incoming).map(key=>[key,dirty.current.has(key as keyof Config)?value[key as keyof Config]:structuredClone(incoming[key as keyof Config])])) as Config);
+  for(const key of Object.keys(incoming) as (keyof Config)[])if(!dirty.current.has(key))baseline.current[key]=structuredClone(incoming[key]) as never;
+ },[state.configRevision]);
+ const reset=()=>{baseline.current=structuredClone(live.current.config);dirty.current.clear();setDraft(structuredClone(live.current.config));setConflicts([]);setMessage("已放弃修改");setFailed(false);onDirty?.(false)};
+ const save=async()=>{
+  if(saving.current)return;
+  const keys=[...dirty.current.keys()],latest=live.current;
+  const collision=keys.filter(key=>!equal(latest.config[key],baseline.current[key])&&!equal(latest.config[key],draft[key]));
+  if(collision.length||conflicts.length){setConflicts(previous=>[...new Set([...previous,...collision])]);setMessage("请先处理其他窗口的修改");setFailed(true);return}
+  if(!keys.length){setMessage("没有待保存的修改");return}
+  const snapshot={...latest.config,...Object.fromEntries(keys.map(key=>[key,draft[key]]))},stamp=sequence.current;
+  saving.current=true;setBusy(true);pending.current=snapshot;
+  try{const returned=await commit(snapshot,keys,latest.configRevision);if(!alive.current)return;
+   const next=(live.current.configRevision??0)>(returned.configRevision??0)?live.current:returned;
+   for(const [key,revision] of dirty.current)if(revision<=stamp)dirty.current.delete(key);
+   baseline.current=structuredClone(next.config);
+   setDraft(current=>Object.fromEntries(Object.keys(next.config).map(key=>[key,dirty.current.has(key as keyof Config)?current[key as keyof Config]:structuredClone(next.config[key as keyof Config])])) as Config);
+   setConflicts(previous=>previous.filter(key=>dirty.current.has(key)));onSaved(next);onDirty?.(dirty.current.size>0);setFailed(false);setMessage(dirty.current.size?"已保存，后续修改待保存":"已保存");
+  }catch(error){if(alive.current){setFailed(true);setMessage((error as Error).message)}}finally{pending.current=null;saving.current=false;if(alive.current)setBusy(false)}
+ };
+ const taskbar=(value:Partial<Config["taskbar"]>)=>patch({taskbar:{...draft.taskbar,...value}});
+ const visual=(value:Partial<Config["visual"]>)=>patch({visual:{...draft.visual,...value}});
+ const range=(label:string,value:number,min:number,max:number,unit:string,change:(n:number)=>void,step=1)=><label className="tps-range"><span>{label}<output>{value} {unit}</output></span><input aria-label={label} type="range" min={min} max={max} step={step} value={value} onChange={e=>change(Number(e.target.value))}/></label>;
+ const color=(label:string,value:string,change:(color:string)=>void)=><label className="tps-color"><span>{label}</span><input aria-label={label} type="color" value={value} onChange={e=>change(e.target.value)}/></label>;
+ const appearance=floatingAppearance(draft,state);
+ const modules=(key:"metrics"|"charts")=>{
+  const catalog=names[key],ids=[...draft[key].filter(id=>Object.hasOwn(catalog,id)),...Object.keys(catalog).filter(id=>!draft[key].includes(id))];
+  const move=(id:string,step:number)=>{const order=[...draft[key]],from=order.indexOf(id),to=from+step;if(to<0||to>=order.length)return;[order[from],order[to]]=[order[to],order[from]];patch({[key]:order})};
+  return <div className="tps-modules">{ids.map(id=><div key={id}><label><input type="checkbox" checked={draft[key].includes(id)} onChange={()=>patch({[key]:draft[key].includes(id)?draft[key].filter(v=>v!==id):[...draft[key],id]})}/>{catalog[id as keyof typeof catalog]}</label>{draft[key].includes(id)&&<span><button type="button" aria-label={`上移${catalog[id as keyof typeof catalog]}`} disabled={draft[key].indexOf(id)===0} onClick={()=>move(id,-1)}>↑</button><button type="button" aria-label={`下移${catalog[id as keyof typeof catalog]}`} disabled={draft[key].indexOf(id)===draft[key].length-1} onClick={()=>move(id,1)}>↓</button></span>}</div>)}</div>;
+ };
+ return <div className="taskbar-preferences" data-theme={state.appearance.theme} style={{zoom,...(onZoomReset?{width:"100%",height:"100%"}:{})}}>
+  <header className="tps-heading"><div><span className="tps-kicker">用量监测</span><h2>任务栏插件</h2></div><Switch label="开启任务栏双环" checked={draft.enabled} onChange={enabled=>patch({enabled})}/></header>
+  <nav className="tps-nav" aria-label="插件设置页面">{[["entry","任务栏","01"],["appearance","详情外观","02"],["content","详情内容","03"]].map(([id,label,number])=><button key={id} type="button" aria-current={tab===id?"page":undefined} onClick={()=>setTab(id)}><small>{number}</small>{label}</button>)}</nav>
+  {conflicts.length>0&&<div className="tps-conflict" role="alert"><span>其他窗口修改了相同设置。</span><button onClick={()=>{for(const key of conflicts){dirty.current.delete(key);baseline.current[key]=structuredClone(live.current.config[key]) as never}setDraft(current=>({...current,...Object.fromEntries(conflicts.map(key=>[key,structuredClone(live.current.config[key])]))}));setConflicts([]);onDirty?.(dirty.current.size>0)}}>采用新设置</button><button onClick={()=>{for(const key of conflicts)baseline.current[key]=structuredClone(live.current.config[key]) as never;setConflicts([]);setMessage("保留我的修改，待保存")}}>保留我的修改</button></div>}
+  <div className="tps-body"><div className="tps-form">
+   {tab==="entry"&&<><section className="tps-card"><h3>圆环与文字</h3><div className="tps-fields">{range("圆环大小",draft.taskbar.size,24,48,"DIP",size=>taskbar({size}))}{range("时间字号",draft.taskbar.timeFont,10,18,"px",timeFont=>taskbar({timeFont}))}</div><Switch label="显示重置时间" checked={draft.taskbar.showTime} onChange={showTime=>taskbar({showTime})}/><div className="tps-colors">{color("额度环",draft.taskbar.outer,outer=>taskbar({outer}))}{color("时间环",draft.taskbar.inner,inner=>taskbar({inner}))}{color("环内文字",draft.taskbar.percentColor,percentColor=>taskbar({percentColor}))}{color("时间文字",draft.taskbar.timeColor,timeColor=>taskbar({timeColor}))}</div></section><section className="tps-card"><h3>显示位置</h3><div className="tps-fields"><label>位置<select value={draft.taskbar.placement} onChange={e=>taskbar({placement:e.target.value})}><option value="start-left">开始按钮左侧</option><option value="left">任务栏左侧空位</option><option value="right">任务栏右侧空位</option></select></label><label>显示器<select value={draft.taskbar.monitor} onChange={e=>taskbar({monitor:Number(e.target.value)})}>{Array.from({length:Math.max(state.monitorCount||1,draft.taskbar.monitor+1)},(_,i)=><option key={i} value={i}>{i?`副屏 ${i}`:"主屏"}</option>)}</select></label></div>{range("水平偏移",draft.taskbar.offset,-2000,2000,"DIP",offset=>taskbar({offset}))}<p className="tps-status">{state.taskbar?.mode==="embedded"?"已嵌入任务栏":state.taskbar?.mode==="fallback"?"当前使用独立入口":draft.enabled?"保存后开启":"当前关闭"}</p>{state.helperError&&<p role="alert">{state.helperError}{onRetryHelper&&<button type="button" onClick={()=>void onRetryHelper().catch((error:Error)=>{setFailed(true);setMessage(error.message)})}>重试</button>}</p>}</section></>}
+   {tab==="appearance"&&<><section className="tps-card"><h3>主题与材质</h3><div className="tps-fields"><label>主题<select value={draft.theme} onChange={e=>patch({theme:e.target.value})}><option value="follow">跟随应用</option><option value="light">浅色</option><option value="dark">深色</option></select></label><label>材质<select value={draft.surface} onChange={e=>patch({surface:e.target.value})}><option value="standard">标准</option><option value="transparent">透明</option></select></label><label>配色<select value={draft.preset} onChange={e=>patch({preset:e.target.value})}>{themePresets.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label></div>{range("详情高度",draft.custom.height,380,1200,"DIP",height=>patch({custom:{...draft.custom,width:420,height}}),10)}{draft.surface==="transparent"&&range("不透明度",draft.visual.opacity,0,100,"%",opacity=>visual({opacity}))}<Switch label="固定详情窗口" checked={draft.panel.pinned} onChange={pinned=>patch({panel:{pinned}})}/></section><details className="tps-card"><summary>自定义配色</summary><div className="tps-colors">{color("强调色",draft.accent||appearance.accent,accent=>patch({accent}))}{color("背景",draft.visual.background||appearance.background,background=>visual({background}))}{color("正文",draft.visual.text||appearance.text,text=>visual({text}))}{color("图表",draft.visual.chart||appearance.chart,chart=>visual({chart}))}</div><button type="button" onClick={()=>patch({accent:"",visual:{...draft.visual,background:"",text:"",muted:"",chart:"",opacity:60}})}>恢复默认配色</button></details></>}
+   {tab==="content"&&<><section className="tps-card"><h3>统计指标 <small>{draft.metrics.filter(id=>Object.hasOwn(names.metrics,id)).length} 项已选</small></h3>{modules("metrics")}</section><section className="tps-card"><h3>图表 <small>{draft.charts.length} 项已选</small></h3>{modules("charts")}</section></>}
+  </div><aside className="tps-preview"><div className="tps-preview-heading"><strong>实时预览</strong><span>420 × {draft.custom.height} DIP</span></div><div className="tps-taskbar-preview"><RingPreview config={draft}/></div><div className="tps-demo-stage"><div className="tps-demo-panel" style={{...appearance.vars,color:appearance.text,background:appearance.vars["--canvas"],height:Math.min(360,draft.custom.height*.5)} as React.CSSProperties}><header><strong>用量详情</strong><span>◌　☼</span></header><nav>概览　用量　图表</nav><div className="tps-demo-value"><small>Token 总量</small><strong>—</strong><span>预览</span></div><div className="tps-demo-stats">{draft.metrics.filter(id=>Object.hasOwn(names.metrics,id)).slice(0,4).map(id=><div key={id}><small>{names.metrics[id as keyof typeof names.metrics]}</small><strong>—</strong></div>)}</div>{draft.charts.length>0&&<svg viewBox="0 0 260 70" aria-label="图表样式预览"><path d="M0 60H260M0 30H260" stroke={appearance.vars["--line"]}/><path d="M0 54Q30 55 46 37T85 35T126 20T170 32T215 18T260 8" fill="none" stroke={appearance.chart} strokeWidth="2"/></svg>}</div></div><p className="tps-preview-note">仅预览样式，保存后应用</p></aside></div>
+  <footer className="tps-actions">{onZoomReset&&<button onClick={onZoomReset} aria-label="重置界面缩放">{Math.round(zoom*100)}%</button>}<span role="status" data-error={failed}>{message}</span><button disabled={busy} onClick={reset}>放弃修改</button>{onClose&&<button disabled={busy} onClick={onClose}>关闭</button>}<button className="tps-primary" disabled={busy} onClick={()=>void save()}>{busy?"正在保存…":"保存设置"}</button></footer>
+ </div>;
+}
+function RingPreview({config}:{config:Config}){const ring=<svg width={config.taskbar.size} height={config.taskbar.size} viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="43" fill="none" stroke={config.taskbar.outer} strokeWidth="9"/><circle cx="50" cy="50" r="31" fill="none" stroke={config.taskbar.inner} strokeWidth="7" opacity=".8"/><text x="50" y="59" textAnchor="middle" fill={config.taskbar.percentColor} fontSize="25">—</text></svg>;return <div className="tps-rings">{ring}{config.taskbar.showTime&&<div style={{color:config.taskbar.timeColor,fontSize:config.taskbar.timeFont}}><span>5h: —</span><span>7d: —</span></div>}{ring}</div>}
+function WorkbenchSwitch(props:SwitchProps){const host=useRef<HTMLDivElement>(null);useEffect(()=>{(window as any).WorkbenchReact.squishSwitch(host.current,{...props,ariaLabel:props.label})},[props.checked,props.label,props.onChange]);useEffect(()=>{const node=host.current;return()=>{queueMicrotask(()=>(window as any).WorkbenchReact.cleanup(node))}},[]);return <div className="tps-switch" ref={host}/>}
+export async function mountTaskbarSettings(root:HTMLElement){
+ const bridge=(window as any).workbenchDesktop;let alive=true,unsaved=false;const reactRoot=createRoot(root);let latest:State|null=null;
+ root.innerHTML="";const accept=(state:State)=>{if(!alive||latest&&(latest.configRevision??0)>(state.configRevision??0))return;latest=state;reactRoot.render(<TaskbarSettings state={state} save={(config,fields,revision)=>bridge.floatingSave(config,fields,revision)} onSaved={accept} Switch={WorkbenchSwitch} onDirty={value=>unsaved=value} onRetryHelper={()=>bridge.floatingRetryHelper()}/>)};
+ const refresh=()=>void bridge.floatingState().then(accept).catch((error:Error)=>{if(alive&&!latest)root.textContent=error.message});
+ const unsubscribe=bridge.onFloatingState?.(accept);window.addEventListener("focus",refresh);
+ (root as any)._wbUnsaved=()=>unsaved;
+ (root as any)._wbDispose=()=>{alive=false;unsubscribe?.();window.removeEventListener("focus",refresh);reactRoot.unmount()};
+ await bridge.floatingSettingsInline?.();await bridge.floatingState().then(accept).catch((error:Error)=>{if(alive)root.textContent=error.message});
+}

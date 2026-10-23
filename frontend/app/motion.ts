@@ -32,12 +32,12 @@ function draggable(dialog:HTMLDialogElement,header:HTMLElement){
  dragDisposers.get(dialog)?.();let x=0,y=0,startX=0,startY=0,baseX=0,baseY=0,id:number|null=null,frame=0;
  const abort=new AbortController();
  const paint=()=>{frame=0;const rect=dialog.getBoundingClientRect(),scale=rect.width/Math.max(1,dialog.offsetWidth)||1;dialog.style.translate=`${x/scale}px ${y/scale}px`;};
- const clamp=()=>{const rect=dialog.getBoundingClientRect();x+=Math.max(12-rect.left,Math.min(0,innerWidth-12-rect.right));y+=Math.max(12-rect.top,Math.min(0,innerHeight-12-rect.bottom));paint();};
+ const clamp=()=>{if(!dialog.open||closing.has(dialog)||(dialog as any)._motionFrame||dialog.getAnimations().some(animation=>animation.pending||animation.playState==='running'))return;const rect=dialog.getBoundingClientRect();x+=Math.max(12-rect.left,Math.min(0,innerWidth-12-rect.right));y+=Math.max(12-rect.top,Math.min(0,innerHeight-12-rect.bottom));paint();};
  header.addEventListener('pointerdown',event=>{if(event.button!==0||(event.target as Element).closest('button,a,input,select,textarea,summary,[role=button]'))return;dialog.getAnimations().forEach(animation=>animation.cancel());startX=event.clientX;startY=event.clientY;baseX=x;baseY=y;id=event.pointerId;header.setPointerCapture(id);dialog.dataset.dragging='';event.preventDefault();},{signal:abort.signal});
  header.addEventListener('pointermove',event=>{if(id!==event.pointerId)return;const rect=dialog.getBoundingClientRect();x=Math.max(x+12-rect.left,Math.min(baseX+event.clientX-startX,x+innerWidth-12-rect.right));y=Math.max(y+12-rect.top,Math.min(baseY+event.clientY-startY,y+innerHeight-12-rect.bottom));if(!frame)frame=requestAnimationFrame(paint);},{signal:abort.signal});
  const finish=()=>{id=null;delete dialog.dataset.dragging;};header.addEventListener('pointerup',finish,{signal:abort.signal});header.addEventListener('pointercancel',finish,{signal:abort.signal});header.addEventListener('lostpointercapture',finish,{signal:abort.signal});window.addEventListener('resize',clamp,{signal:abort.signal});
  const observer=new MutationObserver(()=>{if(id===null)clamp();});observer.observe(document.documentElement,{attributes:true,attributeFilter:['style','data-ui-scale']});
- const dispose=()=>{abort.abort();observer.disconnect();cancelAnimationFrame(frame);dialog.style.removeProperty('translate');dragDisposers.delete(dialog);};dialog.addEventListener('close',dispose,{once:true});dragDisposers.set(dialog,dispose);
+ const dispose=()=>{abort.abort();observer.disconnect();cancelAnimationFrame(frame);dialog.style.removeProperty('translate');dragDisposers.delete(dialog);};dialog.addEventListener('close',dispose,{once:true});dragDisposers.set(dialog,dispose);return clamp;
 }
 HTMLDialogElement.prototype.showModal = function () {
   const header=this.querySelector<HTMLElement>('.control-dialog-head,.settings-center-head,.wb-dialog-head');
@@ -49,14 +49,14 @@ HTMLDialogElement.prototype.showModal = function () {
   }
   this.querySelectorAll('.control-dialog-actions,.wb-dialog-foot').forEach(footer=>{const buttons=[...footer.children].filter(child=>child instanceof HTMLButtonElement);buttons.sort((a,b)=>Number(a.classList.contains('btn')&&!a.classList.contains('ghost')&&!a.classList.contains('danger'))-Number(b.classList.contains('btn')&&!b.classList.contains('ghost')&&!b.classList.contains('danger'))).forEach(button=>footer.append(button));});
   nativeShow.call(this);
-  if(header&&!this.classList.contains('valuation-modal'))draggable(this,header);
+  const clamp=header&&!this.classList.contains('valuation-modal')?draggable(this,header):undefined;
   const origin = anchor((this as any)._openAnchor || (performance.now()-triggerAt<1000?triggerRect:null) || document.activeElement);
   if (origin) origins.set(this, origin);
-  if (!(this as any)._skipMotion && !quiet()) {this.style.opacity='0';(this as any)._motionFrame=requestAnimationFrame(()=>{this.style.removeProperty('opacity');if(this.open&&!closing.has(this))void expand(this,origin);});}
+  if (!(this as any)._skipMotion && !quiet()) {this.style.opacity='0';(this as any)._motionFrame=requestAnimationFrame(()=>{(this as any)._motionFrame=0;this.style.removeProperty('opacity');if(this.open&&!closing.has(this))void expand(this,origin).then(()=>clamp?.());});}
 };
 HTMLDialogElement.prototype.close = function (value?: string) {
   if (!this.open || closing.has(this)) return;
-  closing.add(this);cancelAnimationFrame((this as any)._motionFrame);this.style.removeProperty("opacity");
+  closing.add(this);cancelAnimationFrame((this as any)._motionFrame);(this as any)._motionFrame=0;this.style.removeProperty("opacity");
   const destination = anchor((this as any)._closeAnchor) || origins.get(this) || null;
   const finish = () => { closing.delete(this); if (this.open) nativeClose.call(this, value); };
   if (quiet() || (this as any)._skipMotion) finish();

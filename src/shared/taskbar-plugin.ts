@@ -1,0 +1,48 @@
+export type Filter = {
+  scope: string;
+  period: string;
+  connection: string;
+  models: string[];
+  start: string;
+  end: string;
+};
+export type Config = {
+  schema: number;
+  taskbar: {placement:string;monitor:number;offset:number;size:number;outer:string;inner:string;showTime:boolean;timeFont:number;timeColor:string;percentColor:string};
+  panel: {pinned:boolean};
+  enabled: boolean;
+  shape: "detail";
+  size: string;
+  orientation: "horizontal" | "vertical";
+  autoHide: boolean;
+  custom: { base: string; width: number; height: number; radius: number; opacity: number };
+  visual: { background:string; text:string; muted:string; chart:string; opacity:number; density:"comfortable"|"compact"; font:"system"|"mono" };
+  surface: string;
+  theme: string;
+  preset: string;
+  accent: string;
+  alwaysOnTop: boolean;
+  metrics: string[];
+  charts: string[];
+  filter: Filter;
+  position: { x: number; y: number; displayId: string } | null;
+  edge: string | null;
+  detailSize: { width: number; height: number } | null;
+};
+export type State = {
+  config: Config;
+  configRevision?:number;
+  phase: string;
+  monitorCount?: number;
+  taskbar?: {mode:string;reason?:string;x:number;y:number;width:number;height:number};
+  origin?: {x:number;y:number};
+  collapsed: boolean;
+  visible: boolean;
+  appearance: { theme: string; preset: string };
+  material: string;
+  helperError: string;
+  revealTarget?: number;
+  transitionMs?: number;
+  dataRevision?: number;
+  snapHint?: string | null;
+};

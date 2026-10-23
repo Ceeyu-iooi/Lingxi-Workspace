@@ -651,6 +651,7 @@ export async function startServer(
   app.get("/api/skills", (request) => skills.search(qs(request)));
   app.get("/api/skills/item", (request) => skills.get(qs(request).id));
   app.get("/api/skills/sources", () => ({ items: skills.sources() }));
+  app.post("/api/skills/presentation",(request)=>skills.presentation(body(request)));
   app.post("/api/skills/source", (request) => skills.source(body(request)));
   app.post("/api/skills/scan", () => skills.scan());
   app.post("/api/bills/preview", (request) =>

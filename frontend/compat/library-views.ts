@@ -1362,58 +1362,61 @@
       content = shell(
         root,
         "技能管理",
-        "查看本机各 Agent 的技能来源；所有技能操作均为只读。",
+        "集中浏览本机技能，原文件只读。",
         '<button class="btn ghost" data-sources>技能来源</button><button class="btn" data-scan>刷新索引</button>',
       );
+    content.classList.add("wb-skills");
     content.innerHTML =
-      '<div class="wb-filter-layout"><aside class="wb-filter-pane"><h3>Agent</h3><div data-agent-filters></div><h3>来源</h3><select data-kind><option value="">全部来源</option><option value="user">用户级</option><option value="project">项目级</option><option value="cache">插件缓存</option><option value="custom">自定义来源</option></select><h3>具体来源</h3><select data-root><option value="">全部目录</option></select><h3>项目</h3><select data-project><option value="">全部项目</option></select><label><input type="checkbox" data-duplicates>仅重复内容</label><p class="wb-muted">文件存在不等于技能已启用；不会运行 SKILL.md 或脚本。</p></aside><section><div class="wb-list-toolbar"><button class="btn ghost wb-filter-mobile" data-filter-toggle>筛选</button><input type="search" data-search placeholder="搜索名称、描述或正文" aria-label="搜索本地技能"><span class="wb-list-count"></span></div><p class="wb-muted" data-scan-status></p><div class="wb-card-list"></div><div class="wb-pager"><button class="btn ghost" data-prev>上一页</button><span data-page></span><button class="btn ghost" data-next>下一页</button></div><p class="wb-inline-error" role="alert"></p></section></div>';
+      '<div class="wb-filter-layout"><aside class="wb-filter-pane"><section class="wb-filter-section"><h3>按 Agent 浏览</h3><div class="wb-skill-agent-filters" data-agent-filters></div></section><section class="wb-filter-section"><h3>来源</h3><select data-kind><option value="">全部来源</option><option value="user">用户级</option><option value="project">项目级</option><option value="cache">插件缓存</option><option value="custom">自定义来源</option></select></section><section class="wb-filter-section"><h3>具体来源</h3><select data-root><option value="">全部目录</option></select></section><section class="wb-filter-section"><h3>项目</h3><select data-project><option value="">全部项目</option></select></section><label><input type="checkbox" data-duplicates>仅重复内容</label><p class="wb-muted">文件存在不等于技能已启用；不会运行 SKILL.md 或脚本。</p></aside><section><div class="wb-list-toolbar"><button class="btn ghost wb-filter-mobile" data-filter-toggle>筛选</button><input type="search" data-search placeholder="搜索中文名、原名或简介" aria-label="搜索本地技能"><span class="wb-list-count" aria-live="polite"></span><button class="btn ghost" data-reset>重置筛选</button></div><div class="wb-skill-index-bar"><span class="wb-pill">只读索引</span><p class="wb-muted" data-scan-status></p><span data-query-status role="status"></span></div><div class="wb-card-list"></div><div class="wb-pager"><button class="btn ghost" data-prev>上一页</button><span data-page></span><button class="btn ghost" data-next>下一页</button></div><p class="wb-inline-error" role="alert"></p></section></div>';
     let params = { q: "", offset: 0, limit: 40 },
       result,
       ticket = 0,
       timer,
-      dialog = null;
+      dialog = null,
+      request = null,
+      viewTicket = 0,
+      disposed = false;
     root._wbDispose = () => {
+      disposed = true; ticket++; viewTicket++; request?.abort();
       clearTimeout(timer);
       dialog?.close();
     };
     async function load() {
-      const seq = ++ticket,
-        stop = U().busy(content, "正在查询技能…");
+      if(disposed||signal?.aborted)return;
+      const seq=++ticket,query={...params};request?.abort();const own=new AbortController();request=own;
+      const cancel=()=>own.abort();signal?.addEventListener("abort",cancel,{once:true});
+      content.setAttribute("aria-busy","true");q("[data-query-status]",content).textContent=result?"正在更新…":"正在读取…";q(".wb-inline-error",content).textContent="";
+      q("[data-prev]",content).disabled=true;q("[data-next]",content).disabled=true;
       try {
-        const data = await U().request(
-          "GET",
-          "/api/skills?" + new URLSearchParams(params),
-          undefined,
-          { signal },
-        );
-        if (!current(root, owner) || seq !== ticket) return;
-        result = data;
-        paint(data);
-        if (!data.scan && !params.q) scan();
-      } catch (error) {
-        if (current(root, owner))
-          q("[role=alert]", content).textContent = error.message;
-      } finally {
-        stop();
-      }
+        const data=await U().request("GET","/api/skills?"+new URLSearchParams(query),undefined,{signal:own.signal});
+        if(disposed||!current(root,owner)||seq!==ticket)return;
+        if(query.offset>0&&query.offset>=data.total){params.offset=data.total?Math.floor((data.total-1)/40)*40:0;return load()}
+        result=data;paint(data,query);
+        if(!data.scan&&!query.q)void scan();
+      }catch(error){if(!disposed&&current(root,owner)&&seq===ticket&&error.name!=="AbortError")q(".wb-inline-error",content).textContent=(result?"保留上次结果。":"")+error.message}
+      finally{signal?.removeEventListener("abort",cancel);if(!disposed&&seq===ticket){content.removeAttribute("aria-busy");q("[data-query-status]",content).textContent="";q("[data-prev]",content).disabled=!result||result.offset===0;q("[data-next]",content).disabled=!result||result.offset+result.items.length>=result.total}}
     }
-    function paint(data) {
+    function paint(data,query=params) {
       const list = q(".wb-card-list", content);
       list.innerHTML = data.items.length
         ? data.items
             .map(
               (item) =>
-                `<article class="wb-library-card" data-skill="${e(item.id)}"><div class="wb-skill-seat"></div><div class="wb-card-bottom"><span class="wb-pill">只读</span>${item.meta.duplicateCount > 1 ? '<span class="wb-pill">重复内容 ' + item.meta.duplicateCount + " 份</span>" : ""}<span class="wb-muted">${e(item.meta.sources.map((s) => ({ user: "用户级", cache: "缓存", project: "项目", custom: "自定义" })[s.kind] || s.kind).join(" / "))}</span><div class="wb-card-actions"><button class="btn ghost" data-view>查看原文</button><button class="btn ghost" data-path>复制路径</button></div></div></article>`,
+                `<article class="wb-library-card" data-skill="${e(item.id)}"><div class="wb-skill-seat"></div><div class="wb-card-bottom">${item.meta.duplicateCount > 1 ? '<span class="wb-pill">重复内容 ' + item.meta.duplicateCount + " 份</span>" : ""}<span class="wb-muted">${e([...new Set(item.meta.sources.map((s) => ({ user: "用户级", cache: "缓存", project: "项目", custom: "自定义" })[s.kind] || s.kind))].join(" / "))}</span><div class="wb-card-actions"><button class="btn ghost" data-view>查看详情</button><button class="btn ghost" data-path>复制路径</button></div></div></article>`,
             )
             .join("")
         : '<div class="wb-empty"><strong>没有匹配的技能</strong><span>刷新索引，或检查技能来源。</span></div>';
       for (const item of data.items) {
         const card = q(`[data-skill="${item.id}"]`, list);
         window.WorkbenchReact.skillIdentity(q(".wb-skill-seat", card), {
-          title: item.title,
-          description: item.description,
+          title: item.displayTitle,
+          description: item.displayDescription,
           agents: [...new Set(item.meta.sources.map((s) => s.agent))],
         });
+        const seat=q(".wb-skill-seat",card);seat.tabIndex=0;seat.setAttribute("aria-label",item.displayTitle+"；实际名称："+item.title);
+        const tip=window.usageCharts.tooltip(seat);seat.setAttribute("aria-describedby",tip.id);
+        const show=event=>{const rect=seat.getBoundingClientRect();tip.show({primary:item.title,rows:[],date:"实际名称"},event?.clientX??rect.left+20,event?.clientY??rect.top+20)};
+        seat.onpointerenter=show;seat.onpointermove=show;seat.onpointerleave=()=>tip.hide();seat.onfocus=()=>show();seat.onblur=()=>tip.hide();
         q("[data-view]", card).onclick = () => view(item.id);
         q("[data-path]", card).onclick = async () => {
           try {
@@ -1425,11 +1428,10 @@
         };
       }
       q(".wb-list-count", content).textContent = data.total + " 项";
-      q("[data-page]", content).textContent =
-        "第 " + (Math.floor(params.offset / 40) + 1) + " 页";
-      q("[data-prev]", content).disabled = params.offset === 0;
+      q("[data-page]", content).textContent = data.total?"第 "+(Math.floor(query.offset / 40)+1)+" / "+Math.ceil(data.total/40)+" 页":"暂无结果";
+      q("[data-prev]", content).disabled = query.offset === 0;
       q("[data-next]", content).disabled =
-        params.offset + data.items.length >= data.total;
+        query.offset + data.items.length >= data.total;
       q("[data-scan-status]", content).textContent = data.scan
         ? "上次索引 " +
           new Date(data.scan.at * 1000).toLocaleString() +
@@ -1449,7 +1451,7 @@
               '<option value="' +
               e(s.id) +
               '">' +
-              e(s.name + " · " + s.kind) +
+              e(s.name + " · " + ({user:"用户级",project:"项目级",cache:"插件缓存",custom:"自定义"}[s.kind]||s.kind)) +
               "</option>",
           )
           .join("");
@@ -1462,7 +1464,7 @@
       projects.value = params.project || "";
       const agents = [...new Set(data.sources.map((s) => s.name))];
       q("[data-agent-filters]", content).innerHTML =
-        '<button class="btn ghost" data-agent="">全部 Agent</button>' +
+        `<button class="btn ghost" data-agent="" aria-pressed="${!params.agent}">全部 Agent</button>` +
         agents
           .map(
             (a) =>
@@ -1479,6 +1481,7 @@
       );
     }
     async function scan() {
+      if(disposed||signal?.aborted)return;
       const button = q("[data-scan]", root);
       if (button.disabled) return;
       button.disabled = true;
@@ -1507,42 +1510,37 @@
         if (current(root, owner)) load();
       } catch (error) {
         if (current(root, owner) && error.name !== "AbortError")
-          q("[role=alert]", content).textContent = error.message;
+          q(".wb-inline-error", content).textContent = error.message;
       } finally {
         stop();
         if (button.isConnected) button.disabled = false;
       }
     }
     async function view(id) {
-      const data = await U().request(
-        "GET",
-        "/api/skills/item?id=" + id,
-        undefined,
-        { signal },
-      );
-      const m = modal(
-        data.title,
-        '<p class="wb-muted" data-skill-meta></p><div class="wb-markdown" data-skill-body></div>',
-      );
-      dialog = m.d;
-      q("[data-skill-meta]", m.d).textContent =
-        data.meta.path +
-        " · " +
-        data.meta.status +
-        (data.meta.available === false
-          ? " · 来源已不可读，显示上次索引快照"
-          : "") +
-        (data.meta.warning ? " · " + data.meta.warning : "");
-      U().markdown(q("[data-skill-body]", m.d), data.content);
-      q("footer", m.d).innerHTML =
-        '<span>只读索引快照；不会修改技能或执行内容</span><button class="btn ghost" data-path>复制来源路径</button>';
-      q("[data-path]", m.d).onclick = () =>
-        navigator.clipboard.writeText(data.meta.path);
+      const seq=++viewTicket;
+      try{
+      const data=await U().request("GET","/api/skills/item?id="+encodeURIComponent(id),undefined,{signal});
+      if(disposed||!current(root,owner)||seq!==viewTicket)return;
+      let dirty=false,saving=false;
+      const m=modal(data.displayTitle,'<p class="wb-muted" data-skill-meta></p><details class="wb-skill-localize"><summary>中文展示</summary><form><label>中文名称<input name="title" maxlength="80" required></label><label>中文简介<textarea name="description" maxlength="320" rows="3" required></textarea></label><div><span role="status"></span><button class="btn" type="submit">保存中文展示</button></div></form></details><div class="wb-markdown" data-skill-body></div>',{close:()=>!saving&&(!dirty||confirm("放弃未保存的中文展示修改？"))});
+      dialog=m.d;root._wbUnsaved=()=>m.d.open&&(dirty||saving);
+      q("[data-skill-meta]",m.d).textContent=data.title+" · "+data.meta.path+" · "+data.meta.status+(data.meta.available===false?" · 来源不可读，显示上次快照":"")+(data.meta.warning?" · "+data.meta.warning:"");
+      U().markdown(q("[data-skill-body]",m.d),data.content);
+      const form=q("form",m.d);form.elements.title.value=data.displayTitle;form.elements.description.value=data.displayDescription;
+      form.oninput=()=>dirty=true;
+      form.onsubmit=async event=>{event.preventDefault();if(saving)return;saving=true;const button=q("button",form);button.disabled=true;
+       const snapshot=Object.fromEntries(new FormData(form));try{await U().request("POST","/api/skills/presentation",{id,...snapshot},{signal});if(!current(root,owner)||disposed||!m.d.isConnected)return;dirty=form.elements.title.value!==snapshot.title||form.elements.description.value!==snapshot.description;q("[role=status]",form).textContent=dirty?"已保存，当前修改待保存":"已保存";void load()}catch(error){if(m.d.isConnected)q("[role=status]",form).textContent=error.message}finally{saving=false;button.disabled=false}};
+      q("footer",m.d).innerHTML='<span>原文件只读</span><button class="btn ghost" data-path>复制来源路径</button>';
+      q("[data-path]",m.d).onclick=async()=>{try{await navigator.clipboard.writeText(data.meta.path);U().notify("路径已复制",{kind:"success"})}catch{U().notify("复制失败，请从详情中选择路径",{kind:"error"})}};
+      }catch(error){if(!disposed&&seq===viewTicket&&error.name!=="AbortError")q(".wb-inline-error",content).textContent=error.message}
     }
     async function sources() {
+      const seq=++viewTicket;
+      try {
       const data = await U().request("GET", "/api/skills/sources", undefined, {
         signal,
       });
+      if(disposed||!current(root,owner)||seq!==viewTicket)return;
       const m = modal(
         "技能扫描来源",
         '<div data-source-list></div><form><label class="control-field">来源名称<input name="name" required></label><label class="control-field">本机技能目录<input name="path" placeholder="C:\\Users\\…\\skills" required></label><p class="wb-inline-error" role="alert"></p><button class="btn" type="submit">登记只读来源</button></form>',
@@ -1584,12 +1582,14 @@
             text: "移除此扫描来源",
           });
           remove.onclick = async () => {
+            remove.disabled=true;try{
             await U().request("POST", "/api/skills/source", {
               id: row.id,
               delete: true,
             });
             n.remove();
             load();
+            }catch(error){q("[role=alert]",m.d).textContent=error.message}finally{remove.disabled=false}
           };
           n.append(remove);
         }
@@ -1609,6 +1609,7 @@
           q("[role=alert]", m.d).textContent = error.message;
         }
       };
+      }catch(error){if(!disposed&&error.name!=="AbortError")q(".wb-inline-error",content).textContent=error.message}
     }
     q("[data-root]", content).onchange = (ev) => {
       params.source = ev.target.value;
@@ -1623,14 +1624,16 @@
     q("[data-scan]", root).onclick = scan;
     q("[data-sources]", root).onclick = sources;
     q("[data-search]", content).oninput = (ev) => {
+      ticket++;request?.abort();
       params.q = ev.target.value;
       params.offset = 0;
       clearTimeout(timer);
       timer = setTimeout(load, 180);
     };
     q("[data-kind]", content).onchange = (ev) => {
-      params.source = ev.target.value;
+      params.kind = ev.target.value;
       params.offset = 0;
+      params.source="";q("[data-root]",content).value="";
       load();
     };
     q("[data-duplicates]", content).onchange = (ev) => {
@@ -1639,13 +1642,14 @@
       load();
     };
     q("[data-prev]", content).onclick = () => {
-      params.offset = Math.max(0, params.offset - 40);
+      params.offset = Math.max(0, (result?.offset||0) - 40);
       load();
     };
     q("[data-next]", content).onclick = () => {
-      params.offset += 40;
+      params.offset = Math.min((result?.offset||0)+40,Math.max(0,Math.floor(((result?.total||0)-1)/40)*40));
       load();
     };
+    q("[data-reset]",content).onclick=()=>{params={q:"",offset:0,limit:40};q("[data-search]",content).value="";q("[data-kind]",content).value="";q("[data-duplicates]",content).checked=false;clearTimeout(timer);void load()};
     q("[data-filter-toggle]", content).onclick = () => {
       const pane = q(".wb-filter-pane", content);
       pane.dataset.open = pane.dataset.open === "true" ? "false" : "true";

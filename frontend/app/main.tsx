@@ -1,3 +1,4 @@
+import "./taskbar-settings-host";
 import "./startup";
 
 import "./motion";
