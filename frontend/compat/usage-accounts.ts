@@ -262,7 +262,7 @@ import {quotaWindows as readQuotaWindows} from "../../src/shared/usage-presentat
         try{state.liveAccount=await call('GET','/api/codex/account');if(grid.isConnected)patchInline(state);}catch(error){if(state.root.isConnected)state.root.querySelector('[data-codex-error]').textContent=error.message;}finally{state.accountPending=false;if(grid.isConnected&&(state.liveAccount?.pending||state.liveAccount?.refreshing)){clearTimeout(state.accountPoll);state.accountPoll=setTimeout(()=>{if(grid.isConnected)grid.querySelector("[data-codex-refresh]")?.click();},600);}}
       };
       grid.querySelectorAll('[data-quota-slot]').forEach(bindQuota);
-      window.WorkbenchReact.slideCommit(grid.querySelector('[data-slide]'),{enabled:false,compact:true,onConfirm:async()=>{const features=await call('GET','/api/features');return window.AgentValuation.toggle('codex',features.codexValuationEnabled===true);}});
+
     }
     if(state.liveAccount&&!state.liveAccount.stale){grid.querySelectorAll("[data-quota-slot]").forEach(row=>{if(windows.some(w=>w.slot===row.dataset.quotaSlot))return;row.dataset.quotaKnown="false";row.querySelector("[data-quota-percent]").textContent="--";row.querySelector("[data-quota-reset]").textContent="重置 --";row.querySelector("progress").value=0;tickQuota(row);});}
     windows.forEach(w=>patchQuota(grid.querySelector('[data-quota-slot="'+w.slot+'"]'),w,state.animateEntry));

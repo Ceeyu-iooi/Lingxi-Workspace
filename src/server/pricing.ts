@@ -5,51 +5,48 @@ import { Monitor, canonical, iso } from "./monitor.ts";
 import { hash, parseExact, encode, uid, type JsonObject } from "./profile.ts";
 import { Control } from "./control.ts";
 import { shanghaiDay, addDays } from "./usage-summary.ts";
+import { priceIntegrityIssue } from './price-integrity.ts';
+import {collectRegistry,REGISTRY} from './price-source.ts';
+import {Agent as HttpsAgent, get as httpsGet} from 'node:https';
+import {HttpsProxyAgent} from 'https-proxy-agent';
 
-const RADAR = "https://modelradar.cn/data/",
+const VALUATION_POLICY = 'incremental-codex-v5-versioned-registry';
+
+const RADAR = REGISTRY + "/",
   FX_URL =
     "https://www.bankofcanada.ca/valet/observations/FXUSDCAD,FXCNYCAD/json",
-  SCENARIO = "ModelRadar/native-currency/text";
+  SCENARIO = "Portkey/versioned-registry/text";
 type Loader = (
   url: string,
   etag?: string,
 ) => Promise<{ body: string | null; etag: string }>;
-async function loadPrice(url: string, etag = "") {
-  if (!["modelradar.cn", "www.bankofcanada.ca"].includes(new URL(url).hostname))
+const priceTransport = new HttpsAgent({keepAlive:true,maxSockets:4,maxCachedSessions:0});
+let priceProxy:HttpsProxyAgent<string>|undefined;
+function publicTransport(host:string){
+  const proxy=process.env.LINGXI_PRICE_PROXY||process.env.https_proxy||process.env.HTTPS_PROXY;
+  const excluded=(process.env.no_proxy||process.env.NO_PROXY||'').split(',').some(rule=>{const name=rule.trim().toLowerCase().replace(/:443$/,'');return name==='*'||name===host||name.startsWith('.')&&host.endsWith(name)||name.startsWith('*.')&&host.endsWith(name.slice(1));});
+  return proxy&&!excluded?(priceProxy ||=new HttpsProxyAgent(proxy,{keepAlive:true,maxSockets:4})):priceTransport;
+}
+export async function loadPrice(url: string, etag = "") {
+  if (!["raw.githubusercontent.com", "api.github.com", "configs.portkey.ai", "ai.cloudprice.net", "www.bankofcanada.ca"].includes(new URL(url).hostname))
     throw new Error("价格来源不受支持");
-  const response = await fetch(url, {
-    redirect: "error",
-    signal: AbortSignal.timeout(12000),
-    headers: {
-      "User-Agent": "Lingxi-Usage",
-      Accept: "application/json",
-      ...(etag ? { "If-None-Match": etag } : {}),
-    },
+  /* Public idempotent GET only. Keep TLS verification and avoid broken resumed
+     handshakes seen on some networks. Never retry a model/credential request. */
+  const attempt=()=>new Promise<{body:string|null,etag:string}>((resolve,reject)=>{
+    const request=httpsGet(url,{agent:publicTransport(new URL(url).hostname),signal:AbortSignal.timeout(20000),headers:{'User-Agent':'Lingxi-Usage',Accept:'application/json',...(etag?{'If-None-Match':etag}:{})}},response=>{
+      if(response.statusCode===304){response.resume();resolve({body:null,etag});return;}
+      if(response.statusCode!==200){response.resume();reject(Object.assign(Error('价格网络读取失败'),{status:response.statusCode}));return;}
+      const chunks:Buffer[]=[];let bytes=0;
+      response.on('data',(chunk:Buffer)=>{bytes+=chunk.length;if(bytes>12*1024*1024){response.destroy(Error('价格响应过大'));return;}chunks.push(chunk);});
+      response.on('end',()=>resolve({body:Buffer.concat(chunks).toString('utf8'),etag:String(response.headers.etag||'')}));
+      response.on('error',reject);
+    });request.on('error',reject);
   });
-  if (response.status === 304) return { body: null, etag };
-  if (!response.ok)
-    throw Object.assign(new Error("价格网络读取失败"), {
-      status: response.status,
-    });
-  const parts: Uint8Array[] = [],
-    reader = response.body!.getReader();
-  let size = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.length;
-      if (size > 4 * 1024 * 1024) throw new Error("价格响应过大");
-      parts.push(value);
-    }
-  } catch (error) {
-    await reader.cancel();
-    throw error;
+  try{return await attempt();}catch(error:any){
+    if(error.status)throw Error(error.status===429?'公开价格接口限流，请稍后刷新；缓存保留':'公开价格接口读取失败；缓存保留');
+    if(/ECONNRESET|ETIMEDOUT|EPIPE|ABORT_ERR/.test(String(error.code)))try{return await attempt();}catch{}
+    throw Error('公开价格网络连接失败，请检查网络后重试；缓存保留');
   }
-  return {
-    body: Buffer.concat(parts).toString("utf8"),
-    etag: response.headers.get("etag") || "",
-  };
 }
 export function validatePrices(body: string, expected?: string) {
   const data = parseExact(body),
@@ -74,7 +71,7 @@ export function validatePrices(body: string, expected?: string) {
     (expected && expected !== day)
   )
     throw new Error("价格日期不正确");
-  if (!Array.isArray(data.models) || data.models.length > 10000)
+  if (!Array.isArray(data.models) || data.models.length > 20000)
     throw new Error("模型目录不正确");
   const seen = new Set<string>(),
     models: JsonObject[] = [];
@@ -114,7 +111,7 @@ export function validatePrices(body: string, expected?: string) {
     const source =
         typeof r.sourceUrl === "string" && r.sourceUrl.startsWith("https://")
           ? r.sourceUrl
-          : "https://modelradar.cn/api",
+          : REGISTRY,
       notes = String(r.pricingNotes || "").slice(0, 2000),
       unsupported =
         /阶梯|分时|高峰|低峰|batch|priority|regional|audio|image|tts|超过|above|tiered|threshold/i.test(
@@ -133,11 +130,16 @@ export function validatePrices(body: string, expected?: string) {
       quote,
       source,
       sourceType: r.sourceType ?? null,
+      integrityIssue: priceIntegrityIssue(r, quote),
+      dimensions: Array.isArray(r.dimensions)?r.dimensions:[],
+      detailId:r.detailId??null,
+      currentSource:r.currentSource??null,
+      snapshotAt:r.snapshotAt??null,
       notes,
-      unsupported,
+      unsupported:unsupported||r.registryComplex===true,
     });
   }
-  return { day, models };
+  return { day, models, coverage:data.coverage??null, scope:data.scope??null };
 }
 // Bound retained lookup data by encoded size as well as entry count. Empty
 // misses consume a budget too; unknown historical dates cannot grow forever.
@@ -175,7 +177,9 @@ export class Pricing {
     const row=this.monitor.profile.db.prepare("SELECT * FROM radar_days WHERE day=?").get(day) as JsonObject|undefined;
     if(!row){const models=new Map<string,JsonObject>();this.dayCache.set(day,{digest:"",bytes:128,models});this.dayBytes+=128;this.trimDays();return models;}
     const old=this.dayCache.get(day);if(old && old.digest===row.digest){this.dayCache.delete(day);this.dayCache.set(day,old);return old.models;}
-    const body=this.body(row.body),models=new Map<string,JsonObject>(validatePrices(body,day).models.map(price=>[price.model,{...price,day,digest:row.digest,observed:row.observed,snapshotSource:row.source}]));
+    // Valuation is Codex/OpenAI only. Keep its small lookup hot; retaining the
+    // entire multi-provider catalogue would evict it on every consumption row.
+    const body=this.body(row.body),models=new Map<string,JsonObject>(validatePrices(body,day).models.filter(price=>price.provider.toLowerCase()==='openai').map(price=>[price.model,{...price,day,digest:row.digest,observed:row.observed,snapshotSource:row.source}]));
     if(old)this.dayBytes-=old.bytes;const bytes=Buffer.byteLength(encode([...models]))*2+128;this.dayCache.set(day,{digest:row.digest,bytes,models});this.dayBytes+=bytes;
     this.trimDays();
     return models;
@@ -185,7 +189,7 @@ export class Pricing {
   resources(){return {cacheBytes:this.dayBytes+this.proofBytes+this.fxCache.allocatedBytes+this.formulaCache.allocatedBytes+this.rawCache.allocatedBytes,budgetBytes:16*1024*1024};}
   constructor(readonly monitor: Monitor) {
     monitor.profile.db.exec(
-      `CREATE TABLE IF NOT EXISTS radar_days(day TEXT PRIMARY KEY,body TEXT,digest TEXT,source TEXT,observed TEXT);CREATE TABLE IF NOT EXISTS radar_meta(id INTEGER PRIMARY KEY,version INTEGER);INSERT OR IGNORE INTO radar_meta VALUES(1,0);CREATE TABLE IF NOT EXISTS radar_fetches(url TEXT PRIMARY KEY,etag TEXT,attempt REAL,success REAL,failures INTEGER,error TEXT);CREATE TABLE IF NOT EXISTS value_fx(day TEXT PRIMARY KEY,usd_cad TEXT,cny_cad TEXT,source TEXT,observed TEXT,digest TEXT);CREATE TABLE IF NOT EXISTS radar_values(owner TEXT,id TEXT,currency TEXT,fingerprint TEXT,result TEXT,PRIMARY KEY(owner,id,currency));CREATE TABLE IF NOT EXISTS radar_observations(url TEXT,digest TEXT,body TEXT,observed TEXT,PRIMARY KEY(url,digest));CREATE TABLE IF NOT EXISTS evidence_blobs(digest TEXT PRIMARY KEY,codec TEXT NOT NULL,raw_size INTEGER NOT NULL,body BLOB NOT NULL);`,
+      `CREATE TABLE IF NOT EXISTS registry_file_cache(blob TEXT PRIMARY KEY,body TEXT,source TEXT);CREATE TABLE IF NOT EXISTS radar_days(day TEXT PRIMARY KEY,body TEXT,digest TEXT,source TEXT,observed TEXT);CREATE TABLE IF NOT EXISTS radar_meta(id INTEGER PRIMARY KEY,version INTEGER);INSERT OR IGNORE INTO radar_meta VALUES(1,0);CREATE TABLE IF NOT EXISTS radar_fetches(url TEXT PRIMARY KEY,etag TEXT,attempt REAL,success REAL,failures INTEGER,error TEXT);CREATE TABLE IF NOT EXISTS value_fx(day TEXT PRIMARY KEY,usd_cad TEXT,cny_cad TEXT,source TEXT,observed TEXT,digest TEXT);CREATE TABLE IF NOT EXISTS radar_values(owner TEXT,id TEXT,currency TEXT,fingerprint TEXT,result TEXT,PRIMARY KEY(owner,id,currency));CREATE TABLE IF NOT EXISTS radar_observations(url TEXT,digest TEXT,body TEXT,observed TEXT,PRIMARY KEY(url,digest));CREATE TABLE IF NOT EXISTS evidence_blobs(digest TEXT PRIMARY KEY,codec TEXT NOT NULL,raw_size INTEGER NOT NULL,body BLOB NOT NULL);`,
     );
     const db=monitor.profile.db;db.exec("CREATE TABLE IF NOT EXISTS valuation_dirty(owner TEXT,id TEXT,PRIMARY KEY(owner,id));CREATE TABLE IF NOT EXISTS valuation_rule(owner TEXT PRIMARY KEY,rule TEXT);");
     for(const op of ['INSERT','UPDATE']){db.exec('DROP TRIGGER IF EXISTS value_event_'+op.toLowerCase());db.exec(`CREATE TRIGGER IF NOT EXISTS value_event_${op.toLowerCase()} AFTER ${op} ON events WHEN NEW.source IN ('codex') BEGIN INSERT OR IGNORE INTO valuation_dirty VALUES(NEW.owner,NEW.id); END;`);}
@@ -197,12 +201,54 @@ export class Pricing {
       const old=db.prepare("SELECT sql FROM sqlite_schema WHERE type='trigger' AND name=?").get(name);
       if(old?.sql!==sql){db.exec('DROP TRIGGER IF EXISTS '+name);db.exec(sql);}
     }
-    const rule=db.prepare('SELECT rule FROM valuation_rule WHERE owner=?').get(monitor.profile.owner) as JsonObject|undefined;if(rule?.rule!=='incremental-codex-v3'){monitor.profile.transaction(()=>{db.prepare("DELETE FROM radar_values WHERE owner=? AND id IN (SELECT id FROM events WHERE owner=? AND source IN ('zcode','dsh'))").run(monitor.profile.owner,monitor.profile.owner);db.prepare("DELETE FROM valuation_dirty WHERE owner=? AND id IN (SELECT id FROM events WHERE owner=? AND source IN ('zcode','dsh'))").run(monitor.profile.owner,monitor.profile.owner);});db.prepare("INSERT OR IGNORE INTO valuation_dirty SELECT owner,id FROM events WHERE owner=? AND source IN ('codex')").run(monitor.profile.owner);db.prepare('INSERT OR REPLACE INTO valuation_rule VALUES(?,?)').run(monitor.profile.owner,'incremental-v2');}
+    const rule=db.prepare('SELECT rule FROM valuation_rule WHERE owner=?').get(monitor.profile.owner) as JsonObject|undefined;
+    if(rule?.rule!==VALUATION_POLICY) monitor.profile.transaction(()=>{
+      db.prepare("DELETE FROM radar_values WHERE owner=? AND id IN (SELECT id FROM events WHERE owner=? AND source IN ('zcode','dsh'))").run(monitor.profile.owner,monitor.profile.owner);
+      db.prepare("DELETE FROM valuation_dirty WHERE owner=? AND id IN (SELECT id FROM events WHERE owner=? AND source IN ('zcode','dsh'))").run(monitor.profile.owner,monitor.profile.owner);
+      // Existing daily cubes must not serve poisoned cached amounts until the
+      // next explicit network refresh. Invalidate only affected local results.
+      this.quarantineCachedPrices();
+      db.prepare("INSERT OR IGNORE INTO valuation_dirty SELECT owner,id FROM events WHERE owner=? AND source='codex'").run(monitor.profile.owner);
+      db.prepare('INSERT OR REPLACE INTO valuation_rule VALUES(?,?)').run(monitor.profile.owner,VALUATION_POLICY);
+    });
+  }
+  private quarantineCachedPrices(day?: string) {
+    const p=this.monitor.profile, db=p.db;
+    this.refreshLookups();
+    const groups=db.prepare("SELECT DISTINCT substr(e.at,1,10) day,e.model FROM events e WHERE e.owner=? AND e.source='codex' AND EXISTS(SELECT 1 FROM radar_values v WHERE v.owner=e.owner AND v.id=e.id)"+(day?' AND e.at>=? AND e.at<?':'')+' ORDER BY day,e.model').all(...(day?[p.owner,day+'T00:00:00',addDays(day,1)+'T00:00:00']:[p.owner]));
+    for(const group of groups) {
+      const model=String(group.model).replace(/^chatgpt-web\//,''), price=this.lookupDay(group.day).get(model);
+      if(!price || price.sourceType==='registry'&&!price.integrityIssue&&!price.unsupported&&['USD','CNY'].includes(price.currency)) continue;
+      const compact=db.usageStorage;
+      const select=compact?
+        'SELECT '+compactEventProjection()+',e.owner storage_owner,e.id storage_id FROM compact_events e WHERE e.owner=(SELECT k FROM usage_strings WHERE value=?) AND e.source=(SELECT k FROM usage_strings WHERE value=\'codex\') AND e.model=(SELECT k FROM usage_strings WHERE value=?) AND e.at>=? AND e.at<? AND EXISTS(SELECT 1 FROM compact_valuations v WHERE v.owner=e.owner AND v.id=e.id) ORDER BY e.at':
+        "SELECT e.* FROM events e WHERE e.owner=? AND e.source='codex' AND e.model=? AND e.at>=? AND e.at<? AND EXISTS(SELECT 1 FROM radar_values v WHERE v.owner=e.owner AND v.id=e.id) ORDER BY e.at";
+      let cursor:{at:string;id:any}|undefined;
+      while(true) {
+        const sql=select.replace(' ORDER BY e.at', (cursor?' AND (e.at>? OR (e.at=? AND e.id>?))':'')+' ORDER BY e.at,e.id LIMIT 256');
+        const rows=db.prepare(sql).safeIntegers().all(p.owner,group.model,group.day+'T00:00:00',addDays(group.day,1)+'T00:00:00',...(cursor?[cursor.at,cursor.at,cursor.id]:[]));
+        if(!rows.length) break;
+        const last=rows.at(-1)!;cursor={at:last.at,id:compact?last.storage_id:last.id};
+        const batch=rows.map(row=>compact?{...row,_storageKeys:{owner:row.storage_owner,id:row.storage_id}}:row);
+        if(!compact) { for(const currency of ['USD','CNY']) this.rows(batch,currency); continue; }
+        this.preparedUpdates=new Map();
+        try {
+          for(const currency of ['USD','CNY']) this.rows(batch,currency);
+          const updates=[...this.preparedUpdates.values()];
+          writeCompactValuationBatch(db,p.owner,updates);
+          const dirty=db.prepare('INSERT OR IGNORE INTO usage_dirty VALUES(?,?,?)');
+          for(const row of updates) dirty.run(p.owner,row.source,row.day);
+        } finally { this.preparedUpdates=null; }
+      }
+    }
+  }
+  private refreshLookups(version=this.version()) {
+    if(this.lookupVersion!==version){this.lookupVersion=version;this.dayCache.clear();this.dayBytes=0;this.fxCache.clear();this.formulaCache.clear();}
   }
   store(body: string) {
     const cached=this.proofCache.get(body);if(cached)return cached;
     const raw = Buffer.from(body);
-    if (raw.length > 4 * 1024 * 1024) throw new Error("证据超过保存限制");
+    if (raw.length > 12 * 1024 * 1024) throw new Error("证据超过保存限制");
     const digest = hash(raw);
     if(!this.monitor.profile.db.prepare('SELECT 1 FROM evidence_blobs WHERE digest=?').get(digest))this.monitor.profile.db
       .prepare("INSERT OR IGNORE INTO evidence_blobs VALUES(?,?,?,?)")
@@ -219,7 +265,7 @@ export class Pricing {
       !row ||
       row.codec !== "zlib" ||
       row.raw_size < 0 ||
-      row.raw_size > 4 * 1024 * 1024
+      row.raw_size > 12 * 1024 * 1024
     )
       throw new Error("压缩证据不存在或结构错误");
     let raw: Buffer;
@@ -294,7 +340,7 @@ export class Pricing {
     return {
       experimental: true,
       mode: SCENARIO,
-      source: RADAR + "models.json",
+      source: REGISTRY,
       agentCalculationEnabled:
         process.env.WORKBENCH_AGENT_VALUE_ENABLED === "1",
       prices: intervals,
@@ -303,7 +349,7 @@ export class Pricing {
       refreshing: this.refreshing,
       task: { ...this.task },
       version: index.version,
-      assumptions: "ModelRadar 当日原币文本 Token 参考等价值；不是实际账单",
+      assumptions: "Portkey 公开目录的版本化快照参考等价值；不是实际账单或官方完整历史",
     };
   }
   sync(
@@ -311,6 +357,7 @@ export class Pricing {
     end: string,
     options: {
       rows?: JsonObject[];
+      catalogDate?: string;
       scope?: string;
       loader?: Loader;
       force?: boolean;
@@ -335,6 +382,7 @@ export class Pricing {
     end: string,
     options: {
       rows?: JsonObject[];
+      catalogDate?: string;
       scope?: string;
       loader?: Loader;
       force?: boolean;
@@ -351,155 +399,57 @@ export class Pricing {
       (!options.rows && (Date.parse(end) - Date.parse(start)) / 86400000 > 1096)
     )
       throw new Error("价格日期范围不正确，不能查询未来");
-    const p = this.monitor.profile,
-      owner = p.owner,
-      db = p.db,
-      rows=options.rows||this.requirements(options.scope),
-      used=new Set<string>(),required=new Map<string,Set<string>>(),known=new Map<string,Set<string>|null>(),
-      prior = new Map(
-        (db.prepare("SELECT * FROM radar_fetches").all() as JsonObject[]).map(
-          (r) => [r.url, r],
-        ),
-      );
-    for (const row of rows) {
-      const day = new Date(row.at).toISOString().slice(0, 10);
-      for (const d of [day, addDays(day, -1)]) {
-        if (day >= start && day <= end) used.add(d);
-        (required.get(d) || required.set(d, new Set()).get(d)!).add(
-          String(row.model).replace(/^chatgpt-web\//, ""),
-        );
+    const p=this.monitor.profile,owner=p.owner,db=p.db,rows=options.catalogDate?[]:options.rows||this.requirements(options.scope);
+    const used=new Set<string>();
+    for(const row of rows){const day=new Date(row.at).toISOString().slice(0,10);if(day>=start&&day<=end){used.add(day);used.add(addDays(day,-1));}}
+    // Catalogue sync without consumption still supports an explicitly selected date.
+    if(!rows.length){used.add(start);used.add(end);}
+    const observed=iso(),network=options.loader||loadPrice;
+    const loader:Loader=async(url,etag)=>{
+      if(/^https:\/\/raw\.githubusercontent\.com\/Portkey-AI\/models\/[a-f0-9]{40}\//.test(url)){
+        const cached=db.prepare('SELECT body FROM radar_observations WHERE url=? ORDER BY observed DESC LIMIT 1').get(url) as JsonObject|undefined;
+        if(cached)return {body:this.body(cached.body),etag:''};
       }
+      return network(url,etag);
+    };
+    const check=()=>{options.check?.();if(owner!==p.owner)throw Error('Profile 已切换');};
+    const evidence=(url:string,body:string)=>{check();p.transaction(()=>db.prepare('INSERT OR IGNORE INTO radar_observations VALUES(?,?,?,?)').run(url,hash(body),this.store(body),observed));};
+    const registry=await collectRegistry({days:[...used],loader,evidence,check,progress:options.progress,catalogDate:options.catalogDate,
+      cacheRead:blob=>{const r=db.prepare('SELECT * FROM registry_file_cache WHERE blob=?').get(blob) as JsonObject|undefined;return r?{raw:this.body(r.body),source:r.source}:null;},
+      cacheWrite:(blob,raw,source)=>{check();db.prepare('INSERT OR REPLACE INTO registry_file_cache VALUES(?,?,?)').run(blob,this.store(raw),source);}});
+    const errors=registry.errors,gaps=registry.gaps;
+    let checked=registry.snapshots.length,changed=0;
+    for(const snapshot of registry.snapshots){
+      check();validatePrices(snapshot.body,snapshot.day);
+      const prior=db.prepare('SELECT * FROM radar_days WHERE day=?').get(snapshot.day) as JsonObject|undefined;
+      if(prior){
+        const incoming=parseExact(snapshot.body),stored=parseExact(this.body(prior.body));
+        if(incoming.scope==='codex_openai'&&stored.scope==='provider_catalog'){
+          stored.models=[...stored.models.filter((r:JsonObject)=>r.provider!=='openai'),...incoming.models].sort((a:JsonObject,b:JsonObject)=>String(a.id).localeCompare(String(b.id),'en'));
+          snapshot.body=encode(stored);snapshot.source=prior.source;
+        }else if(incoming.scope==='provider_catalog'&&incoming.coverage?.gaps?.length){
+          const failed=new Set(incoming.coverage.gaps.map((g:JsonObject)=>g.provider).filter(Boolean));
+          const cloudFailed=incoming.coverage.gaps.some((g:JsonObject)=>g.error==='current_catalog_unavailable'),ids=new Set(incoming.models.map((r:JsonObject)=>r.id));
+          const retained=stored.models.filter((r:JsonObject)=>!ids.has(r.id)&&(failed.has(r.provider)||cloudFailed&&r.sourceType==='current_catalog'));
+          incoming.models.push(...retained.map((r:JsonObject)=>({...r,registryComplex:true,pricingNotes:String(r.pricingNotes||'')+' 本次来源读取失败，保留此前同日证据，仅供查询。'})));
+          incoming.models.sort((a:JsonObject,b:JsonObject)=>String(a.id).localeCompare(String(b.id),'en'));
+          incoming.coverage.retainedModels=retained.length;snapshot.body=encode(incoming);
+        }
+      }
+      const digest=hash(snapshot.body);
+      if(prior?.digest===digest)continue;
+      p.transaction(()=>{check();db.prepare('INSERT OR REPLACE INTO radar_days VALUES(?,?,?,?,?)').run(snapshot.day,this.store(snapshot.body),digest,snapshot.source,observed);db.prepare('UPDATE radar_meta SET version=version+1 WHERE id=1').run();this.quarantineCachedPrices(snapshot.day);});
+      changed++;
     }
-    const incomplete=(day:string)=>{
-      if(!known.has(day)){const row=db.prepare('SELECT body FROM radar_days WHERE day=?').get(day) as JsonObject|undefined;try{known.set(day,row?new Set(validatePrices(this.body(row.body),day).models.filter(m=>required.get(day)?.has(m.model)).map(m=>m.model)):null);}catch{known.set(day,null);}}
-      const available=known.get(day);return !available||[...(required.get(day)||[])].some(model=>!available.has(model));
-    };
-    const urls = [
-        RADAR + "models.json",
-        RADAR + "changelog.json",
-        ...[...used]
-          .sort()
-          .filter(incomplete)
-          .map((day) => RADAR + "history/" + day + ".json"),
-      ],
-      errors: JsonObject[] = [],
-      gaps: JsonObject[] = [],
-      observed = iso();
-    let checked = 0,
-      changed = 0;
-    const loader = options.loader || loadPrice;
-    let position = 0,
-      completed = 0;
-    const persist=(response:JsonObject)=>{options.check?.();if(owner!==p.owner)throw Error('Profile 已切换');p.transaction(()=>{const before=changed;
-        checked++;
-        const old = prior.get(response.url) || {},
-          failed = !!response.error;
-        db.prepare(
-          "INSERT OR REPLACE INTO radar_fetches VALUES(?,?,?,?,?,?)",
-        ).run(
-          response.url,
-          response.etag,
-          Date.now() / 1000,
-          failed ? old.success || 0 : Date.now() / 1000,
-          failed ? (old.failures || 0) + 1 : 0,
-          response.error || "",
-        );
-        if (failed) {
-          (String(response.error).startsWith("snapshot_") ? gaps : errors).push(
-            { source: response.url, error: response.error },
-          );
-          return;
-        }
-        if (response.body === null) return;
-        const digest = hash(response.body),
-          reference = this.store(response.body);
-        db.prepare(
-          "INSERT OR IGNORE INTO radar_observations VALUES(?,?,?,?)",
-        ).run(response.url, digest, reference, observed);
-        if (response.parsed) {
-          const day = response.parsed.day,
-            previous = db
-              .prepare("SELECT digest FROM radar_days WHERE day=?")
-              .get(day) as JsonObject | undefined;
-          if (!previous || previous.digest !== digest) {
-            db.prepare(
-              "INSERT OR REPLACE INTO radar_days VALUES(?,?,?,?,?)",
-            ).run(day, reference, digest, response.url, observed);
-            changed++;
-          }
-        }
-      if(changed>before)db.prepare('UPDATE radar_meta SET version=version+1 WHERE id=1').run();
-    });};
-    const worker = async () => {
-      while (position < urls.length) {
-        const url = urls[position++];
-        options.check?.();
-        const old = prior.get(url) || {},
-          delay = old.failures
-            ? Math.min(86400, 3600 * 2 ** Math.min(old.failures, 4))
-            : 3600;
-        if (
-          !options.force &&
-          !options.loader &&
-          Date.now() / 1000 - (old.attempt || 0) < delay
-        ) {
-          options.progress?.({
-            phase: "prices",
-            completed: ++completed,
-            total: urls.length,
-          });
-          continue;
-        }
-        let response: JsonObject;
-        try {
-          const result = await loader(url, old.etag || ""),
-            body = result.body;
-          let parsed: ReturnType<typeof validatePrices> | null = null;
-          if (body !== null) {
-            if (url.endsWith("changelog.json")) {
-              if (!Array.isArray(parseExact(body).history))
-                throw new Error("变更日志不正确");
-            } else
-              try {
-                parsed = validatePrices(
-                  body,
-                  url.includes("/history/")
-                    ? url.split("/").at(-1)!.slice(0, -5)
-                    : undefined,
-                );
-              } catch (error: any) {
-                error.priceValidation = true;
-                throw error;
-              }
-          }
-          response = { url, body, etag: result.etag, parsed, error: null };
-        } catch (error: any) {
-          response = {
-            url,
-            body: null,
-            etag: old.etag || "",
-            parsed: null,
-            error:
-              url.includes("/history/") && error.status === 404
-                ? "snapshot_unavailable"
-                : url.includes("/history/") && error.priceValidation
-                  ? "snapshot_invalid"
-                  : error.priceValidation
-                    ? "模型目录结构不正确"
-                    : "价格读取失败，未回填历史",
-          };
-        }
-        persist(response);
-        options.progress?.({
-          phase: "prices",
-          completed: ++completed,
-          total: urls.length,
-        });
-      }
-    };
-    await Promise.all(Array.from({ length: Math.min(4, urls.length) }, worker));
-    options.check?.();
-    if (owner !== p.owner) throw new Error("Profile 已切换");
+    this.refreshLookups();
+    const missing=new Set<string>();
+    for(const row of rows){
+      const day=new Date(row.at).toISOString().slice(0,10),model=String(row.model||'').replace(/^chatgpt-web\//,''),key=day+':'+model;
+      if(day<start||day>end||missing.has(key))continue;missing.add(key);
+      const price=this.lookupDay(day).get(model),error=!price?'missing_historical_price':price.integrityIssue?'unverified_price_columns':price.unsupported?'unsupported_pricing_rules':null;
+      if(error)gaps.push({day,model,error});
+    }
+    check();
     let fxDays = 0;
     try {
       options.check?.();
@@ -580,7 +530,7 @@ export class Pricing {
     };
   }
   evaluate(row: JsonObject, raw: JsonObject | undefined, currency: string, version=this.version()) {
-    if(this.lookupVersion!==version){this.lookupVersion=version;this.dayCache.clear();this.dayBytes=0;this.fxCache.clear();this.formulaCache.clear();}
+    this.refreshLookups(version);
     const day = new Date(row.at).toISOString().slice(0, 10),
       model = String(row.model).replace(/^chatgpt-web\//, ""),
       price = this.lookupDay(day).get(model),
@@ -593,12 +543,17 @@ export class Pricing {
         valueVersion: version,
       });
     if (!price) return fail("missing_historical_price");
-    if (price.sourceType !== "provider") return fail("fallback_price");
+    if (price.integrityIssue) return fail('unverified_price_columns', {
+      model, priceDate: day, digest: price.digest, source: price.source,
+      snapshotSource: price.snapshotSource, quote: price.quote,
+      integrityIssue: price.integrityIssue,
+    });
+    if (price.sourceType !== "registry") return fail("fallback_price");
     if (price.unsupported || !["USD", "CNY"].includes(price.currency))
       return fail("unsupported_pricing_rules");
     const previous = this.lookupDay(addDays(day,-1)).get(model);
     if (
-      previous &&
+      previous && !previous.integrityIssue &&
       canonical([previous.quote, previous.currency]) !==
         canonical([price.quote, price.currency])
     )
@@ -709,15 +664,15 @@ export class Pricing {
   rows(rows: JsonObject[], currency = 'USD', readonly = false, includeProof = false) {
     if(!['USD','CNY'].includes(currency))throw new Error('等价值币种须为 USD 或 CNY');
     const p=this.monitor.profile,db=p.db,read=db.prepare('SELECT fingerprint,result FROM radar_values WHERE owner=? AND id=? AND currency=?'),codex=db.prepare('SELECT raw FROM codex_evidence WHERE owner=? AND id=? AND verified=1'),agent=db.prepare('SELECT raw FROM agent_evidence WHERE owner=? AND id=? AND verified=1'),save=db.prepare('INSERT OR REPLACE INTO radar_values VALUES(?,?,?,?,?)');
-    const version=this.version();if(this.lookupVersion!==version){this.lookupVersion=version;this.dayCache.clear();this.dayBytes=0;this.fxCache.clear();this.formulaCache.clear();}
+    const version=this.version();this.refreshLookups(version);
     const updates:JsonObject[]=[];
     const result=rows.map(row=>{
       const keys=row._storageKeys,name=currency.toLowerCase();
       const old=keys?db.prepare('SELECT lower(hex('+name+'_fingerprint)) fingerprint,'+name+'_payload payload FROM compact_valuations WHERE owner=? AND id=?').get(keys.owner,keys.id):read.get(p.owner,row.id,currency) as JsonObject|undefined;
-      const rawText=keys?db.prepare('SELECT lingxi_read_payload(p.delta,p.pack,p.ordinal,'+(row.source==='codex'?4:0)+') raw FROM compact_'+(row.source==='codex'?'codex_evidence':'agent_evidence')+' e JOIN usage_payloads p ON p.k=e.payload WHERE e.owner=? AND e.id=? AND e.verified=1').get(keys.owner,keys.id)?.raw:((row.source==='codex'?codex:agent).get(p.owner,row.id) as JsonObject|undefined)?.raw;
-      let raw=rawText?this.rawCache.get(rawText):undefined;if(rawText&&!raw){raw=parseExact(rawText);if(rawText.length<8000)this.rawCache.set(rawText,raw!);}
       const day=new Date(row.at).toISOString().slice(0,10),model=String(row.model).replace(/^chatgpt-web\//,''),price=this.lookupDay(day).get(model),previous=this.lookupDay(addDays(day,-1)).get(model),fx=price?.currency===currency?null:this.lookupFx(row.at);
-      const signature=canonical(['incremental-v2',row.source,model,day,shanghaiDay(row.at),row.input,row.output,row.cached,row.total,raw?[raw.model,raw.last_token_usage&&Object.keys(raw.last_token_usage).length?raw.last_token_usage:raw.usage]:null,price?.digest||null,previous?.digest||null,fx?[fx.day,fx.usd_cad,fx.cny_cad]:null,currency]);
+      const rawText=price?.integrityIssue?undefined:keys?db.prepare('SELECT lingxi_read_payload(p.delta,p.pack,p.ordinal,'+(row.source==='codex'?4:0)+') raw FROM compact_'+(row.source==='codex'?'codex_evidence':'agent_evidence')+' e JOIN usage_payloads p ON p.k=e.payload WHERE e.owner=? AND e.id=? AND e.verified=1').get(keys.owner,keys.id)?.raw:((row.source==='codex'?codex:agent).get(p.owner,row.id) as JsonObject|undefined)?.raw;
+      let raw=rawText?this.rawCache.get(rawText):undefined;if(rawText&&!raw){raw=parseExact(rawText);if(rawText.length<8000)this.rawCache.set(rawText,raw!);}
+      const signature=canonical([VALUATION_POLICY,row.source,model,day,shanghaiDay(row.at),row.input,row.output,row.cached,row.total,raw?[raw.model,raw.last_token_usage&&Object.keys(raw.last_token_usage).length?raw.last_token_usage:raw.usage]:null,price?.digest||null,previous?.digest||null,fx?[fx.day,fx.usd_cad,fx.cny_cad]:null,currency]);
       let memo=this.formulaCache.get(signature);const fingerprint=memo?.fingerprint||hash(signature);let value:JsonObject;
       // Preparation only needs changed results. A matching persisted fingerprint
       // must not decompress the old result just to throw it away afterwards.
@@ -737,7 +692,8 @@ export class Pricing {
   }
   async prepareRows(scope:string,check:()=>void=()=>{},progress?:(v:JsonObject)=>void){
     const p=this.monitor.profile,db=p.db,where=scope?' AND e.source=?':'';
-    const compact=db.usageStorage,ownerKey=compact?db.prepare('SELECT k FROM usage_strings WHERE value=?').get(p.owner).k:null;
+    const compact=db.usageStorage,ownerKey=compact?db.prepare('SELECT k FROM usage_strings WHERE value=?').get(p.owner)?.k:null;
+    if(compact&&ownerKey==null){check();progress?.({phase:'valuation',completed:0,total:0});return;}
     if(compact)db.exec('CREATE TABLE IF NOT EXISTS usage_dirty(owner TEXT,source TEXT,day TEXT,PRIMARY KEY(owner,source,day))');
     const stmt=db.prepare(compact?'SELECT '+compactEventProjection()+',d.owner AS storage_owner,d.id AS storage_id FROM compact_valuation_dirty d CROSS JOIN compact_events e WHERE e.owner=d.owner AND e.id=d.id AND d.owner=?'+(scope?' AND e.source=(SELECT k FROM usage_strings WHERE value=?)':'')+' LIMIT 256':'SELECT e.* FROM valuation_dirty d CROSS JOIN events e WHERE d.owner=? AND e.owner=d.owner AND e.id=d.id'+where+' LIMIT 256').safeIntegers();
     const args=[compact?ownerKey:p.owner,...(scope?[scope]:[])];
@@ -770,6 +726,23 @@ export class Pricing {
     }
     return completed;
   }
+  async details(params:JsonObject){
+    const date=String(params.date||''),model=String(params.model||'');
+    if(date!==new Date().toISOString().slice(0,10))throw Error('详细接口只提供当前报价；历史请查看已归档快照');
+    const price=this.catalog({date,model,limit:1}).items[0],id=price?.detailId;
+    if(typeof id!=='string'||!/^[a-zA-Z0-9._-]{1,180}$/.test(id))throw Error('该模型没有详细价格接口');
+    const url='https://ai.cloudprice.net/api/v1/models/'+encodeURIComponent(id)+'/pricing';
+    const prior=this.monitor.profile.db.prepare('SELECT body,observed FROM radar_observations WHERE url=? ORDER BY observed DESC LIMIT 1').get(url) as JsonObject|undefined;
+    let body=prior?.observed?.slice(0,10)===date?this.body(prior.body):null;
+    if(!body){body=(await loadPrice(url)).body;if(!body)throw Error('详细价格读取失败');this.monitor.profile.db.prepare('INSERT OR IGNORE INTO radar_observations VALUES(?,?,?,?)').run(url,hash(body),this.store(body),iso());}
+    const data=parseExact(body).data;
+    if(!data||data.currency!=='USD'||data.ingestion_date!==date||!Array.isArray(data.providers))throw Error('详细价格日期或结构无效');
+    const rows:JsonObject[]=[];
+    for(const provider of data.providers)for(const tier of provider.tiers||[])for(const region of tier.regions||[])for(const rule of region.prices||[]){
+      rows.push({provider:provider.provider_id,tier:tier.tier,region:region.region,...rule});if(rows.length>10000)throw Error('详细价格条目过多');
+    }
+    return {date,model,source:url,digest:hash(body),rows,notice:'聚合报价须核对供应商原文。DeepSeek 的 batch 标签与官方谷时定义不一致，不用于自动估值；上下文阈值、地域、缓存时长及服务档位分别保留。'};
+  }
   catalog(params: JsonObject) {
     const db = this.monitor.profile.db,
       dates = (
@@ -782,13 +755,14 @@ export class Pricing {
     const snapshot = db
         .prepare("SELECT * FROM radar_days WHERE day=?")
         .get(date) as JsonObject | undefined,
-      models = snapshot
-        ? validatePrices(this.body(snapshot.body), date).models.map(
+      parsed = snapshot?validatePrices(this.body(snapshot.body),date):null,
+      models = parsed
+        ? parsed.models.map(
             (m): JsonObject => ({
               ...m,
               date,
-              snapshotSource: snapshot.source,
-              digest: snapshot.digest,
+              snapshotSource: snapshot!.source,
+              digest: snapshot!.digest,
             }),
           )
         : [],
@@ -818,7 +792,8 @@ export class Pricing {
         ),
       ].sort(),
       missing: !snapshot,
-      source: "https://modelradar.cn/api",
+      coverage:parsed?.coverage??null,
+      source: REGISTRY,
       version: this.version(),
     };
   }
@@ -875,6 +850,24 @@ export class ValuationTasks {
     readonly control: Control,
     readonly syncAgent: (scope: string) => Promise<unknown>,
   ) {}
+  autoStatus(){
+    const p=this.control.profile,history=p.read<JsonObject>('pricing-auto-update',{});
+    return {enabled:this.control.state().config.codexPricingAutoUpdate===true,timezone:'Asia/Shanghai',
+      ...history,task:this.status('codex'),notice:'应用运行时按上海日期每天更新一次；关闭后下次启动补查。'};
+  }
+  setAuto(enabled:unknown){
+    if(typeof enabled!=='boolean')throw Error('自动更新设置必须为布尔值');
+    this.control.saveConfig({codexPricingAutoUpdate:enabled});
+    if(enabled)this.tickAuto();
+    return this.autoStatus();
+  }
+  tickAuto(){
+    if(this.running||this.control.state().config.codexPricingAutoUpdate!==true)return;
+    const p=this.control.profile,day=shanghaiDay(new Date()),state=p.read<JsonObject>('pricing-auto-update',{});
+    if(state.lastAttemptDay===day)return;
+    p.write('pricing-auto-update',{lastAttemptDay:day,attemptedAt:iso()});
+    this.start('codex',true);
+  }
   private flag(scope: string) {
     if (scope !== "codex")
       throw new Error("计价工具不正确");
@@ -1006,7 +999,7 @@ export class ValuationTasks {
           phase: "ready",
           coverage,
           versions: {
-            rule:"incremental-v2",
+            rule:VALUATION_POLICY,
             priceAndFx: coverage.USD.priceVersion,
             usage: coverage.USD.dataVersion,
           },

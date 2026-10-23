@@ -21,3 +21,7 @@ body[data-page=prices]{background:var(--lingxi-body,var(--surface));color:var(--
 @media(max-width:719px){[data-page=prices] .wb-standalone{padding:28px 16px 48px}[data-page=prices] .wb-standalone-header{flex-direction:column;gap:16px;margin-bottom:28px;padding-bottom:24px}[data-page=prices] .wb-panel{padding:20px}[data-page=prices] .wb-fx-cards{grid-template-columns:minmax(0,1fr);gap:16px}[data-page=prices] .btn{min-height:44px}}
 
 [data-page=prices] .control-table thead th{position:sticky;top:0;z-index:1;background:var(--surface);box-shadow:0 1px var(--line)}
+
+[data-page=prices] .price-dimensions{max-width:340px;white-space:normal;margin:8px 0}
+[data-page=prices] .price-dimensions pre{max-height:240px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px}
+[data-page=prices] .price-detail-scroll{max-width:600px;max-height:300px;overflow:auto;margin:12px 0}

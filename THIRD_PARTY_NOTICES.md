@@ -29,7 +29,7 @@ variables are copied from the official theme. License: `static/vendor/tailwind/L
 
 ## Token accounting reference and optional decoder
 
-The collector boundary research references [token-monitor](https://github.com/Javis603/token-monitor) (MIT) and [tokscale fork commit ab1067f3](https://github.com/Javis603/tokscale/tree/ab1067f38edda3faa822c67b6df016c5c38ded9b) (MIT). The TypeScript implementation is maintained here; no tokscale executable is bundled. Harness decoding uses the Node.js Zstandard implementation. Public daily prices come from [ModelRadar](https://modelradar.cn/api), whose source and limitations are preserved in the accounting reports.
+The collector boundary research references [token-monitor](https://github.com/Javis603/token-monitor) (MIT) and [tokscale fork commit ab1067f3](https://github.com/Javis603/tokscale/tree/ab1067f38edda3faa822c67b6df016c5c38ded9b) (MIT). The TypeScript implementation is maintained here; no tokscale executable is bundled. Harness decoding uses the Node.js Zstandard implementation. Versioned public price snapshots come from [Portkey models](https://github.com/Portkey-AI/models); [CloudPrice](https://cloudprice.net/models/api) supplies current catalogs and detailed quotes. Third-party data may lag or mislabel conditions; original evidence and coverage gaps are retained. Legacy ModelRadar evidence remains historical only.
 
 ## Desktop preview and React preparation (0.0.21)
 
@@ -91,3 +91,9 @@ static/assets/providers保存OpenRouter、硅基流动、Moonshot、MiniMax、LM
 全屏检测程序为本项目实现，仅链接Windows系统接口；使用MinGW-w64构建，不携带额外Node、PowerShell或C++运行时DLL。二进制发行所需MinGW-w64 runtime版权说明、GCC Runtime Library Exception 3.1及GPL-3.0全文随包保存在resources/floating/licenses，构建来源副本位于desktop/native/licenses。许可例外适用于符合条件的GCC运行库组合，不改变应用自身许可证。
 
 The DSH source selector uses the unmodified official Harness favicon at `static/assets/dsh-logo.svg`, distinct from the DeepSeek API whale. Source: [DSH favicon](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/web/public/favicon.svg). This identifies the data source; it is not the Lingxi application mark.
+
+## Local text analysis (0.1.28)
+
+[jieba-wasm 2.4.0](https://github.com/fengkx/jieba-wasm), MIT, provides the actual Node.js Jieba/WASM segmentation and POS runtime. License is retained at `static/vendor/jieba-wasm/LICENSE` and in the bundled dependency. Local task extraction combines these tokens with explicit date/location rules; it is not a trained neural NER model.
+
+[https-proxy-agent 7.0.6](https://github.com/TooTallNate/proxy-agents/tree/main/packages/https-proxy-agent), MIT, enables explicitly configured HTTP(S) proxy tunnels for public pricing requests; upstream licenses remain in the bundled runtime dependencies.

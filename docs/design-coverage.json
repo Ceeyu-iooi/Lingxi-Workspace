@@ -289,5 +289,24 @@
     "localization": "Chinese-display-catalog-and-profile-overrides-original-tooltip",
     "query": "latest-response-atomic-page-and-independent-kind-root",
     "source": "registered-read-only"
+  },
+  "textTaskAgent": {
+    "engines": [
+      "jieba",
+      "llm"
+    ],
+    "default": "jieba",
+    "save": "explicit",
+    "failure": "preserve-draft"
+  },
+  "priceUpdate": {
+    "control": "daily-toggle-button",
+    "timezone": "Asia/Shanghai",
+    "dialog": "native-content-centered",
+    "sources": [
+      "Portkey Git",
+      "CloudPrice current"
+    ],
+    "complex": "catalog-only"
   }
 }

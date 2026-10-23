@@ -184,7 +184,7 @@
       states.set(root, state);
     }
     const compatible = window.workbenchRuntime?.version === U.version;
-    const enabled = compatible && snapshot.pricing?.enabled === true;
+    const enabled = compatible && snapshot.pricing?.available === true;
     let panel = root.querySelector(".agent-value-panel");
     if (!panel) {
       panel = U.el("section", { class: "agent-value-panel" });
@@ -231,23 +231,22 @@
       : enabled
         ? "已开启"
         : "未开启";
-    if (
-      state.scope !== scope ||
-      state.enabled !== enabled ||
-      state.compatible !== compatible ||
-      state.slideHost !== panel.querySelector('[data-slide]')
-    ) {
-      state.scope = scope;
-      state.enabled = enabled;
-      state.compatible = compatible;
-      state.slideHost=panel.querySelector('[data-slide]');
-      window.WorkbenchReact.slideCommit(panel.querySelector("[data-slide]"), {
-        enabled,
-        compact: scope === "codex",
-        disabled: !compatible,
-        onConfirm: () => toggle(scope, enabled),
-      });
+    const autoHost=panel.querySelector('[data-slide]');
+    if(!autoHost.querySelector('[data-price-auto]')){
+      const button=U.el('button',{type:'button',class:'btn ghost valuation-auto','data-price-auto':'','aria-pressed':'false'},'自动更新（每天）');
+      autoHost.replaceChildren(button);
+      button.onclick=async()=>{
+        if(state.autoPending)return;state.autoPending=true;button.disabled=true;
+        try{
+          const current=await U.request('GET','/api/pricing/auto-update');
+          const updated=await U.request('POST','/api/pricing/auto-update',{enabled:!current.enabled});
+          button.setAttribute('aria-pressed',String(updated.enabled));button.title=(updated.enabled?'已开启；':'已暂停；')+updated.notice;
+          U.notify(updated.enabled?'已开启每日自动更新，当前缓存继续显示':'已暂停每日自动更新，价格缓存保留',{kind:'success'});
+        }catch(error){U.notify(error.message,{kind:'error'});}finally{state.autoPending=false;if(button.isConnected)button.disabled=!compatible;}
+      };
     }
+    if(!state.autoPending){const b=autoHost.querySelector('[data-price-auto]'),active=snapshot.pricing?.autoUpdate===true;b.setAttribute('aria-pressed',String(active));b.title=(active?'已开启；':'已暂停；')+'应用运行时按上海日期每天更新一次；关闭后下次启动补查。';}
+    autoHost.querySelector('button').disabled=!compatible||!!state.autoPending;
     const ticket = ++state.ticket;
     state.abort?.abort();
     state.abort = new AbortController();

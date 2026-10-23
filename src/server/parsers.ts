@@ -3,8 +3,9 @@ import { decodeHTML, parseCSV, unzip } from "./files.ts";
 import { categoryFor } from "./business.ts";
 import { hash, type JsonObject } from "./profile.ts";
 
-const DATE =
-  "(大后天|后天|明天|今天|今晚|明晚|[本这]?下+周[一二三四五六日天]|[本这]?周[一二三四五六日天]|[本这]?星期[一二三四五六日天]|(?:(\\d{4})年)?(\\d{1,2})月(\\d{1,2})[日号]?|\\d{4}-\\d{1,2}-\\d{1,2}|\\d{1,2}\\.\\d{1,2}[日号]?)";
+export const NOTIFICATION_DATE_PATTERN =
+  "(大后天|后天|明天|今天|今晚|明晚|下+星期[一二三四五六日天]|[本这]?下+周[一二三四五六日天]|[本这]?周[一二三四五六日天]|[本这]?星期[一二三四五六日天]|(?:(\\d{4})年)?(\\d{1,2})月(\\d{1,2})[日号]?|\\d{4}[-/]\\d{1,2}[-/]\\d{1,2}|\\d{1,2}/\\d{1,2}|\\d{1,2}\\.\\d{1,2}[日号]?)";
+const DATE=NOTIFICATION_DATE_PATTERN;
 const TIME =
   "(早上|上午|中午|下午|傍晚|晚上|夜里)?\\s*(\\d{1,2}|[零一二两三四五六七八九十]{1,3})[:：点时]\\s*(半|三刻|(\\d{1,2}|[零一二三四五六七八九十]{1,3})分?)?";
 const CN: JsonObject = {
@@ -107,8 +108,8 @@ export function parseNotification(raw: string, now = new Date()) {
           },
           target = weekday[token.at(-1)!],
           current = (now.getDay() + 6) % 7;
-        let delta = (target - current + 7) % 7 || 7;
-        delta += 7 * (token.match(/下/g) || []).length;
+        const nextWeeks=(token.match(/下/g)||[]).length;
+        const delta=nextWeeks?target-current+7*nextWeeks:/^[本这]/.test(token)?target-current:(target-current+7)%7;
         date = new Date(
           now.getFullYear(),
           now.getMonth(),
@@ -129,13 +130,13 @@ export function parseNotification(raw: string, now = new Date()) {
             date.getMonth() + 1,
             date.getDate(),
           );
-      } else if (token.includes("-")) {
-        const [y, mo, d] = token.split("-").map(Number);
+      } else if (/^\d{4}[-/]/.test(token)) {
+        const [y, mo, d] = token.split(/[-/]/).map(Number);
         date = dateOf(y, mo, d);
       } else {
         const [mo, d] = token
           .replace(/[日号]$/, "")
-          .split(".")
+          .split(/[./]/)
           .map(Number);
         date = dateOf(now.getFullYear(), mo, d);
         if (date < new Date(now.getFullYear(), now.getMonth(), now.getDate()))
@@ -241,6 +242,7 @@ export function parseNotification(raw: string, now = new Date()) {
     title,
     dueAt,
     dueText,
+    dateToken,
     location: findLocation(value)[0],
     keywords: keywords.slice(0, 5),
   };
