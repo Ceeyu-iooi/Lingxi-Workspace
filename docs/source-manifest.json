@@ -451,7 +451,7 @@
     },
     {
       "file": "frontend/compat/overview-board.ts",
-      "sha256": "662225082be05d370d389bfb1892e556ee8d6bf22f28d25122fc1a1ef49c6c59"
+      "sha256": "6ff6906ac889c9d109c7f09bddb6054f141d81905564f236e25b5128a060560e"
     },
     {
       "file": "frontend/compat/profile-management.ts",
@@ -707,7 +707,7 @@
     },
     {
       "file": "static/overview.css",
-      "sha256": "630fe9c8aa5589d44533f5b5c218314799e48a4fed9858d93348e003159d3ed4"
+      "sha256": "f0a752061b41e6f2482f22faefbee65939ebca9629b8a6f03b70f43510b9fa63"
     },
     {
       "file": "static/prices.css",
