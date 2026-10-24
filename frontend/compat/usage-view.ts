@@ -693,9 +693,9 @@
     button.title = button.getAttribute("aria-label");
     root.dataset.chartViewMode = state.mode;
     if (cash && agentScope(state.scope)) {
-      if(!hourly)q(".usage-chart-heading h3", root).textContent = "每日 API 等价值 · 实验";
+      if(!hourly)q(".usage-chart-heading h3", root).textContent = "每日 API 基准估算 · 已知部分";
       q(".usage-pie-heading h3", root).textContent =
-        "模型等价值占比" + (valued.summary.costUnknown ? "（已知）" : "");
+        "模型基准估算占比" + (valued.summary.costUnknown ? "（已知）" : "");
     }
     if (plot.dataset.valueCurrency && plot.dataset.valueCurrency !== currency)
       plot.dataset.transition = "vertical";

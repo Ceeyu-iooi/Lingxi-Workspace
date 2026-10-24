@@ -307,7 +307,8 @@ import {hourStateLabel} from "../../src/shared/usage-trend";
       const hour=host.dataset.granularity==='hour',state=hourStateLabel[row.state],exact=row.exactTotal?full(row.exactTotal):value(host,row.total);
       if(hour&&row.state==='unknown')detailRows.push({label:'已知部分',value:full(row.knownTotal??0)+' Token',color:''});
       if(hour&&!['future','unobserved'].includes(row.state)){for(const [field,label] of [['input','输入'],['output','输出'],['cached','缓存'],['reasoning','推理']])detailRows.push({label,value:row.unknownFields?.[field]?'未知':full(row[field]??0),color:''});detailRows.push({label:'请求',value:String(row.requestCount??0),color:''});}
-      tip.show({primary:valid(row)?(hour&&row.provided===false?'已知 ':'')+exact+unit(host):state||"未返回",date:row.caption||row.date,rows:hour&&row.state!=='known'&&row.state!=='zero'?[{label:'状态',value:state||'未知',color:''},...detailRows]:detailRows}, clientX ?? screen.x, clientY ?? screen.y);
+      if(host.dataset.metric==='cost'&&row.provided===false)detailRows.push({label:'范围',value:'仅显示已知金额，缺价部分未计入',color:''});
+      tip.show({primary:valid(row)?(row.provided===false?'已知 ':'')+exact+unit(host):state||"未返回",date:row.caption||row.date,rows:hour&&row.state!=='known'&&row.state!=='zero'?[{label:'状态',value:state||'未知',color:''},...detailRows]:detailRows}, clientX ?? screen.x, clientY ?? screen.y);
     };
     const clipId = "usage-reveal-" + ++sequence;
     const draw = () => {

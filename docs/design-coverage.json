@@ -1,5 +1,5 @@
 {
-  "version": "0.1.26",
+  "version": "0.1.29",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
@@ -308,5 +308,25 @@
       "CloudPrice current"
     ],
     "complex": "catalog-only"
-  }
+  },
+  "overview": {
+    "scope": "single-page",
+    "modules": [
+      "projects",
+      "usage",
+      "finance",
+      "summary",
+      "news",
+      "prompts",
+      "skills"
+    ],
+    "focus": "next-task",
+    "responsive": "single-column-under-700"
+  },
+  "priceCatalog": {
+    "sorting": "all-filtered-results-before-pagination",
+    "headers": 7,
+    "missing": "null-last"
+  },
+  "skillIdentity": "original-name-primary-chinese-translation-secondary"
 }

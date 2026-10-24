@@ -1409,7 +1409,8 @@
       for (const item of data.items) {
         const card = q(`[data-skill="${item.id}"]`, list);
         window.WorkbenchReact.skillIdentity(q(".wb-skill-seat", card), {
-          title: item.displayTitle,
+          title: item.title,
+          translation: /[a-z]/i.test(item.title)&&item.displayTitle!==item.title?item.displayTitle:null,
           description: item.displayDescription,
           agents: [...new Set(item.meta.sources.map((s) => s.agent))],
         });
@@ -1522,7 +1523,7 @@
       const data=await U().request("GET","/api/skills/item?id="+encodeURIComponent(id),undefined,{signal});
       if(disposed||!current(root,owner)||seq!==viewTicket)return;
       let dirty=false,saving=false;
-      const m=modal(data.displayTitle,'<p class="wb-muted" data-skill-meta></p><details class="wb-skill-localize"><summary>中文展示</summary><form><label>中文名称<input name="title" maxlength="80" required></label><label>中文简介<textarea name="description" maxlength="320" rows="3" required></textarea></label><div><span role="status"></span><button class="btn" type="submit">保存中文展示</button></div></form></details><div class="wb-markdown" data-skill-body></div>',{close:()=>!saving&&(!dirty||confirm("放弃未保存的中文展示修改？"))});
+      const m=modal(data.title,'<p class="wb-muted" data-skill-meta></p><details class="wb-skill-localize"><summary>中文展示</summary><form><label>中文名称<input name="title" maxlength="80" required></label><label>中文简介<textarea name="description" maxlength="320" rows="3" required></textarea></label><div><span role="status"></span><button class="btn" type="submit">保存中文展示</button></div></form></details><div class="wb-markdown" data-skill-body></div>',{close:()=>!saving&&(!dirty||confirm("放弃未保存的中文展示修改？"))});
       dialog=m.d;root._wbUnsaved=()=>m.d.open&&(dirty||saving);
       q("[data-skill-meta]",m.d).textContent=data.title+" · "+data.meta.path+" · "+data.meta.status+(data.meta.available===false?" · 来源不可读，显示上次快照":"")+(data.meta.warning?" · "+data.meta.warning:"");
       U().markdown(q("[data-skill-body]",m.d),data.content);

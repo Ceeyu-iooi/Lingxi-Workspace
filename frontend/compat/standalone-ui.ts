@@ -33,7 +33,8 @@
   }
   async function prices(root) {
     root.innerHTML =
-      '<section class="wb-panel"><h2>价格目录</h2><p class="wb-muted">Portkey 提供版本化历史，CloudPrice 补充当日模型与详细维度。历史是截至日期的仓库快照，不等于官方调价时刻；缺失项与复杂规则保持未知。</p><div class="wb-price-filters"><label>快照日期<input type="date" data-price-date></label><label>供应商<select data-provider><option value="">全部供应商</option></select></label><label>模型<select data-model><option value="">全部模型</option></select></label><label>搜索<input type="search" data-search placeholder="模型或供应商"></label><button class="btn" data-sync>后台同步</button></div><p class="wb-muted" data-price-status></p><div class="control-table-wrap"><table class="control-table"><thead><tr><th>模型 / 供应商</th><th>币种</th><th>输入</th><th>缓存读取</th><th>缓存写入</th><th>输出</th><th>状态 / 来源</th></tr></thead><tbody data-price-rows></tbody></table></div><div class="wb-pager"><button class="btn ghost" data-prev>上一页</button><span data-page></span><button class="btn ghost" data-next>下一页</button></div><p class="wb-inline-error" role="alert"></p></section><section class="wb-panel" style="margin-top:24px"><h2>历史 USD / CNY 汇率</h2><p class="wb-muted">加拿大央行交叉汇率；周末等非公布日最多沿用此前七日，不使用未来汇率。</p><div class="wb-fx-range"><label>开始<input type="date" data-fx-start></label><label>截止<input type="date" data-fx-end></label><label>卡片日期<input type="date" data-fx-date></label><button class="btn ghost" data-fx-load>查看</button></div><div class="wb-fx-cards"><article class="wb-panel wb-fx-card"><p>1 USD 对应人民币</p><strong data-usd-cny>—</strong><small data-fx-proof></small></article><article class="wb-panel wb-fx-card"><p>1 CNY 对应美元</p><strong data-cny-usd>—</strong><small data-fx-proof></small></article></div><div data-fx-chart></div></section>';
+      '<section class="wb-panel"><h2>价格目录</h2><p class="wb-muted">Portkey 提供版本化历史，CloudPrice 补充当日模型与详细维度。历史是截至日期的仓库快照，不等于官方调价时刻；默认显示主流模型。表头可切换全结果排序；缺失价格保持未知。</p><div class="wb-price-filters"><label>快照日期<input type="date" data-price-date></label><label>供应商<select data-provider><option value="">全部供应商</option></select></label><label>模型<select data-model><option value="">全部模型</option></select></label><label>搜索<input type="search" data-search placeholder="模型或供应商"></label><button class="btn" data-sync>后台同步</button></div><p class="wb-muted" data-price-status></p><div class="control-table-wrap"><table class="control-table"><thead><tr><th aria-sort="none"><button type="button" class="price-sort" data-sort="model">模型 / 供应商 <span aria-hidden="true">↕</span></button></th><th aria-sort="none"><button type="button" class="price-sort" data-sort="currency">币种 <span aria-hidden="true">↕</span></button></th><th aria-sort="none"><button type="button" class="price-sort" data-sort="input">输入 <span aria-hidden="true">↕</span></button></th><th aria-sort="none"><button type="button" class="price-sort" data-sort="cached">缓存读取 <span aria-hidden="true">↕</span></button></th><th aria-sort="none"><button type="button" class="price-sort" data-sort="write">缓存写入 <span aria-hidden="true">↕</span></button></th><th aria-sort="none"><button type="button" class="price-sort" data-sort="output">输出 <span aria-hidden="true">↕</span></button></th><th aria-sort="none"><button type="button" class="price-sort" data-sort="status">状态 / 来源 <span aria-hidden="true">↕</span></button></th></tr></thead><tbody data-price-rows></tbody></table></div><div class="wb-pager"><button class="btn ghost" data-prev>上一页</button><span data-page></span><button class="btn ghost" data-next>下一页</button></div><p class="wb-inline-error" role="alert"></p></section><section class="wb-panel" style="margin-top:24px"><h2>历史 USD / CNY 汇率</h2><p class="wb-muted">加拿大央行交叉汇率；周末等非公布日最多沿用此前七日，不使用未来汇率。</p><div class="wb-fx-range"><label>开始<input type="date" data-fx-start></label><label>截止<input type="date" data-fx-end></label><label>卡片日期<input type="date" data-fx-date></label><button class="btn ghost" data-fx-load>查看</button></div><div class="wb-fx-cards"><article class="wb-panel wb-fx-card"><p>1 USD 对应人民币</p><strong data-usd-cny>—</strong><small data-fx-proof></small></article><article class="wb-panel wb-fx-card"><p>1 CNY 对应美元</p><strong data-cny-usd>—</strong><small data-fx-proof></small></article></div><div data-fx-chart></div></section>';
+    let sort="model",direction="asc";
     let offset = 0,
       ticket = 0,
       timer,
@@ -66,13 +67,15 @@
           model: q("[data-model]", root).value,
           q: q("[data-search]", root).value,
           offset: String(offset),
-          limit: "50",
+          limit: "50",sort,direction,
         }),
         stop = U.busy(root, "正在读取价格缓存…");
       try {
         const data = await U.request("GET", "/api/pricing/catalog?" + params,undefined,{signal:abort.signal});
         if (!alive || seq !== ticket) return;
         catalog = data;
+        q("[role=alert]",root).textContent="";
+        root.querySelectorAll('[data-sort]').forEach(b=>{const active=b.dataset.sort===data.sort;b.closest('th').setAttribute('aria-sort',active?(data.direction==='asc'?'ascending':'descending'):'none');b.querySelector('span').textContent=active?(data.direction==='asc'?'↑':'↓'):'↕';});
         q("[data-price-date]", root).value = data.date;
         option(q("[data-provider]", root), data.providers, "全部供应商");
         option(q("[data-model]", root), data.models, "全部模型");
@@ -91,7 +94,7 @@
           " 条" +
           (data.missing
             ? " · 此日尚无快照，可点击后台同步"
-            : " · 原币 / 每百万 Token")+(data.coverage?` · 历史目录供应商 ${data.coverage.loadedProviders}/${data.coverage.expectedProviders} · 当日补充 ${data.coverage.currentModels||0} 条 · 缺口 ${data.coverage.gaps?.length||0}`:"");
+            : " · 原币 / 每百万 Token")+(data.coverage?` · 历史目录供应商 ${data.coverage.loadedProviders}/${data.coverage.expectedProviders} · 最新补充 ${data.coverage.currentModels||0} 条${data.coverage.currentSourceDate?"（源日期 "+data.coverage.currentSourceDate+"）":""} · 缺口 ${data.coverage.gaps?.length||0}`:"");
         q("[data-price-rows]", root).innerHTML = data.items
           .map(
             (row) =>
@@ -107,7 +110,7 @@
                 .join("") +
               '<td><span class="wb-pill">' +
               e(
-                row.integrityIssue?"报价冲突 / 不计价":row.sourceType === "current_catalog"?"当日目录 / 仅查看":row.sourceType === "registry"?row.unsupported?"复杂规则 / 仅查看":"公开目录快照":"旧源证据 / 不计价",
+                row.integrityIssue?"报价冲突 / 不计价":row.sourceType === "current_catalog"?"补充目录 / "+(row.snapshotAt||"日期未知"):row.sourceType === "registry"?row.unsupported?"复杂规则 / 仅查看":"公开目录快照":"旧源证据 / 不计价",
               ) +
               '</span>'+ (row.dimensions?.length?'<details class="price-dimensions"><summary>计费维度与条件</summary><p>各字段保留来源单位，未提供项不补零；Token 单价以表头每百万为准。</p><pre>'+e(JSON.stringify(row.dimensions,null,2))+'</pre></details>':'')+(row.detailId&&data.date===new Date().toISOString().slice(0,10)?'<button class="btn ghost" data-price-detail="'+e(row.model)+'">查看地域与档位</button><div data-detail-result></div>':'')+'<a href="' +
               e(row.source) +
@@ -133,6 +136,7 @@
         stop();
       }
     }
+    root.querySelectorAll('[data-sort]').forEach(b=>b.onclick=()=>{if(sort===b.dataset.sort)direction=direction==='asc'?'desc':'asc';else{sort=b.dataset.sort;direction='asc';}offset=0;void load();});
     async function loadFX() {
       if(!alive)return;const current=++fxTicket;
       const params = new URLSearchParams({

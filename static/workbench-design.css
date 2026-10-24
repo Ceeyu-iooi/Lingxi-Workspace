@@ -23,25 +23,6 @@
 .wb-redesign .todo-item.done .txt{color:var(--ink-3)}
 .wb-redesign .del{border-radius:7px;min-width:30px;min-height:30px;color:var(--ink-3)}
 .wb-redesign .del:hover{color:var(--danger);background:var(--surface-soft)}
-.wb-redesign .overview-board{background:transparent;padding:0}
-.wb-redesign .ob-top{margin-bottom:24px;font-size:var(--text-ui-lg)}
-.wb-redesign .ob-top>span{font-size:calc(var(--text-ui-xl) + 4px);font-weight:650}
-.wb-redesign .ob-top i{display:none}
-.wb-redesign .ob-top .ob-dark-button{background:var(--accent);color:var(--accent-foreground)!important;border-radius:10px}
-.wb-redesign .ob-stats{gap:16px;margin-bottom:20px}
-.wb-redesign .ob-stats article{border:1px solid var(--line);border-radius:12px;padding:18px;background:var(--surface)}
-.wb-redesign .ob-stats strong{font-size:calc(var(--text-ui-xl) + 8px);font-weight:650;font-variant-numeric:tabular-nums}
-.wb-redesign .ob-icon{color:var(--accent-text);background:var(--accent-soft);border-radius:8px}
-.wb-redesign .ob-bar i{background:var(--accent);transition:width 280ms}
-.wb-redesign .ob-panel header{padding:0 0 18px}
-.wb-redesign .ob-panel header h3{font-size:var(--text-ui-lg)}
-.wb-redesign .ob-body{gap:20px;grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr)}
-.wb-redesign .ob-panel th,.wb-redesign .ob-panel td{font-size:var(--text-ui-sm);padding:12px 8px}
-.wb-redesign .ob-action button{background:var(--accent-soft);color:var(--accent-text);border-radius:8px}
-.wb-redesign .ob-chart-day>i{background:var(--accent-soft)}
-.wb-redesign .ob-chart-day>b{background:var(--accent)}
-.wb-redesign .ob-chart{min-height:180px}
-.wb-redesign .ob-actions{max-height:480px;overflow:auto;scrollbar-gutter:stable}
 .wb-redesign .project-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(320px,1fr);gap:20px;align-items:start}
 .wb-redesign .project-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
 .wb-redesign .project-toolbar input{flex:1}
@@ -136,8 +117,6 @@
 .wb-redesign .project-progress .bar{display:block}
 .wb-redesign .agent-chat{padding:0;overflow:hidden}
 .wb-redesign .agent-chat-toolbar{padding:14px}
-.wb-redesign .ob-queue .ob-add{margin:16px 0 0}
-.wb-redesign .ob-queue footer{padding:14px 0}
 .wb-redesign .settings-panel .appearance-panel{display:none}
 .wb-redesign .settings-panel .bento{gap:20px}
 .wb-redesign .set-row{align-items:start;gap:10px;padding:14px 0}

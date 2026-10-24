@@ -1,240 +1,37 @@
 // @ts-nocheck
-// Compatibility controller: retain the validated interactions during the React migration.
+// A single page: work first, then a compact view of each connected module.
 (() => {
-  const esc = (s) =>
-    String(s ?? "").replace(
-      /[&<>"']/g,
-      (c) =>
-        ({
-          "&": "&amp;",
-          "<": "&lt;",
-          ">": "&gt;",
-          '"': "&quot;",
-          "'": "&#39;",
-        })[c],
-    );
-  const formatter = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Asia/Shanghai",
-  });
-  const day = (value) =>
-    value && Number.isFinite(new Date(value).getTime())
-      ? formatter.format(new Date(value))
-      : "";
-  function mount(root, { state, complete, add, toast }) {
-    const limit = root._overviewLimit || 50;
-    root._overviewState = state;
-    const signature = JSON.stringify([
-      state.projects,
-      state.tasks,
-      day(Date.now()),
-      limit,
-    ]);
-    if (
-      root.querySelector(".overview-board") &&
-      root._overviewSignature === signature
-    )
-      return;
-    root._overviewSignature = signature;
-    const date = day(Date.now()),
-      month = date.slice(0, 7),
-      tasks = state.tasks || [],
-      projects = state.projects || [],
-      pending = tasks.filter((t) => !t.done).sort((a,b)=>(a.dueAt?new Date(a.dueAt).getTime():Infinity)-(b.dueAt?new Date(b.dueAt).getTime():Infinity)||String(a.createdAt).localeCompare(String(b.createdAt))),
-      finished = tasks.filter((t) => t.done),
-      active = projects.filter((p) => p.status !== "done");
-    const overdue = pending.filter((t) => t.dueAt && day(t.dueAt) < date),
-      pct = tasks.length
-        ? Math.round((finished.length / tasks.length) * 100)
-        : 0;
-    const stats = [
-      ["▤", "进行中项目", active.length, "全部 " + projects.length + " 个项目"],
-      [
-        "☷",
-        "待办事项",
-        pending.length,
-        "今日到期 " +
-          pending.filter((t) => t.dueAt && day(t.dueAt) === date).length +
-          " 项",
-      ],
-      ["△", "逾期待办", overdue.length, "需要优先处理"],
-      ["✓", "任务完成率", pct + "%", "已完成 " + finished.length + " 项"],
-      [
-        "◷",
-        "本月完成",
-        finished.filter(
-          (t) => t.completedAt && day(t.completedAt).startsWith(month),
-        ).length,
-        month,
-      ],
-    ];
-    (
-      window.workbenchDesign?.paint || ((node, html) => (node.innerHTML = html))
-    )(
-      root,
-      `<section class="overview-board"><header class="ob-top"><span>工作坊 <i>/</i> 总览</span><div><span class="ob-date">${date}</span><a class="ob-dark-button" href="#/projects">＋ 新建待办</a></div></header><div class="ob-stats">${stats.map(([icon, label, value, caption]) => `<article><h3><span class="ob-icon">${icon}</span>${label}</h3><strong>${value}</strong><small>${caption}</small></article>`).join("")}</div><div class="ob-body"><div class="ob-left"><section class="ob-panel"><header><h3>项目进度</h3><p>任务完成情况</p><a href="#/projects">${active.length} 个进行中</a></header><div class="ob-project-scroll"><table><thead><tr><th>项目</th><th>完成进度</th><th>待办</th><th>已完成</th><th>状态</th></tr></thead><tbody>${
-        projects
-          .slice(0, 30)
-          .map((p) => {
-            const list = tasks.filter((t) => t.projectId === p.id),
-              done = list.filter((t) => t.done).length,
-              ratio = list.length ? Math.round((done / list.length) * 100) : 0;
-            return `<tr data-project="${esc(p.id)}"><td><span class="ob-avatar">${esc(p.name?.slice(0, 1) || "项")}</span><a href="#/projects">${esc(p.name)}</a></td><td><div class="ob-ratio">${list.length ? ratio + "%" : "—"}<span>${list.length ? list.length + " 项任务" : "尚无任务"}</span></div><div class="ob-bar"><i style="width:${ratio}%"></i></div></td><td>${list.length - done}</td><td>${done}</td><td><span class="ob-dot ${p.status === "waiting" ? "waiting" : ""}"></span>${p.status === "done" ? "已完成" : p.status === "waiting" ? "等待中" : "进行中"}</td></tr>`;
-          })
-          .join("") ||
-        '<tr><td colspan="5" class="ob-empty">还没有项目 · <a href="#/projects">新建项目</a></td></tr>'
-      }</tbody></table></div></section><section class="ob-panel ob-demand"><header><h3>任务趋势</h3><p>最近 21 天 · 新建与完成</p><span class="ob-legend">▰ 新建 ━ 完成</span></header><div class="ob-chart" data-wb-slot="chart" role="img" aria-label="最近21天任务新建和完成趋势"></div><footer>数据来自项目与待办</footer></section></div><section class="ob-panel ob-queue"><header><h3>待办队列</h3><p data-pending>${pending.length} 项未完成</p></header><div class="ob-actions">${
-        pending
-          .slice(0, limit)
-          .map(
-            (t) =>
-              `<div class="ob-action" data-task="${esc(t.id)}"><span class="ob-icon">${t.dueAt ? "◷" : "☷"}</span><div><strong>${esc(t.title)}</strong><small>${esc(projects.find((p) => p.id === t.projectId)?.name || "未归入项目")}${t.dueAt ? " · " + esc(day(t.dueAt)) : ""}</small></div><button type="button" data-complete="${esc(t.id)}" aria-label="完成 ${esc(t.title)}">完成</button></div>`,
-          )
-          .join("") || '<p class="ob-empty">暂无待办</p>'
-      }</div><button class="btn ghost" id="overview-more" ${pending.length <= limit ? "hidden" : ""}>加载更多</button><footer><span data-cleared>已完成 0 / ${pending.length}</span><div class="ob-bar"><i></i></div></footer><div class="ob-add"><input id="overview-add" aria-label="新待办内容" placeholder="添加待办，回车保存"><button type="button">＋</button></div></section></div></section>`,
-    );
-    function drawChart(currentTasks) {
-      const created = new Map(),
-        completed = new Map();
-      currentTasks.forEach((t) => {
-        const a = day(t.createdAt),
-          b = t.done ? day(t.completedAt) : "";
-        if (a) created.set(a, (created.get(a) || 0) + 1);
-        if (b) completed.set(b, (completed.get(b) || 0) + 1);
-      });
-      const days = Array.from({ length: 21 }, (_, i) => {
-          const d = new Date(date + "T12:00:00+08:00");
-          d.setDate(d.getDate() - 20 + i);
-          const key = day(d);
-          return {
-            key,
-            new: created.get(key) || 0,
-            done: completed.get(key) || 0,
-          };
-        }),
-        max = Math.max(1, ...days.flatMap((d) => [d.new, d.done]));
-      (
-        window.workbenchDesign?.paint ||
-        ((node, html) => (node.innerHTML = html))
-      )(
-        root.querySelector(".ob-chart"),
-        days
-          .map(
-            (d) =>
-              `<div class="ob-chart-day" data-key="${d.key}" tabindex="0" aria-label="${d.key} 新建 ${d.new}，完成 ${d.done}"><i style="height:${(d.new / max) * 100}%"></i><b style="bottom:${(d.done / max) * 100}%"></b><span>${d.key}<br>新建 ${d.new} · 完成 ${d.done}</span></div>`,
-          )
-          .join(""),
-      );
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const day=v=>v?new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai'}).format(new Date(v)):'';
+  const compact=v=>v==null?'—':new Intl.NumberFormat('zh-CN',{notation:'compact',maximumFractionDigits:1}).format(Number(v));
+  function mount(root,{state,complete,add,toast}){
+    const date=day(Date.now()),tasks=state.tasks||[],projects=state.projects||[],pending=tasks.filter(t=>!t.done).sort((a,b)=>(Date.parse(a.dueAt||a.startAt)||Infinity)-(Date.parse(b.dueAt||b.startAt)||Infinity)),done=tasks.filter(t=>t.done),active=projects.filter(p=>p.status!=='done');
+    const signature=JSON.stringify([state.projects,state.tasks,state.summaries,date]);
+    if(root._overviewSignature===signature&&root.querySelector('.overview-board'))return;
+    root._overviewSignature=signature;root._overviewAbort?.abort();const abort=new AbortController();root._overviewAbort=abort;
+    root._wbDispose=()=>{abort.abort();root._overviewDraft=root.querySelector('[data-quick-task]')?.value||root._overviewDraft||'';};
+    const upcoming=pending[0],overdue=pending.filter(t=>t.dueAt&&day(t.dueAt)<date),summary=[...(state.summaries||[])].sort((a,b)=>String(b.month).localeCompare(String(a.month)))[0];
+    const heading=(label,route,extra='')=>`<header class="ob-card-heading"><h3>${label}</h3><a href="#/${route}" aria-label="查看${label}">${extra||'查看'} <span aria-hidden="true">↗</span></a></header>`;
+    const task=t=>`<div class="ob-task-row"><span class="ob-task-dot ${t.dueAt&&day(t.dueAt)<date?'late':''}"></span><div><strong>${esc(t.title)}</strong><small>${esc(projects.find(p=>p.id===t.projectId)?.name||'独立待办')}${t.dueAt?' · 截止 '+esc(day(t.dueAt)):t.startAt?' · 开始 '+esc(day(t.startAt)):' · 未排期'}${t.location?' · '+esc(t.location):''}</small></div><button type="button" data-complete="${esc(t.id)}" aria-label="完成 ${esc(t.title)}">完成</button></div>`;
+    (window.workbenchDesign?.paint||((n,h)=>n.innerHTML=h))(root,`<section class="overview-board ob-dashboard"><header class="ob-top"><div><small>灵犀工作坊</small><h1>把注意力，留给正在做的事。</h1></div><time datetime="${date}">${esc(date.replaceAll('-',' / '))}</time></header><div class="ob-dashboard-grid"><section class="ob-focus">${heading('项目与待办','projects',pending.length+' 项待办')}<div class="ob-focus-title"><span>${overdue.length?'优先处理 · '+overdue.length+' 项已逾期':'下一步'}</span><h2>${esc(upcoming?.title||'今天，从一件小事开始')}</h2><p>${upcoming?esc(upcoming.location||'为当前事项留出一段专注时间'):'创建待办，把计划变成可以完成的一步。'}</p></div><div class="ob-task-list">${pending.slice(0,3).map(task).join('')||'<p class="ob-empty">暂无待办 · 计划好后随时添加</p>'}</div><form class="ob-quick-add"><input id="overview-add" data-quick-task aria-label="添加待办" placeholder="添加一件待办…" maxlength="300" value="${esc(root._overviewDraft||'')}"><button type="submit" aria-label="保存待办">＋</button></form><div class="ob-project-strip"><span>${active.length} 个进行中项目</span><span>已完成 ${done.length} / ${tasks.length} 项</span><div class="ob-bar"><i style="width:${tasks.length?done.length/tasks.length*100:0}%"></i></div></div></section><section class="ob-module ob-usage">${heading('用量监测','usage','近 7 天')}<div class="ob-usage-number"><span data-ob-tokens>—</span><small>Codex · 已知 Token</small></div><div class="ob-spark" data-ob-spark aria-label="最近七天已采集用量"></div><div class="ob-usage-bottom"><span data-ob-requests>正在读取本机记录…</span><span data-ob-cost></span></div></section><section class="ob-module ob-finance">${heading('记账','finance')}<p class="ob-caption">本月支出 · CNY</p><strong class="ob-money" data-ob-expense>—</strong><div class="ob-finance-pair"><span>收入 <b data-ob-income>—</b></span><span>结余 <b data-ob-net>—</b></span></div></section><section class="ob-module ob-summary">${heading('总结','summary',summary?.month||'记录与复盘')}<div class="ob-summary-mark" aria-hidden="true">“</div><p class="ob-excerpt">${esc(summary?.content?.replace(/[#*>_`]/g,'').trim().slice(0,130)||'每一次记录，都让下一步更清楚。完成本月工作后，留下你的总结。')}</p><small>${summary?'最近保存 '+esc(day(summary.savedAt)):'尚无总结'}</small></section><section class="ob-module ob-news">${heading('热点','news','缓存速览')}<div data-ob-news><p class="ob-empty">正在读取热点缓存…</p></div></section></div><footer class="ob-library-strip"><a href="#/prompts"><span class="ob-library-symbol" aria-hidden="true">⌘</span><span><strong>提示词</strong><small>积累可复用的好表达</small></span><b data-ob-prompts>—</b><span aria-hidden="true">↗</span></a><a href="#/skills"><span class="ob-library-symbol" aria-hidden="true">技</span><span><strong>技能库</strong><small>本机技能 · 原文件只读</small></span><b data-ob-skills>—</b><span aria-hidden="true">↗</span></a><span class="ob-cache-state" data-ob-status role="status">正在读取模块摘要</span></footer></section>`);
+    root.querySelectorAll('[data-complete]').forEach(button=>button.onclick=async()=>{if(button.disabled)return;button.disabled=true;try{const next=await complete(button.dataset.complete);if(!abort.signal.aborted&&next)mount(root,{state:next,complete,add,toast});}catch(error){if(button.isConnected){button.disabled=false;toast(error.message,{kind:'error'});}}});
+    const input=root.querySelector('[data-quick-task]');root._overviewDraft=input.value;input.oninput=()=>root._overviewDraft=input.value;
+    root.querySelector('form').onsubmit=async event=>{event.preventDefault();const title=input.value.trim(),button=event.currentTarget.querySelector('button');if(!title||button.disabled)return;button.disabled=true;try{await add(title);if(root._overviewDraft?.trim()===title){root._overviewDraft='';const live=root.querySelector('[data-quick-task]');if(live?.value.trim()===title)live.value='';}}catch(error){if(input.isConnected)toast(error.message,{kind:'error'});}finally{if(button.isConnected)button.disabled=false;}};
+    async function load(){
+      try{const data=await window.workbenchRequest('GET','/api/overview',undefined,{signal:abort.signal});if(abort.signal.aborted)return;
+        const put=(key,value)=>root.querySelector(`[data-ob-${key}]`).textContent=value;
+        put('tokens',compact(data.usage.summary?.total));put('requests',(data.usage.summary?.requests??0).toLocaleString()+' 次请求 · 已采集范围');
+        root.querySelector('[data-ob-cost]').title=data.usage.valuation?.costUnknown?data.usage.valuation.costUnknown+' 条缺价未计入；全球标准文本档基准，非实际账单':'全球标准文本档基准估算，非实际账单';
+        put('cost',data.usage.valuation?.pricedRequests?(data.usage.valuation.costUnknown?'已知 API 估算 ¥':'API 估算 ¥')+Number(data.usage.valuation.costs.CNY).toLocaleString('zh-CN',{maximumFractionDigits:2}):'费用待核验');
+        for(const key of ['expense','income','net'])put(key,Number(data.finance[key]).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}));
+        put('prompts',data.prompts+' 项');put('skills',data.skills+' 项');
+        const daily=data.usage.daily||[],max=Math.max(1,...daily.map(r=>Number(r.knownTotal??r.total??0)));
+        root.querySelector('[data-ob-spark]').innerHTML=daily.length?daily.slice(-7).map(r=>`<div title="${esc(r.date)} · ${esc(r.knownTotal??r.total??'未知')} Token"><i style="height:${Math.max(2,Number(r.knownTotal??r.total??0)/max*100)}%"></i><small>${esc(r.date?.slice(5))}</small></div>`).join(''):'<p class="ob-empty">暂无已采集用量</p>';
+        root.querySelector('[data-ob-news]').innerHTML=data.headlines?.length?data.headlines.map((n,i)=>`<div class="ob-headline"><span>${i+1}</span><p>${esc(n.title)}</p></div>`).join(''):'<p class="ob-empty">暂无热点缓存<br><a href="#/news">前往热点更新</a></p>';
+        put('status','摘要来自本机资料');
+      }catch(error){if(!abort.signal.aborted){root.querySelector('[data-ob-status]').innerHTML='模块摘要读取失败 <button type="button">重试</button>';root.querySelector('[data-ob-status] button').onclick=load;root.querySelector('[data-ob-requests]').textContent='暂时无法读取';root.querySelector('[data-ob-news]').textContent='热点缓存暂时不可读';}}
     }
-    drawChart(tasks);
-    root.querySelector("#overview-more").onclick = () => {
-      root._overviewLimit = limit + 50;
-      mount(root, { state: root._overviewState, complete, add, toast });
-    };
-    let cleared = 0;
-    root.querySelectorAll("[data-complete]").forEach(
-      (button) =>
-        (button.onclick = async () => {
-          if (button.disabled) return;
-          button.disabled = true;
-          try {
-            const snapshot = await complete(button.dataset.complete);
-            if (!root.isConnected || !root.contains(button)) return;
-            if (snapshot) {
-              root._overviewState = snapshot;
-              root._overviewSignature = JSON.stringify([
-                snapshot.projects,
-                snapshot.tasks,
-                day(Date.now()),
-                limit,
-              ]);
-              drawChart(snapshot.tasks || []);
-              const list = snapshot.tasks || [],
-                done = list.filter((t) => t.done),
-                waiting = list.filter((t) => !t.done),
-                values = [
-                  (snapshot.projects || []).filter((p) => p.status !== "done")
-                    .length,
-                  waiting.length,
-                  waiting.filter((t) => t.dueAt && day(t.dueAt) < date).length,
-                  (list.length
-                    ? Math.round((done.length / list.length) * 100)
-                    : 0) + "%",
-                  done.filter(
-                    (t) =>
-                      t.completedAt && day(t.completedAt).startsWith(month),
-                  ).length,
-                ];
-              root
-                .querySelectorAll(".ob-stats article")[3]
-                .querySelector("small").textContent =
-                "已完成 " + done.length + " 项";
-              root
-                .querySelectorAll(".ob-stats article>strong")
-                .forEach((node, i) =>
-                  (
-                    window.workbenchDesign?.number ||
-                    ((el, text) => (el.textContent = text))
-                  )(node, values[i]),
-                );
-              root.querySelectorAll("[data-project]").forEach((row) => {
-                const children = list.filter(
-                    (t) => t.projectId === row.dataset.project,
-                  ),
-                  count = children.filter((t) => t.done).length,
-                  ratio = children.length
-                    ? Math.round((count / children.length) * 100)
-                    : 0;
-                row.querySelector(".ob-ratio").firstChild.textContent =
-                  children.length ? ratio + "%" : "—";
-                row.querySelector(".ob-bar i").style.width = ratio + "%";
-                row.children[2].textContent = children.length - count;
-                row.children[3].textContent = count;
-              });
-            }
-            button.closest(".ob-action").remove();
-            cleared++;
-            root.querySelector("[data-pending]").textContent =
-              pending.length - cleared + " 项未完成";
-            root.querySelector("[data-cleared]").textContent =
-              `已完成 ${cleared} / ${pending.length}`;
-            root.querySelector(".ob-queue footer i").style.width =
-              (cleared / Math.max(1, pending.length)) * 100 + "%";
-            if (cleared === pending.length)
-              root.querySelector(".ob-actions").innerHTML =
-                '<p class="ob-empty">已完成所有待办</p>';
-          } catch (e) {
-            if (button.isConnected) {
-              button.disabled = false;
-              toast(e.message, {kind:"error"});
-            }
-          }
-        }),
-    );
-    const input = root.querySelector(".ob-add input"),
-      button = root.querySelector(".ob-add button");
-    const submit = async () => {
-      const title = input.value.trim();
-      if (!title || button.disabled) return;
-      button.disabled = true;
-      try {
-        await add(title);
-        if (input.isConnected && input.value.trim() === title) {
-          input.value = "";
-          delete input.dataset.wbDirty;
-        }
-      } catch (e) {
-        if (input.isConnected) toast(e.message, {kind:"error"});
-      } finally {
-        if (button.isConnected) button.disabled = false;
-      }
-    };
-    button.onclick = submit;
-    input.onkeydown = (e) => {
-      if (e.key === "Enter" && !e.isComposing) {
-        e.preventDefault();
-        submit();
-      }
-    };
+    void load();
   }
-  window.overviewBoard = { mount };
+  window.overviewBoard={mount};
 })();

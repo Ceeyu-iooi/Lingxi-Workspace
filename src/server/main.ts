@@ -413,6 +413,13 @@ export async function startServer(
     return { ok: true };
   });
   app.get("/api/news", (request) => news.get(qs(request).force === "1"));
+  app.get('/api/overview',()=>{
+    const month=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Shanghai'}).slice(0,7),data=business.state(),money={income:new Decimal(0),expense:new Decimal(0)};
+    for(const row of data.transactions||[])if(String(row.date).startsWith(month)&&['income','expense'].includes(row.kind))money[row.kind as 'income'|'expense']=money[row.kind as 'income'|'expense'].plus(String(row.amount));
+    const cached=profile.read<JsonObject>('news_cache',{}),headlines=Object.values(cached).flatMap((s:any)=>(s.items||[]).slice(0,1)).slice(0,3);
+    const usage=monitor.snapshot({scope:'codex',source:'codex',period:'7',valuation_enabled:!!valuation.status('codex').coverage,value_currency:'CNY'});
+    return {month,finance:{income:money.income.toFixed(2),expense:money.expense.toFixed(2),net:money.income.minus(money.expense).toFixed(2)},usage:{summary:usage.summary,daily:usage.daily,valuation:usage.valuation?.summary,range:usage.range},prompts:prompts.search({limit:1}).total,skills:skills.search({limit:1}).total,headlines,newsCached:true};
+  });
   app.get("/api/control", () => control.public());
   app.post("/api/control/config", (request) => {
     const value = body(request);
@@ -962,9 +969,11 @@ export async function startServer(
   app.get("/api/pricing/fx", (request) => pricing.fxSeries(qs(request)));
   app.post("/api/pricing/sync", (request) => {
     const date = body(request).date || new Date().toISOString().slice(0, 10);
-    return jobs.start("price-sync", async () =>
-      pricing.sync(date, date, { force: true, catalogDate:date }),
-    );
+    return jobs.start("price-sync", async () => {
+      const result=await pricing.sync(date,date,{force:true,catalogDate:date});
+      if(valuation.status('codex').coverage)await pricing.prepareRows('codex');
+      return result;
+    });
   });
   app.post("/api/usage/value/sync", (request) => {
     const value = body(request),
@@ -1049,9 +1058,7 @@ export async function startServer(
                   .slice(0, 10)
               : row.date,
         total =
-          metric === "value" && row.costUnknown
-            ? null
-            : metric === "value"
+          metric === "value"
               ? row.costs[currency]
               : row.total,
         bucket = buckets.get(key) || {
@@ -1059,11 +1066,13 @@ export async function startServer(
           endDate: row.date,
           total: new Decimal(0),
           unknown: false,
+          known:0,unknownRequests:0,
           models: new Map(),
         };
       bucket.endDate = row.date;
-      if (total == null) bucket.unknown = true;
-      else bucket.total = bucket.total.plus(String(total));
+      if (total == null||metric==='value'&&row.costUnknown) bucket.unknown = true;
+      bucket.unknownRequests+=Number(metric==='value'?row.costUnknown||0:0);
+      if(total!=null){bucket.total = bucket.total.plus(String(total));bucket.known++;}
       for (const model of row.models || []) {
         const id = JSON.stringify([model.provider || "", model.model || ""]),
           m = bucket.models.get(id) || {
@@ -1071,15 +1080,14 @@ export async function startServer(
             model: model.model || "",
             total: new Decimal(0),
             unknown: false,
+            known:0,
           },
           value =
-            metric === "value" && model.costUnknown
-              ? null
-              : metric === "value"
+            metric === "value"
                 ? model.costs[currency]
                 : model.total;
-        if (value == null) m.unknown = true;
-        else m.total = m.total.plus(String(value));
+        if (value == null||metric==='value'&&model.costUnknown) m.unknown = true;
+        if(value!=null){m.total = m.total.plus(String(value));m.known++;}
         bucket.models.set(id, m);
       }
       buckets.set(key, bucket);
@@ -1088,11 +1096,14 @@ export async function startServer(
       series: [...buckets.values()].map((b) => ({
         date: b.date,
         endDate: b.endDate,
-        total: b.unknown ? null : b.total.toNumber(),
+        total: metric==='value'?(b.known?b.total.toNumber():null):(b.unknown?null:b.total.toNumber()),
+        unknownRequests:b.unknownRequests,
+        partial:b.unknown&&b.known>0,
         models: [...b.models.values()].map((m) => ({
           provider: m.provider,
           model: m.model,
-          total: m.unknown ? null : m.total.toNumber(),
+          total: metric==='value'?(m.known?m.total.toNumber():null):(m.unknown?null:m.total.toNumber()),
+          partial:m.unknown&&m.known>0,
         })),
         provided: !b.unknown,
       })),

@@ -6,11 +6,11 @@ import { hash, parseExact, encode, uid, type JsonObject } from "./profile.ts";
 import { Control } from "./control.ts";
 import { shanghaiDay, addDays } from "./usage-summary.ts";
 import { priceIntegrityIssue } from './price-integrity.ts';
-import {collectRegistry,REGISTRY} from './price-source.ts';
+import {collectRegistry,REGISTRY,MAIN_PROVIDERS,mainstreamModel} from './price-source.ts';
 import {Agent as HttpsAgent, get as httpsGet} from 'node:https';
 import {HttpsProxyAgent} from 'https-proxy-agent';
 
-const VALUATION_POLICY = 'incremental-codex-v5-versioned-registry';
+const VALUATION_POLICY = 'incremental-codex-v6-reference-scenario';
 
 const RADAR = REGISTRY + "/",
   FX_URL =
@@ -135,6 +135,7 @@ export function validatePrices(body: string, expected?: string) {
       detailId:r.detailId??null,
       currentSource:r.currentSource??null,
       snapshotAt:r.snapshotAt??null,
+      referenceBands:Array.isArray(r.referenceBands)?r.referenceBands:null,
       notes,
       unsupported:unsupported||r.registryComplex===true,
     });
@@ -177,9 +178,15 @@ export class Pricing {
     const row=this.monitor.profile.db.prepare("SELECT * FROM radar_days WHERE day=?").get(day) as JsonObject|undefined;
     if(!row){const models=new Map<string,JsonObject>();this.dayCache.set(day,{digest:"",bytes:128,models});this.dayBytes+=128;this.trimDays();return models;}
     const old=this.dayCache.get(day);if(old && old.digest===row.digest){this.dayCache.delete(day);this.dayCache.set(day,old);return old.models;}
-    // Valuation is Codex/OpenAI only. Keep its small lookup hot; retaining the
-    // entire multi-provider catalogue would evict it on every consumption row.
-    const body=this.body(row.body),models=new Map<string,JsonObject>(validatePrices(body,day).models.filter(price=>price.provider.toLowerCase()==='openai').map(price=>[price.model,{...price,day,digest:row.digest,observed:row.observed,snapshotSource:row.source}]));
+    // Keep only the native-provider reference fields in the hot index. Detailed
+    // dimensions remain in lossless evidence and are loaded by the catalogue.
+    const body=this.body(row.body),models=new Map<string,JsonObject>();
+    for(const price of validatePrices(body,day).models.filter(p=>p.sourceType==='registry'&&MAIN_PROVIDERS.includes(p.provider.toLowerCase()))){
+      const {dimensions,...compact}=price,value={...compact,day,digest:row.digest,observed:row.observed,snapshotSource:row.source};
+      models.set(price.model.toLowerCase(),value);
+      const native=price.model.replace(new RegExp('^'+price.provider+'/'),'').toLowerCase();
+      if(!models.has(native))models.set(native,value);
+    }
     if(old)this.dayBytes-=old.bytes;const bytes=Buffer.byteLength(encode([...models]))*2+128;this.dayCache.set(day,{digest:row.digest,bytes,models});this.dayBytes+=bytes;
     this.trimDays();
     return models;
@@ -217,7 +224,7 @@ export class Pricing {
     this.refreshLookups();
     const groups=db.prepare("SELECT DISTINCT substr(e.at,1,10) day,e.model FROM events e WHERE e.owner=? AND e.source='codex' AND EXISTS(SELECT 1 FROM radar_values v WHERE v.owner=e.owner AND v.id=e.id)"+(day?' AND e.at>=? AND e.at<?':'')+' ORDER BY day,e.model').all(...(day?[p.owner,day+'T00:00:00',addDays(day,1)+'T00:00:00']:[p.owner]));
     for(const group of groups) {
-      const model=String(group.model).replace(/^chatgpt-web\//,''), price=this.lookupDay(group.day).get(model);
+      const model=String(group.model).replace(/^chatgpt-web\//,''), price=this.lookupDay(group.day).get(model.toLowerCase());
       if(!price || price.sourceType==='registry'&&!price.integrityIssue&&!price.unsupported&&['USD','CNY'].includes(price.currency)) continue;
       const compact=db.usageStorage;
       const select=compact?
@@ -446,7 +453,7 @@ export class Pricing {
     for(const row of rows){
       const day=new Date(row.at).toISOString().slice(0,10),model=String(row.model||'').replace(/^chatgpt-web\//,''),key=day+':'+model;
       if(day<start||day>end||missing.has(key))continue;missing.add(key);
-      const price=this.lookupDay(day).get(model),error=!price?'missing_historical_price':price.integrityIssue?'unverified_price_columns':price.unsupported?'unsupported_pricing_rules':null;
+      const price=this.lookupDay(day).get(model.toLowerCase()),error=!price?'missing_historical_price':price.integrityIssue?'unverified_price_columns':price.unsupported?'unsupported_pricing_rules':null;
       if(error)gaps.push({day,model,error});
     }
     check();
@@ -533,7 +540,7 @@ export class Pricing {
     this.refreshLookups(version);
     const day = new Date(row.at).toISOString().slice(0, 10),
       model = String(row.model).replace(/^chatgpt-web\//, ""),
-      price = this.lookupDay(day).get(model),
+      basePrice = this.lookupDay(day).get(model.toLowerCase()),
       fail = (reason: string, proof: JsonObject = {}) => ({
         cost: null,
         currency,
@@ -542,7 +549,10 @@ export class Pricing {
         valueParts: {},
         valueVersion: version,
       });
-    if (!price) return fail("missing_historical_price");
+    if (!basePrice) return fail("missing_historical_price");
+    const price:JsonObject={...basePrice,quote:{...basePrice.quote}};
+    const band=price.referenceBands?.filter((b:JsonObject)=>BigInt(row.input??0)>BigInt(b.aboveTokens)||b.aboveTokens==='0').at(-1);
+    if(band)price.quote={input:band.inputPricePer1M,output:band.outputPricePer1M,cached:band.cacheReadPricePer1M,write:band.cacheWritePricePer1M};
     if (price.integrityIssue) return fail('unverified_price_columns', {
       model, priceDate: day, digest: price.digest, source: price.source,
       snapshotSource: price.snapshotSource, quote: price.quote,
@@ -551,11 +561,11 @@ export class Pricing {
     if (price.sourceType !== "registry") return fail("fallback_price");
     if (price.unsupported || !["USD", "CNY"].includes(price.currency))
       return fail("unsupported_pricing_rules");
-    const previous = this.lookupDay(addDays(day,-1)).get(model);
+    const previous = this.lookupDay(addDays(day,-1)).get(model.toLowerCase());
     if (
       previous && !previous.integrityIssue &&
-      canonical([previous.quote, previous.currency]) !==
-        canonical([price.quote, price.currency])
+      canonical([previous.quote, previous.currency,previous.referenceBands]) !==
+        canonical([basePrice.quote, price.currency,price.referenceBands])
     )
       return fail("uncertain_price_transition");
     if (!raw) return fail("missing_usage_evidence");
@@ -563,10 +573,11 @@ export class Pricing {
         raw.last_token_usage && Object.keys(raw.last_token_usage).length
           ? raw.last_token_usage
           : raw.usage || {},
-      written =
+      reportedWrite =
         u.cache_write_input_tokens ??
         u.cache_creation_input_tokens ??
-        u.cacheWriteTokens;
+        u.cacheWriteTokens ?? u.input_tokens_details?.cache_write_tokens,
+      written = reportedWrite ?? 0;
     if ([row.input, row.output, row.cached, written].some((v) => v == null))
       return fail("missing_usage_details");
     if (
@@ -622,6 +633,9 @@ export class Pricing {
         priceCurrency: price.currency,
         digest: price.digest,
         scenario: SCENARIO,
+        assumptions:['原供应商全球标准文本档，工具及附加服务费用不在此估算内',...(reportedWrite==null?['日志未报告缓存写入；基准情景按未写入估算，非已核验实际扣费']:[])],
+        contextBand:band?.aboveTokens??null,
+        estimated: true,
       },
       parts: Record<string, Decimal> = Object.fromEntries(
         Object.entries(quantities).map(([k, v]) => [
@@ -669,7 +683,7 @@ export class Pricing {
     const result=rows.map(row=>{
       const keys=row._storageKeys,name=currency.toLowerCase();
       const old=keys?db.prepare('SELECT lower(hex('+name+'_fingerprint)) fingerprint,'+name+'_payload payload FROM compact_valuations WHERE owner=? AND id=?').get(keys.owner,keys.id):read.get(p.owner,row.id,currency) as JsonObject|undefined;
-      const day=new Date(row.at).toISOString().slice(0,10),model=String(row.model).replace(/^chatgpt-web\//,''),price=this.lookupDay(day).get(model),previous=this.lookupDay(addDays(day,-1)).get(model),fx=price?.currency===currency?null:this.lookupFx(row.at);
+      const day=new Date(row.at).toISOString().slice(0,10),model=String(row.model).replace(/^chatgpt-web\//,''),price=this.lookupDay(day).get(model.toLowerCase()),previous=this.lookupDay(addDays(day,-1)).get(model.toLowerCase()),fx=price?.currency===currency?null:this.lookupFx(row.at);
       const rawText=price?.integrityIssue?undefined:keys?db.prepare('SELECT lingxi_read_payload(p.delta,p.pack,p.ordinal,'+(row.source==='codex'?4:0)+') raw FROM compact_'+(row.source==='codex'?'codex_evidence':'agent_evidence')+' e JOIN usage_payloads p ON p.k=e.payload WHERE e.owner=? AND e.id=? AND e.verified=1').get(keys.owner,keys.id)?.raw:((row.source==='codex'?codex:agent).get(p.owner,row.id) as JsonObject|undefined)?.raw;
       let raw=rawText?this.rawCache.get(rawText):undefined;if(rawText&&!raw){raw=parseExact(rawText);if(rawText.length<8000)this.rawCache.set(rawText,raw!);}
       const signature=canonical([VALUATION_POLICY,row.source,model,day,shanghaiDay(row.at),row.input,row.output,row.cached,row.total,raw?[raw.model,raw.last_token_usage&&Object.keys(raw.last_token_usage).length?raw.last_token_usage:raw.usage]:null,price?.digest||null,previous?.digest||null,fx?[fx.day,fx.usd_cad,fx.cny_cad]:null,currency]);
@@ -766,8 +780,10 @@ export class Pricing {
             }),
           )
         : [],
+      nativeIds=new Set(models.map(m=>m.provider+'\0'+m.model.toLowerCase())),
+      visible = models.filter(m=>mainstreamModel(m.provider,m.model)&&(!/-\d{4}-\d{2}-\d{2}$/.test(m.model)||!nativeIds.has(m.provider+'\0'+m.model.toLowerCase().replace(/-\d{4}-\d{2}-\d{2}$/,'')))),
       q = String(params.q || "").toLowerCase(),
-      rows = models.filter(
+      rows = visible.filter(
         (m) =>
           (!params.provider || m.provider === params.provider) &&
           (!params.model || m.model === params.model) &&
@@ -778,15 +794,27 @@ export class Pricing {
         100,
         Math.max(1, Math.trunc(Number(params.limit) || 50)),
       );
+    const sort=['model','currency','input','cached','write','output','status'].includes(params.sort)?params.sort:'model',direction=params.direction==='desc'?-1:1;
+    const status=(m:JsonObject)=>m.integrityIssue?'报价冲突':m.unsupported?'复杂规则':m.sourceType==='registry'?'公开目录':'当日目录';
+    rows.sort((a,b)=>{
+      let order=0;
+      if(['input','cached','write','output'].includes(sort)){
+        const x=a.quote[sort],y=b.quote[sort];
+        if(x==null||y==null)return x==null?(y==null?a.model.localeCompare(b.model):1):-1;
+        order=new Decimal(x).cmp(y);
+      }else order=String(sort==='status'?status(a):a[sort]??'').localeCompare(String(sort==='status'?status(b):b[sort]??''),'zh-CN',{numeric:true});
+      return order*direction||a.model.localeCompare(b.model)||a.provider.localeCompare(b.provider);
+    });
     return {
       items: rows.slice(offset, offset + limit),
       total: rows.length,
       date,
       dates,
-      providers: [...new Set(models.map((m) => m.provider))].sort(),
+      sort,direction:direction===1?'asc':'desc',
+      providers: [...new Set(visible.map((m) => m.provider))].sort(),
       models: [
         ...new Set(
-          models
+          visible
             .filter((m) => !params.provider || m.provider === params.provider)
             .map((m) => m.model),
         ),
@@ -886,6 +914,11 @@ export class ValuationTasks {
         error: "后台重启，准备尚未完成；请重试或取消",
       });
       p.write("valuation-" + scope, state);
+    }
+    if(state.coverage&&state.versions?.rule!==VALUATION_POLICY){
+      delete state.coverage;delete state.versions;
+      if(state.status==='complete')state.status='stale';
+      p.write('valuation-'+scope,state);
     }
     return state;
   }

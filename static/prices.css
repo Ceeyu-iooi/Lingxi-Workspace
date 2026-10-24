@@ -25,3 +25,5 @@ body[data-page=prices]{background:var(--lingxi-body,var(--surface));color:var(--
 [data-page=prices] .price-dimensions{max-width:340px;white-space:normal;margin:8px 0}
 [data-page=prices] .price-dimensions pre{max-height:240px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px}
 [data-page=prices] .price-detail-scroll{max-width:600px;max-height:300px;overflow:auto;margin:12px 0}
+
+.price-sort{font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer;text-align:inherit;white-space:nowrap}.price-sort span{margin-left:5px;color:var(--ink-3)}th[aria-sort="ascending"] .price-sort,th[aria-sort="descending"] .price-sort{color:var(--accent)}.price-sort:focus-visible{outline:2px solid var(--accent);outline-offset:4px}

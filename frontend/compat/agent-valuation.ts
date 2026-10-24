@@ -216,8 +216,9 @@
     }
     panel.querySelector("h3").textContent =
       scope === "codex"
-        ? "API等效参考价值"
+        ? "API 基准估算"
         : names[scope] + " · API 参考等价值";
+    if(!panel.querySelector('[data-value-assumptions]')){const note=U.el('p',{class:'wb-muted valuation-assumptions','data-value-assumptions':''},'全球标准文本档基准；未报告缓存写入时按0估算，不含工具附加费，非真实账单。');panel.append(note);}
     const quotaHeading = root.querySelector(".usage-account-heading");
     if (scope === "codex" && quotaHeading) {
       quotaHeading.querySelector("h3").hidden = false;
@@ -268,11 +269,11 @@
       const v = values.USD || values.CNY;
       panel.querySelector(".agent-value-amounts").title =
         enabled && v
-          ? "已核验 " +
+          ? "可估算 " +
             v.summary.pricedRequests +
             " / " +
             v.summary.requests +
-            " 条；价格缺口保持未知，金额仅包含已核验部分。"
+            " 条；原供应商全球标准文本档。未报告的缓存写入按0估算，不含工具附加费；缺价未计入，非真实账单。"
           : "";
     };
     if(enabled){
