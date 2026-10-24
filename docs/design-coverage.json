@@ -1,5 +1,5 @@
 {
-  "version": "0.1.29",
+  "version": "0.1.30",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
@@ -81,6 +81,7 @@
       "orbit"
     ],
     "loadingSelection": "orbit",
+    "valuationRetry": "reuse original task type; refresh starts a new network job; preserve daily-update preference and cached values",
     "nativeAcceptance": "not-automatically-run",
     "manualInstallerUi": "pending-maintainer-review",
     "layoutReview": "card surfaces with restrained layers; approachable luxury; dynamic brand hero; fixed reader contents",

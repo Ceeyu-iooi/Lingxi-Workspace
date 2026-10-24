@@ -10,6 +10,7 @@
     window.dispatchEvent(
       new CustomEvent("workbench:features", { detail: features }),
     );
+  const retryTask = (scope, task) => U.request("POST", task.background ? "/api/valuation/refresh" : "/api/valuation/prepare", { scope });
   async function preparation(scope, task) {
     if (modal) return modal.promise;
     const focus=document.activeElement;
@@ -147,7 +148,7 @@
       const b = d.querySelector("[data-retry]");
       b.disabled = true;
       try {
-        await U.request("POST", "/api/valuation/prepare", { scope });
+        task = await retryTask(scope, task);
         d.querySelector("[data-error]").textContent = "";
         d.querySelector("[data-error]").hidden = true;
         d.querySelector("[data-cancel]").hidden = true;
@@ -155,6 +156,9 @@
         await poll();
       } catch (error) {
         d.querySelector("[data-error]").textContent = error.message;
+        d.querySelector("[data-error]").hidden = false;
+        d.querySelector("[data-cancel]").hidden = false;
+        b.hidden = false;
       } finally {
         b.disabled = false;
       }
@@ -210,7 +214,7 @@
       panel.querySelector('[data-slide]').before(refresh);
       refresh.onclick = async () => {
         refresh.disabled=true;
-        try { const task=await U.request('POST','/api/valuation/refresh',{scope}); if(task.status!=='complete')await preparation(scope,task); signalFeatures(await U.request('GET','/api/features')); }
+        try { const task=await U.request('POST','/api/valuation/refresh',{scope}); if(task.status!=='complete')await preparation(scope,task); panel.querySelector('[data-preparation-error]')?.remove(); signalFeatures(await U.request('GET','/api/features')); }
         catch(error){U.notify(error.message,{kind:'error'});} finally {if(refresh.isConnected)refresh.disabled=false;}
       };
     }
@@ -297,7 +301,7 @@
             if(!error){error=U.el('p',{class:'wb-inline-error',role:'alert','data-preparation-error':''});panel.append(error);}
             error.textContent=failed.error||'计价准备失败，请重试';
             const retry=U.el('button',{type:'button',class:'btn ghost'},'重试');
-            retry.onclick=async()=>{retry.disabled=true;try{const task=await U.request('POST','/api/valuation/prepare',{scope});if(task.status!=='complete')await preparation(scope,task);error.remove();}catch(e){U.notify(e.message,{kind:'error'});}finally{if(retry.isConnected)retry.disabled=false;}};
+            retry.onclick=async()=>{retry.disabled=true;try{const task=await retryTask(scope,failed);if(task.status!=='complete')await preparation(scope,task);error.remove();signalFeatures(await U.request('GET','/api/features'));}catch(e){U.notify(e.message,{kind:'error'});}finally{if(retry.isConnected)retry.disabled=false;}};
             error.append(retry);
           }
         })

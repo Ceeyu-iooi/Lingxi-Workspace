@@ -90,6 +90,29 @@ export function normalizeCurrent(raw:string,day:string){
   if(!models.length||models.length>15000)throw Error('当前价格目录无效');
   return models;
 }
+/** Enrich a registry entry with catalogue evidence without replacing its rates.
+ * Apply the same identity rule to current and historical snapshots. Genuine
+ * duplicates within either source remain errors instead of being discarded. */
+export function mergePriceCatalog(primary:JsonObject[],supplement:JsonObject[]){
+  const byId=new Map<string,JsonObject>();
+  const copy=(row:JsonObject)=>({...row,dimensions:[...(row.dimensions||[])]});
+  for(const row of primary){
+    if(byId.has(row.id))throw Error('价格来源中存在重复模型身份');
+    byId.set(row.id,copy(row));
+  }
+  const seen=new Set<string>();
+  for(const row of supplement){
+    if(seen.has(row.id))throw Error('补充价格来源中存在重复模型身份');
+    seen.add(row.id);
+    const prior=byId.get(row.id);
+    if(!prior){byId.set(row.id,copy(row));continue;}
+    if(prior.sourceType!=='registry'||row.sourceType!=='current_catalog')throw Error('价格来源中存在冲突模型身份');
+    prior.dimensions.push(...(row.dimensions||[]));
+    prior.detailId=row.detailId;
+    prior.currentSource=CURRENT_PRICES;
+  }
+  return [...byId.values()];
+}
 export async function collectRegistry(options:{days:string[],loader:PriceLoader,
   evidence:(url:string,body:string)=>void,check?:()=>void,progress?:(value:JsonObject)=>void,catalogDate?:string,
   cacheRead?:(blob:string)=>{raw:string,source:string}|null,cacheWrite?:(blob:string,raw:string,source:string)=>void}){
@@ -152,11 +175,10 @@ export async function collectRegistry(options:{days:string[],loader:PriceLoader,
       const r=await loader(CURRENT_PRICES);if(!r.body)throw Error();evidence(CURRENT_PRICES,r.body);
       const published=parseExact(r.body)?._cloudprice?.updated_at;
       if(!date(published)||published>today||Date.parse(today)-Date.parse(published)>7*86400000)throw Error('补充目录已过期');
-      const extra=normalizeCurrent(r.body,published),byId=new Map(current.map(row=>[row.id,row]));
+      const extra=normalizeCurrent(r.body,published),merged=mergePriceCatalog(current,extra);
       currentSourceDate=published;currentExtra=extra;
       currentProviders=new Set(extra.map(r=>r.provider)).size;currentModels=extra.length;
-      for(const row of extra){const prior=byId.get(row.id);if(prior){prior.dimensions.push(...row.dimensions);prior.detailId=row.detailId;prior.currentSource=CURRENT_PRICES;}else byId.set(row.id,row);}
-      current.splice(0,current.length,...byId.values());
+      current.splice(0,current.length,...merged);
     }catch{gaps.push({source:CURRENT_PRICES,error:'current_catalog_unavailable'});}
   }
   current.sort((a,b)=>String(a.id).localeCompare(String(b.id),'en'));
@@ -190,7 +212,11 @@ export async function collectRegistry(options:{days:string[],loader:PriceLoader,
       completed++;progress();
     }
     }}));
-    for(const [day,models]of byDay){const loadedProviders=new Set(models.map(r=>r.provider)).size;if(day===currentSourceDate)models.push(...currentExtra);if(models.length)snapshots.push({day,body:encode({schemaVersion:1,billingUnit:'per_1m_tokens',effectiveDate:day,generatedAt:day+'T00:00:00Z',scope:'provider_catalog',coverage:{expectedProviders:providers.length,loadedProviders,currentSourceDate:day===currentSourceDate?currentSourceDate:null,gaps:gaps.filter(g=>g.provider&&(g.day===day||!g.day))},models:models.sort((a,b)=>String(a.id).localeCompare(String(b.id),'en'))}),source:REGISTRY});}
+    for(const [day,primary]of byDay){
+      const loadedProviders=new Set(primary.map(r=>r.provider)).size,hasSupplement=day===currentSourceDate;
+      const models=hasSupplement?mergePriceCatalog(primary,currentExtra):primary;
+      if(models.length)snapshots.push({day,body:encode({schemaVersion:1,billingUnit:'per_1m_tokens',effectiveDate:day,generatedAt:day+'T00:00:00Z',scope:'provider_catalog',coverage:{expectedProviders:providers.length,loadedProviders,currentSourceDate:hasSupplement?currentSourceDate:null,currentModels:hasSupplement?currentExtra.length:0,gaps:gaps.filter(g=>g.provider&&(g.day===day||!g.day))},models:models.sort((a,b)=>String(a.id).localeCompare(String(b.id),'en'))}),source:REGISTRY});
+    }
   }
   return {snapshots,errors,gaps,providers:providers.length,providersLoaded:new Set(current.map(r=>r.provider)).size};
 }
