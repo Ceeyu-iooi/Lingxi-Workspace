@@ -964,6 +964,7 @@ export async function startServer(
   app.get("/api/usage/value", () => pricing.state());
   app.get("/api/pricing/catalog", (request) => pricing.catalog(qs(request)));
   app.get('/api/pricing/details',request=>pricing.details(qs(request)));
+  app.get('/api/pricing/history',request=>pricing.history(qs(request)));
   app.get('/api/pricing/auto-update',()=>valuation.autoStatus());
   app.post('/api/pricing/auto-update',request=>valuation.setAuto(body(request).enabled));
   app.get("/api/pricing/fx", (request) => pricing.fxSeries(qs(request)));

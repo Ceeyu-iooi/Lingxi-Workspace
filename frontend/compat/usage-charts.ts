@@ -1,5 +1,6 @@
 // @ts-nocheck
 import {hourStateLabel} from "../../src/shared/usage-trend";
+import {decimalAxis} from "../../src/shared/chart-scale";
 // Compatibility controller: retain the validated interactions during the React migration.
 (() => {
   const escape = (s) =>
@@ -50,6 +51,8 @@ import {hourStateLabel} from "../../src/shared/usage-trend";
   const value = (host, n) =>
     host.dataset.format === "rate"
       ? Number(n).toFixed(6)
+      : host.dataset.format === "decimal"
+        ? Number(n).toLocaleString('en-US',{maximumSignificantDigits:10})
       : host.dataset.metric === "cost"
         ? money(n, host.dataset.currency)
         : num(n);
@@ -308,7 +311,7 @@ import {hourStateLabel} from "../../src/shared/usage-trend";
       if(hour&&row.state==='unknown')detailRows.push({label:'已知部分',value:full(row.knownTotal??0)+' Token',color:''});
       if(hour&&!['future','unobserved'].includes(row.state)){for(const [field,label] of [['input','输入'],['output','输出'],['cached','缓存'],['reasoning','推理']])detailRows.push({label,value:row.unknownFields?.[field]?'未知':full(row[field]??0),color:''});detailRows.push({label:'请求',value:String(row.requestCount??0),color:''});}
       if(host.dataset.metric==='cost'&&row.provided===false)detailRows.push({label:'范围',value:'仅显示已知金额，缺价部分未计入',color:''});
-      tip.show({primary:valid(row)?(row.provided===false?'已知 ':'')+exact+unit(host):state||"未返回",date:row.caption||row.date,rows:hour&&row.state!=='known'&&row.state!=='zero'?[{label:'状态',value:state||'未知',color:''},...detailRows]:detailRows}, clientX ?? screen.x, clientY ?? screen.y);
+      tip.show({primary:valid(row)?(row.provided===false?'已知 ':'')+exact+unit(host):state||host.dataset.emptyLabel||"未返回",date:row.caption||row.date,rows:hour&&row.state!=='known'&&row.state!=='zero'?[{label:'状态',value:state||'未知',color:''},...detailRows]:detailRows}, clientX ?? screen.x, clientY ?? screen.y);
     };
     const clipId = "usage-reveal-" + ++sequence;
     const draw = () => {
@@ -337,12 +340,13 @@ import {hourStateLabel} from "../../src/shared/usage-trend";
         ),
         rough = (max - minimum) / 4,
         unitSize = 10 ** Math.floor(Math.log10(rough));
-      const step = Math.max(
+      let step = Math.max(
           host.dataset.metric === "cost" ? 0.0000001 : 1,
           [1, 2, 5, 10].find((n) => n * unitSize >= rough) * unitSize,
         ),
         upper = Math.ceil(max / step) * step,
         lower = Math.floor(minimum / step) * step;
+      if(['rate','decimal'].includes(host.dataset.format))({step,upper,lower}=decimalAxis(rows.filter(valid).map(r=>r.total),host.dataset.axisDomain==='extent'));
       const measure = document.createElement("canvas").getContext("2d");
       measure.font = "12px " + getComputedStyle(svg).fontFamily;
       const left = Math.max(
@@ -398,7 +402,9 @@ import {hourStateLabel} from "../../src/shared/usage-trend";
           ),
         ),
       ];
-      const tickLabel = (n) => value(host, n);
+      const tickLabel = (n) => host.dataset.format==='rate'?n.toFixed(Math.min(8,Math.max(4,-Math.floor(Math.log10(step))+1))):value(host,n);
+      const linePath=points=>host.dataset.interpolation==='step'&&points.length?'M '+points[0].join(' ')+points.slice(1).map(p=>' H '+p[0]+' V '+p[1]).join(''):smooth(points);
+      const baseline=layout.y(Math.max(lower,Math.min(upper,0)));
       let chart = "";
       if (mode === "bar") {
         const barWidth = Math.max(
@@ -432,7 +438,7 @@ import {hourStateLabel} from "../../src/shared/usage-trend";
         const emit = () => {
           if (!part.length) return;
           parts.push({ points: part, dates });
-          chart += `<path class="usage-chart-area" style="fill:url(#${clipId}-area)" d="${smooth(part)} L ${part.at(-1)[0]} ${layout.y(0)} L ${part[0][0]} ${layout.y(0)} Z"/><path class="usage-smooth-line" d="${smooth(part)}"/>`;
+          chart += `<path class="usage-chart-area" style="fill:url(#${clipId}-area)" d="${linePath(part)} L ${part.at(-1)[0]} ${baseline} L ${part[0][0]} ${baseline} Z"/><path class="usage-smooth-line" d="${linePath(part)}"/>`;
           if (part.length === 1)
             chart += `<circle class="usage-trend-point" cx="${part[0][0]}" cy="${part[0][1]}" r="3"/>`;
           part = [];
@@ -449,7 +455,7 @@ import {hourStateLabel} from "../../src/shared/usage-trend";
         emit();
       }
       svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-      svg.innerHTML = `<defs><linearGradient id="${clipId}-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="var(--accent, #1683ff)" stop-opacity=".34"/><stop offset="100%" stop-color="var(--accent, #1683ff)" stop-opacity=".03"/></linearGradient><clipPath id="${clipId}" clipPathUnits="userSpaceOnUse"><rect class="usage-reveal" x="${left - 2}" y="0" width="${right - left + 4}" height="260"/></clipPath></defs><text class="usage-chart-label" x="${left}" y="16">${escape(host.dataset.axisLabel || (host.dataset.format === "rate" ? "CNY / USD" : host.dataset.metric === "cost" ? (host.dataset.currency === "USD" ? "$" : "￥") : "Token"))}</text>${ticks.map((v) => `<line class="usage-gridline" x1="${left}" x2="${right}" y1="${layout.y(v)}" y2="${layout.y(v)}"/><text class="usage-chart-label" text-anchor="end" x="${left - 8}" y="${layout.y(v) + 4}">${escape(tickLabel(v))}</text>`).join("")}<path class="usage-coordinate-axis usage-main-axis" d="M ${left} ${top - 8} V ${bottom} H ${right + 7}"/><path class="usage-axis-arrow" d="M ${left - 4} ${top - 3} L ${left} ${top - 9} L ${left + 4} ${top - 3} M ${right + 2} ${bottom - 4} L ${right + 8} ${bottom} L ${right + 2} ${bottom + 4}"/>${indices.map((i) => `<line class="usage-coordinate-axis usage-date-mark" data-base-x="${layout.x(i)}" x1="${layout.x(i)}" x2="${layout.x(i)}" y1="${bottom}" y2="${bottom + 4}"/><text class="usage-chart-label usage-date-tick" data-base-x="${layout.x(i)}" text-anchor="${i === 0 ? "start" : i === rows.length - 1 ? "end" : "middle"}" x="${layout.x(i)}" y="${bottom + 20}">${escape(rows[i].label||String(rows[i].date).slice(5))}</text>`).join("")}<text class="usage-chart-label usage-date-axis-label" text-anchor="end" x="${right}" y="255">${host.dataset.granularity==='hour'?'上海时间':'日期'}</text><g class="usage-chart-data" clip-path="url(#${clipId})">${chart}</g>${host.dataset.granularity==='hour'?rows.map((r,i)=>!valid(r)?`<line class="usage-gap-mark" data-state="${escape(r.state)}" x1="${layout.x(i)}" x2="${layout.x(i)}" y1="${bottom-5}" y2="${bottom}"/>`:"").join(""):""}${!rows.some(valid) ? '<text class="usage-chart-label usage-no-data" text-anchor="middle" x="' + (left + right) / 2 + '" y="120">' +(host.dataset.granularity==='hour'?'暂无已核验小时数据':'暂无用量')+'</text>' : ""}<g class="usage-crosshair" visibility="hidden"><line y1="${top}" y2="${bottom}"/><circle r="4"/></g>`;
+      svg.innerHTML = `<defs><linearGradient id="${clipId}-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="var(--accent, #1683ff)" stop-opacity=".34"/><stop offset="100%" stop-color="var(--accent, #1683ff)" stop-opacity=".03"/></linearGradient><clipPath id="${clipId}" clipPathUnits="userSpaceOnUse"><rect class="usage-reveal" x="${left - 2}" y="0" width="${right - left + 4}" height="260"/></clipPath></defs><text class="usage-chart-label" x="${left}" y="16">${escape(host.dataset.axisLabel || (host.dataset.format === "rate" ? "CNY / USD" : host.dataset.metric === "cost" ? (host.dataset.currency === "USD" ? "$" : "￥") : "Token"))}</text>${ticks.map((v) => `<line class="usage-gridline" x1="${left}" x2="${right}" y1="${layout.y(v)}" y2="${layout.y(v)}"/><text class="usage-chart-label" text-anchor="end" x="${left - 8}" y="${layout.y(v) + 4}">${escape(tickLabel(v))}</text>`).join("")}<path class="usage-coordinate-axis usage-main-axis" d="M ${left} ${top - 8} V ${bottom} H ${right + 7}"/><path class="usage-axis-arrow" d="M ${left - 4} ${top - 3} L ${left} ${top - 9} L ${left + 4} ${top - 3} M ${right + 2} ${bottom - 4} L ${right + 8} ${bottom} L ${right + 2} ${bottom + 4}"/>${indices.map((i) => `<line class="usage-coordinate-axis usage-date-mark" data-base-x="${layout.x(i)}" x1="${layout.x(i)}" x2="${layout.x(i)}" y1="${bottom}" y2="${bottom + 4}"/><text class="usage-chart-label usage-date-tick" data-base-x="${layout.x(i)}" text-anchor="${i === 0 ? "start" : i === rows.length - 1 ? "end" : "middle"}" x="${layout.x(i)}" y="${bottom + 20}">${escape(rows[i].label||String(rows[i].date).slice(5))}</text>`).join("")}<text class="usage-chart-label usage-date-axis-label" text-anchor="end" x="${right}" y="255">${host.dataset.granularity==='hour'?'上海时间':'日期'}</text><g class="usage-chart-data" clip-path="url(#${clipId})">${chart}</g>${host.dataset.granularity==='hour'?rows.map((r,i)=>!valid(r)?`<line class="usage-gap-mark" data-state="${escape(r.state)}" x1="${layout.x(i)}" x2="${layout.x(i)}" y1="${bottom-5}" y2="${bottom}"/>`:"").join(""):""}${!rows.some(valid) ? '<text class="usage-chart-label usage-no-data" text-anchor="middle" x="' + (left + right) / 2 + '" y="120">' +escape(host.dataset.noDataLabel||(host.dataset.granularity==='hour'?'暂无已核验小时数据':'暂无用量'))+'</text>' : ""}<g class="usage-crosshair" visibility="hidden"><line y1="${top}" y2="${bottom}"/><circle r="4"/></g>`;
       svg
         .querySelectorAll(".usage-bar[data-interactive=true]")
         .forEach((bar) => {
@@ -495,12 +501,12 @@ import {hourStateLabel} from "../../src/shared/usage-trend";
                 x,
                 geometry.get(part.dates[j]).y,
               ]),
-              d = smooth(points);
+              d = linePath(points);
             lines[i].setAttribute("d", d);
             areas[i].setAttribute(
               "d",
               d +
-                ` L ${points.at(-1)[0]} ${layout.y(0)} L ${points[0][0]} ${layout.y(0)} Z`,
+                ` L ${points.at(-1)[0]} ${baseline} L ${points[0][0]} ${baseline} Z`,
             );
             if (points.length === 1)
               dots[dot++]?.setAttribute("cy", points[0][1]);

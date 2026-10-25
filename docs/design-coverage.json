@@ -1,5 +1,5 @@
 {
-  "version": "0.1.30",
+  "version": "0.1.31",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
@@ -24,7 +24,8 @@
       "filter-contract",
       "hourly-usage",
       "skills-library",
-      "plugin-settings"
+      "plugin-settings",
+      "pricing-trends"
     ]
   },
   "businessModules": [
@@ -327,7 +328,24 @@
   "priceCatalog": {
     "sorting": "all-filtered-results-before-pagination",
     "headers": 7,
-    "missing": "null-last"
+    "missing": "null-last",
+    "trend": {
+      "identity": [
+        "provider",
+        "model",
+        "currency"
+      ],
+      "dimensions": [
+        "input",
+        "output",
+        "cached",
+        "write"
+      ],
+      "missing": "daily-null-no-fill",
+      "interpolation": "step",
+      "query": "local-cache-latest-request-only"
+    }
   },
-  "skillIdentity": "original-name-primary-chinese-translation-secondary"
+  "skillIdentity": "original-name-primary-chinese-translation-secondary",
+  "exchangeRateAxis": "decimal-extent-six-intervals"
 }

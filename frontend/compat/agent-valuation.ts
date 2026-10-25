@@ -222,7 +222,6 @@
       scope === "codex"
         ? "API 基准估算"
         : names[scope] + " · API 参考等价值";
-    if(!panel.querySelector('[data-value-assumptions]')){const note=U.el('p',{class:'wb-muted valuation-assumptions','data-value-assumptions':''},'全球标准文本档基准；未报告缓存写入时按0估算，不含工具附加费，非真实账单。');panel.append(note);}
     const quotaHeading = root.querySelector(".usage-account-heading");
     if (scope === "codex" && quotaHeading) {
       quotaHeading.querySelector("h3").hidden = false;

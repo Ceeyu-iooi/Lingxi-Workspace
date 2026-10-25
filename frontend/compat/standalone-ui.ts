@@ -34,19 +34,65 @@
   async function prices(root) {
     root.innerHTML =
       '<section class="wb-panel"><h2>价格目录</h2><p class="wb-muted">Portkey 提供版本化历史，CloudPrice 补充当日模型与详细维度。历史是截至日期的仓库快照，不等于官方调价时刻；默认显示主流模型。表头可切换全结果排序；缺失价格保持未知。</p><div class="wb-price-filters"><label>快照日期<input type="date" data-price-date></label><label>供应商<select data-provider><option value="">全部供应商</option></select></label><label>模型<select data-model><option value="">全部模型</option></select></label><label>搜索<input type="search" data-search placeholder="模型或供应商"></label><button class="btn" data-sync>后台同步</button></div><p class="wb-muted" data-price-status></p><div class="control-table-wrap"><table class="control-table"><thead><tr><th aria-sort="none"><button type="button" class="price-sort" data-sort="model">模型 / 供应商 <span aria-hidden="true">↕</span></button></th><th aria-sort="none"><button type="button" class="price-sort" data-sort="currency">币种 <span aria-hidden="true">↕</span></button></th><th aria-sort="none"><button type="button" class="price-sort" data-sort="input">输入 <span aria-hidden="true">↕</span></button></th><th aria-sort="none"><button type="button" class="price-sort" data-sort="cached">缓存读取 <span aria-hidden="true">↕</span></button></th><th aria-sort="none"><button type="button" class="price-sort" data-sort="write">缓存写入 <span aria-hidden="true">↕</span></button></th><th aria-sort="none"><button type="button" class="price-sort" data-sort="output">输出 <span aria-hidden="true">↕</span></button></th><th aria-sort="none"><button type="button" class="price-sort" data-sort="status">状态 / 来源 <span aria-hidden="true">↕</span></button></th></tr></thead><tbody data-price-rows></tbody></table></div><div class="wb-pager"><button class="btn ghost" data-prev>上一页</button><span data-page></span><button class="btn ghost" data-next>下一页</button></div><p class="wb-inline-error" role="alert"></p></section><section class="wb-panel" style="margin-top:24px"><h2>历史 USD / CNY 汇率</h2><p class="wb-muted">加拿大央行交叉汇率；周末等非公布日最多沿用此前七日，不使用未来汇率。</p><div class="wb-fx-range"><label>开始<input type="date" data-fx-start></label><label>截止<input type="date" data-fx-end></label><label>卡片日期<input type="date" data-fx-date></label><button class="btn ghost" data-fx-load>查看</button></div><div class="wb-fx-cards"><article class="wb-panel wb-fx-card"><p>1 USD 对应人民币</p><strong data-usd-cny>—</strong><small data-fx-proof></small></article><article class="wb-panel wb-fx-card"><p>1 CNY 对应美元</p><strong data-cny-usd>—</strong><small data-fx-proof></small></article></div><div data-fx-chart></div></section>';
+    q('section',root).insertAdjacentHTML('beforeend',`<section class="wb-price-trend" data-price-trend aria-labelledby="price-trend-heading">
+      <h3 id="price-trend-heading">模型每日单价趋势</h3>
+      <div class="wb-price-filters"><label>趋势模型<select data-trend-model><option value="">选择模型</option></select></label><label>计费维度<select data-trend-dimension><option value="input">输入</option><option value="output">输出</option><option value="cached">缓存读取</option><option value="write">缓存写入</option></select></label><label>开始<input type="date" data-trend-start></label><label>截止<input type="date" data-trend-end></label><button type="button" class="btn ghost" data-trend-load>查看趋势</button></div>
+      <p class="wb-muted" data-trend-caption>选择模型查看每日历史快照，单位为原币 / 每百万 Token；缺失日期不补值，复杂规则显示目录基础报价。</p>
+      <p class="wb-muted" role="status" data-trend-status></p><p class="wb-inline-error" role="alert" data-trend-error></p><div data-trend-chart></div>
+    </section>`);
     let sort="model",direction="asc";
     let offset = 0,
       ticket = 0,
       timer,
       catalog;
-    let alive=true,fxTicket=0;const abort=new AbortController();
-    root._wbDispose=()=>{alive=false;abort.abort();clearTimeout(timer);ticket++;fxTicket++;window.usageCharts?.dispose(root);};
-    const today = new Date().toLocaleDateString("en-CA");
+    let alive=true,fxTicket=0,trendTicket=0,trendAbort,lastHistory,trendOptions=[];const abort=new AbortController();
+    root._wbDispose=()=>{alive=false;abort.abort();trendAbort?.abort();clearTimeout(timer);ticket++;fxTicket++;trendTicket++;window.usageCharts?.dispose(root);};
+    const today = new Date().toLocaleDateString("en-CA",{timeZone:'Asia/Shanghai'});
     q("[data-fx-end]", root).value = today;
     q("[data-fx-date]", root).value = today;
     q("[data-fx-start]", root).value = new Date(
       Date.now() - 30 * 86400000,
     ).toLocaleDateString("en-CA");
+    q('[data-trend-end]',root).value=new Date().toISOString().slice(0,10);
+    q('[data-trend-start]',root).value=new Date(Date.now()-30*86400000).toISOString().slice(0,10);
+    const trendKey=row=>JSON.stringify([row.provider,row.model,row.currency]);
+    function chooseTrendModels(data){
+      const select=q('[data-trend-model]',root),prior=select.value;
+      const next=data.trendModels.filter(row=>['USD','CNY'].includes(row.currency));
+      const retained=trendOptions.find(row=>trendKey(row)===prior);
+      if(retained&&!next.some(row=>trendKey(row)===prior))next.unshift(retained);
+      trendOptions=next;
+      select.innerHTML='<option value="">选择模型</option>'+next.map(row=>'<option value="'+e(trendKey(row))+'">'+e(row.provider+' / '+row.model+' · '+row.currency)+'</option>').join('');
+      select.value=prior|| (next[0]?trendKey(next[0]):'');
+      window.roundedSelects?.scan();
+    }
+    function paintHistory(data){
+      const field=q('[data-trend-dimension]',root).value,label=q('[data-trend-dimension]',root).selectedOptions[0].textContent;
+      const chart=q('[data-trend-chart]',root),known=data.series.filter(row=>row.quote[field]!=null).length;
+      window.usageCharts.dispose(chart);
+      chart.innerHTML=window.usageCharts.trend(data.series.map(row=>({date:row.date,total:row.quote[field]==null?null:Number(row.quote[field]),models:[]})),data.model+' · '+label+'单价','line');
+      const plot=chart.querySelector('.usage-plot');Object.assign(plot.dataset,{format:'decimal',axisLabel:data.currency+' / 百万 Token',unit:' '+data.currency+' / 百万 Token',interpolation:'step',emptyLabel:'此日无可用单价',noDataLabel:'此范围暂无可用单价'});
+      plot.querySelector('svg').setAttribute('aria-label',data.model+' '+label+'每日单价，左右方向键查看日期');
+      window.usageCharts.mount(chart);
+      chart.querySelector('.usage-no-data')?.replaceChildren(document.createTextNode('此范围暂无可用单价'));
+      q('[data-trend-caption]',root).textContent=data.provider+' / '+data.model+' · '+label+' · '+data.currency+' / 每百万 Token · '+data.start+' 至 '+data.end;
+      q('[data-trend-status]',root).textContent=known+' / '+data.totalDays+' 天有报价；缺口不补值。'+(data.series.some(row=>row.complex)?'含复杂规则的目录基础报价，具体条件见表格。':'历史快照不等于官方调价时刻。');
+    }
+    async function loadHistory(){
+      if(!alive)return;const seq=++trendTicket;trendAbort?.abort();
+      const value=q('[data-trend-model]',root).value,error=q('[data-trend-error]',root),section=q('[data-price-trend]',root);
+      error.textContent='';
+      if(!value){window.usageCharts.dispose(q('[data-trend-chart]',root));q('[data-trend-chart]',root).replaceChildren();q('[data-trend-status]',root).textContent='选择一个模型后查看趋势';section.removeAttribute('aria-busy');return;}
+      const [provider,model,currency]=JSON.parse(value),params=new URLSearchParams({provider,model,currency,start:q('[data-trend-start]',root).value,end:q('[data-trend-end]',root).value}),key=params.toString();
+      if(lastHistory?.key===key){paintHistory(lastHistory.data);section.removeAttribute('aria-busy');return;}
+      trendAbort=new AbortController();section.setAttribute('aria-busy','true');
+      q('[data-trend-status]',root).textContent='正在读取所选模型；下方如有图表仍为上次结果…';
+      try{
+        const data=await U.request('GET','/api/pricing/history?'+params,undefined,{signal:trendAbort.signal});
+        if(!alive||seq!==trendTicket)return;lastHistory={key,data};paintHistory(data);
+      }catch(cause){if(alive&&seq===trendTicket){error.textContent=cause.message;q('[data-trend-status]',root).textContent=lastHistory?'读取失败，保留上次结果（范围见上方图注）':'读取失败，请重试';}}
+      finally{if(alive&&seq===trendTicket)section.removeAttribute('aria-busy');}
+    }
     const option = (select, values, label) => {
       const chosen = select.value;
       select.innerHTML =
@@ -74,6 +120,7 @@
         const data = await U.request("GET", "/api/pricing/catalog?" + params,undefined,{signal:abort.signal});
         if (!alive || seq !== ticket) return;
         catalog = data;
+        chooseTrendModels(data);
         q("[role=alert]",root).textContent="";
         root.querySelectorAll('[data-sort]').forEach(b=>{const active=b.dataset.sort===data.sort;b.closest('th').setAttribute('aria-sort',active?(data.direction==='asc'?'ascending':'descending'):'none');b.querySelector('span').textContent=active?(data.direction==='asc'?'↑':'↓'):'↕';});
         q("[data-price-date]", root).value = data.date;
@@ -131,7 +178,7 @@
         q("[data-next]", root).disabled =
           offset + data.items.length >= data.total;
       } catch (error) {
-        if(alive)q("[role=alert]", root).textContent = error.message;
+        if(alive&&seq===ticket)q("[role=alert]", root).textContent = error.message;
       } finally {
         stop();
       }
@@ -177,9 +224,10 @@
         );
         chart.querySelector(".usage-plot").dataset.format = "rate";
         chart.querySelector(".usage-plot").dataset.unit = " CNY / USD";
+        chart.querySelector(".usage-plot").dataset.axisDomain = "extent";
         window.usageCharts.mount(chart);
       } catch (error) {
-        if(alive)q("[role=alert]", root).textContent = error.message;
+        if(alive&&current===fxTicket)q("[role=alert]", root).textContent = error.message;
       }
     }
     root
@@ -207,6 +255,8 @@
       load();
     };
     q("[data-fx-load]", root).onclick = loadFX;
+    root.querySelectorAll('[data-trend-model],[data-trend-dimension],[data-trend-start],[data-trend-end]').forEach(input=>input.onchange=loadHistory);
+    q('[data-trend-load]',root).onclick=()=>{lastHistory=null;void loadHistory();};
     q("[data-sync]", root).onclick = async (event) => {
       const button = event.target;
       button.disabled = true;
@@ -218,6 +268,7 @@
         await U.job(task);
         await load();
         await loadFX();
+        lastHistory=null;await loadHistory();
       } catch (error) {
         if(alive)q("[role=alert]", root).textContent = error.message;
       } finally {
@@ -227,6 +278,7 @@
     };
     await load();
     await loadFX();
+    await loadHistory();
   }
   function kit(root) {
     U.radio(q("[data-kit-theme]"), {

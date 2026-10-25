@@ -173,6 +173,7 @@ export class Pricing {
   private proofBytes=0;
   private formulaCache=new BudgetMap<{fingerprint:string,value:JsonObject}>(2*1024*1024);
   private rawCache=new BudgetMap<JsonObject>(1024*1024,512);
+  private historyCache=new BudgetMap<JsonObject|null>(2*1024*1024,2048);
   private lookupDay(day:string){
     const cached=this.dayCache.get(day);if(cached)return cached.models;
     const row=this.monitor.profile.db.prepare("SELECT * FROM radar_days WHERE day=?").get(day) as JsonObject|undefined;
@@ -193,7 +194,7 @@ export class Pricing {
   }
   private trimDays(){while((this.dayBytes>6*1024*1024||this.dayCache.size>512)&&this.dayCache.size){const key=this.dayCache.keys().next().value!;this.dayBytes-=this.dayCache.get(key)!.bytes;this.dayCache.delete(key);}}
   private lookupFx(at:string){const day=shanghaiDay(at);if(this.fxCache.has(day))return this.fxCache.get(day);const result=this.monitor.profile.db.prepare("SELECT * FROM value_fx WHERE day>=? AND day<=? ORDER BY day DESC LIMIT 1").get(addDays(day,-7),day) as JsonObject|undefined;this.fxCache.set(day,result);return result;}
-  resources(){return {cacheBytes:this.dayBytes+this.proofBytes+this.fxCache.allocatedBytes+this.formulaCache.allocatedBytes+this.rawCache.allocatedBytes,budgetBytes:16*1024*1024};}
+  resources(){return {cacheBytes:this.dayBytes+this.proofBytes+this.fxCache.allocatedBytes+this.formulaCache.allocatedBytes+this.rawCache.allocatedBytes+this.historyCache.allocatedBytes,budgetBytes:16*1024*1024};}
   constructor(readonly monitor: Monitor) {
     monitor.profile.db.exec(
       `CREATE TABLE IF NOT EXISTS registry_file_cache(blob TEXT PRIMARY KEY,body TEXT,source TEXT);CREATE TABLE IF NOT EXISTS radar_days(day TEXT PRIMARY KEY,body TEXT,digest TEXT,source TEXT,observed TEXT);CREATE TABLE IF NOT EXISTS radar_meta(id INTEGER PRIMARY KEY,version INTEGER);INSERT OR IGNORE INTO radar_meta VALUES(1,0);CREATE TABLE IF NOT EXISTS radar_fetches(url TEXT PRIMARY KEY,etag TEXT,attempt REAL,success REAL,failures INTEGER,error TEXT);CREATE TABLE IF NOT EXISTS value_fx(day TEXT PRIMARY KEY,usd_cad TEXT,cny_cad TEXT,source TEXT,observed TEXT,digest TEXT);CREATE TABLE IF NOT EXISTS radar_values(owner TEXT,id TEXT,currency TEXT,fingerprint TEXT,result TEXT,PRIMARY KEY(owner,id,currency));CREATE TABLE IF NOT EXISTS radar_observations(url TEXT,digest TEXT,body TEXT,observed TEXT,PRIMARY KEY(url,digest));CREATE TABLE IF NOT EXISTS evidence_blobs(digest TEXT PRIMARY KEY,codec TEXT NOT NULL,raw_size INTEGER NOT NULL,body BLOB NOT NULL);`,
@@ -819,11 +820,42 @@ export class Pricing {
             .map((m) => m.model),
         ),
       ].sort(),
+      trendModels:visible.map(m=>({provider:m.provider,model:m.model,currency:m.currency})),
       missing: !snapshot,
       coverage:parsed?.coverage??null,
       source: REGISTRY,
       version: this.version(),
     };
+  }
+  async history(params:JsonObject) {
+    const end=String(params.end||new Date().toISOString().slice(0,10)),start=String(params.start||addDays(end,-30));
+    const validDay=(day:string)=>/^\d{4}-\d{2}-\d{2}$/.test(day)&&Number.isFinite(Date.parse(day))&&new Date(day).toISOString().slice(0,10)===day;
+    if(!validDay(start)||!validDay(end)||start>end||end>new Date().toISOString().slice(0,10)||(Date.parse(end)-Date.parse(start))/86400000>1096)throw Error('价格趋势日期范围不正确，最多查询三年');
+    const provider=String(params.provider||''),model=String(params.model||''),currency=String(params.currency||'');
+    if(!provider||provider.length>180||!model||model.length>300||!['USD','CNY'].includes(currency))throw Error('请选择供应商、模型与原币种');
+    const db=this.monitor.profile.db,version=this.version();
+    const snapshots=new Map((db.prepare('SELECT day,digest,body,source FROM radar_days WHERE day>=? AND day<=? ORDER BY day').all(start,end) as JsonObject[]).map(row=>[row.day,row]));
+    const series:JsonObject[]=[];let knownDays=0;
+    for(let date=start;date<=end;date=addDays(date,1)){
+      const snapshot=snapshots.get(date);let price:JsonObject|null=null;
+      if(snapshot){
+        const key=encode([snapshot.digest,provider,model]);
+        if(this.historyCache.has(key))price=this.historyCache.get(key)!;
+        else{
+          const row=validatePrices(this.body(snapshot.body),date).models.find(r=>r.provider===provider&&r.model===model);
+          price=row?{quote:row.quote,currency:row.currency,integrityIssue:row.integrityIssue,sourceType:row.sourceType,unsupported:row.unsupported,source:row.source,snapshotAt:row.snapshotAt}:null;
+          this.historyCache.set(key,price);
+        }
+      }
+      const issue=!snapshot?'missing_snapshot':!price?'missing_model':price.currency!==currency?'currency_changed':price.integrityIssue?'unverified_price_columns':!['registry','current_catalog'].includes(price.sourceType)?'unverified_source':null;
+      const quote=issue?{input:null,cached:null,write:null,output:null}:price!.quote;
+      if(Object.values(quote).some(value=>value!=null))knownDays++;
+      series.push({date,quote,currency,issue,complex:price?.unsupported??false,source:price?.source??null,snapshotAt:price?.snapshotAt??null});
+      // Yield while scanning large historical catalogs; only compact model quotes are retained.
+      if(series.length%8===0)await new Promise(resolve=>setImmediate(resolve));
+    }
+    if(version!==this.version())throw Error('价格缓存正在更新，请重新查看趋势');
+    return {provider,model,currency,start,end,series,knownDays,totalDays:series.length,version,billingUnit:'per_1m_tokens'};
   }
   fxSeries(params: JsonObject) {
     const end = params.end || shanghaiDay(new Date()),

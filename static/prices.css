@@ -17,6 +17,11 @@ body[data-page=prices]{background:var(--lingxi-body,var(--surface));color:var(--
 [data-page=prices] .control-table :is(th,td):nth-child(n+3):nth-child(-n+6){text-align:right}
 [data-page=prices] .wb-fx-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin:32px 0}
 [data-page=prices] .wb-fx-card strong{display:block;font-size:36px;font-weight:500;line-height:1.2;font-variant-numeric:tabular-nums;margin:16px 0}
+[data-page=prices] .wb-price-trend{margin-top:28px;padding-top:28px;border-top:1px solid var(--line);min-width:0}
+[data-page=prices] .wb-price-trend h3{font-size:20px;font-weight:500;margin:0}
+[data-page=prices] .wb-price-trend [data-trend-caption]{font-variant-numeric:tabular-nums;overflow-wrap:anywhere;margin-bottom:8px}
+[data-page=prices] .wb-price-trend .wb-price-filters label:first-child{flex-basis:320px}
+[data-page=prices] [data-trend-status]{margin-bottom:12px}
 [data-page=prices] :is(button,input,select,a):focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 @media(max-width:719px){[data-page=prices] .wb-standalone{padding:28px 16px 48px}[data-page=prices] .wb-standalone-header{flex-direction:column;gap:16px;margin-bottom:28px;padding-bottom:24px}[data-page=prices] .wb-panel{padding:20px}[data-page=prices] .wb-fx-cards{grid-template-columns:minmax(0,1fr);gap:16px}[data-page=prices] .btn{min-height:44px}}
 
