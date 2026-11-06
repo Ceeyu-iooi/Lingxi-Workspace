@@ -6,7 +6,7 @@ import { hash, parseExact, encode, uid, type JsonObject } from "./profile.ts";
 import { Control } from "./control.ts";
 import { shanghaiDay, addDays } from "./usage-summary.ts";
 import { priceIntegrityIssue } from './price-integrity.ts';
-import {collectRegistry,REGISTRY,MAIN_PROVIDERS,mainstreamModel} from './price-source.ts';
+import {collectRegistry,REGISTRY,MAIN_PROVIDERS,mainstreamModel,type PriceSnapshot} from './price-source.ts';
 import {Agent as HttpsAgent, get as httpsGet} from 'node:https';
 import {HttpsProxyAgent} from 'https-proxy-agent';
 
@@ -43,7 +43,19 @@ export async function loadPrice(url: string, etag = "") {
     });request.on('error',reject);
   });
   try{return await attempt();}catch(error:any){
-    if(error.status)throw Error(error.status===429?'公开价格接口限流，请稍后刷新；缓存保留':'公开价格接口读取失败；缓存保留');
+    if(error.status){
+      // Preserve the status code so callers can distinguish throttling from real failures,
+      // and name the host so the message is actionable instead of generic.
+      const host = (() => { try { return new URL(url).hostname; } catch { return "价格来源"; } })();
+      throw Object.assign(
+        Error(
+          error.status === 403 || error.status === 429
+            ? `公开价格接口限流（${host} HTTP ${error.status}），请稍后刷新；缓存保留`
+            : `公开价格接口读取失败（${host} HTTP ${error.status}）；缓存保留`,
+        ),
+        { status: error.status },
+      );
+    }
     if(/ECONNRESET|ETIMEDOUT|EPIPE|ABORT_ERR/.test(String(error.code)))try{return await attempt();}catch{}
     throw Error('公开价格网络连接失败，请检查网络后重试；缓存保留');
   }
@@ -321,12 +333,28 @@ export class Pricing {
       return {prices,fx,version};
     }
   }
-  state() {
+  /**
+   * Catalogue view for the evidence dialog.
+   *
+   * `compact` drops the per-interval raw pricing `dimensions` block (which dominates the
+   * payload: 10k+ intervals × several rule objects produced ~14 MB) and keeps only what the
+   * dialog renders. `limit` caps the returned interval count after the same stable sort, and
+   * the response reports the true total so the UI can say "showing N of M" instead of
+   * silently truncating. Full per-model detail remains on `pricing.details()`.
+   */
+  state(
+    options: { compact?: boolean; limit?: number; model?: string; provider?: string } = {},
+  ) {
     const index = this.index(),
+      compact = options.compact === true,
+      model = options.model?.trim(),
+      provider = options.provider?.trim(),
       intervals: JsonObject[] = [];
     for (const price of [...index.prices.values()].sort(
       (a, b) => a.model.localeCompare(b.model) || a.day.localeCompare(b.day),
     )) {
+      if (model && price.model !== model) continue;
+      if (provider && String(price.provider || "") !== provider) continue;
       const item: JsonObject = {
           ...price,
           id: price.model + ":" + price.day,
@@ -345,13 +373,48 @@ export class Pricing {
         previous.end = item.end;
       else intervals.push(item);
     }
+    const totalIntervals = intervals.length;
+    let rows = intervals;
+    if (compact) {
+      // Collapse runs of identical quotes for the same model that are separated only by a
+      // gap: the dialog is a quote inventory, not a calendar, and repeating an unchanged
+      // quote hundreds of times hides the models that actually changed.
+      const byModel = new Map<string, JsonObject[]>();
+      for (const item of intervals) {
+        const list = byModel.get(String(item.model)) || [];
+        const last = list.at(-1);
+        if (
+          last &&
+          canonical([last.quote, last.currency, last.sourceType, last.unsupported]) ===
+            canonical([item.quote, item.currency, item.sourceType, item.unsupported])
+        ) {
+          last.end = item.end;
+          last.digest = item.digest;
+          (last as any).observed = item.observed;
+          continue;
+        }
+        const { dimensions, referenceBands, ...rest } = item;
+        list.push({
+          ...rest,
+          dimensionCount: Array.isArray(dimensions) ? dimensions.length : 0,
+        });
+        byModel.set(String(item.model), list);
+      }
+      rows = [...byModel.values()].flat();
+    }
+    const limit = Number(options.limit);
+    if (Number.isFinite(limit) && limit > 0 && rows.length > limit)
+      rows = rows.slice(0, Math.trunc(limit));
     return {
       experimental: true,
       mode: SCENARIO,
       source: REGISTRY,
       agentCalculationEnabled:
         process.env.WORKBENCH_AGENT_VALUE_ENABLED === "1",
-      prices: intervals,
+      prices: rows,
+      totalIntervals,
+      truncated: rows.length < totalIntervals,
+      compact,
       fxDays: index.fx.size,
       historicalAPI: true,
       refreshing: this.refreshing,
@@ -424,11 +487,32 @@ export class Pricing {
     const evidence=(url:string,body:string)=>{check();p.transaction(()=>db.prepare('INSERT OR IGNORE INTO radar_observations VALUES(?,?,?,?)').run(url,hash(body),this.store(body),observed));};
     const registry=await collectRegistry({days:[...used],loader,evidence,check,progress:options.progress,catalogDate:options.catalogDate,
       cacheRead:blob=>{const r=db.prepare('SELECT * FROM registry_file_cache WHERE blob=?').get(blob) as JsonObject|undefined;return r?{raw:this.body(r.body),source:r.source}:null;},
-      cacheWrite:(blob,raw,source)=>{check();db.prepare('INSERT OR REPLACE INTO registry_file_cache VALUES(?,?,?)').run(blob,this.store(raw),source);}});
+      cacheWrite:(blob,raw,source)=>{check();db.prepare('INSERT OR REPLACE INTO registry_file_cache VALUES(?,?,?)').run(blob,this.store(raw),source);},
+       // When the registry API is rate limited (GitHub returns 403 rate-limit), reuse the
+       // catalogue already stored for the requested days instead of failing the whole sync
+       // and blanking the price view.
+       retainedCatalog:()=>{
+         const snapshots:PriceSnapshot[]=[];
+         for(const day of [...used,today]){
+           const row=db.prepare('SELECT * FROM radar_days WHERE day=?').get(day) as JsonObject|undefined;
+           if(!row)continue;
+           snapshots.push({day,body:this.body(row.body),source:String(row.source||REGISTRY)});
+         }
+         return snapshots.length?{snapshots,gaps:[],errors:[]}:null;
+       }});
     const errors=registry.errors,gaps=registry.gaps;
     let checked=registry.snapshots.length,changed=0;
     for(const snapshot of registry.snapshots){
-      check();validatePrices(snapshot.body,snapshot.day);
+      check();
+      // Retained bodies come from an older valuation policy and may no longer satisfy
+      // today's integrity rules. Skipping the invalid day keeps the rest of the sync
+      // usable instead of aborting everything, which is exactly the failure mode the
+      // rate-limit fallback exists to prevent.
+      try{validatePrices(snapshot.body,snapshot.day);}
+      catch(error:any){
+        gaps.push({day:snapshot.day,error:'retained_price_invalidated',message:String(error?.message||'已存价格不再通过完整性检查')});
+        continue;
+      }
       const prior=db.prepare('SELECT * FROM radar_days WHERE day=?').get(snapshot.day) as JsonObject|undefined;
       if(prior){
         const incoming=parseExact(snapshot.body),stored=parseExact(this.body(prior.body));

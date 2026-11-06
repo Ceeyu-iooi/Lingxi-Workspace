@@ -1,0 +1,10 @@
+{
+  "name": "Bootstrap",
+  "version": "5.3.8",
+  "source": "https://registry.npmjs.org/bootstrap/-/bootstrap-5.3.8.tgz",
+  "file": "static/vendor/bootstrap/bootstrap.min.css",
+  "sha256": "3adcc6d93321c336da2db20002b8a2361dbbcc5d58af418147616b8b376b9ef2",
+  "license": "MIT",
+  "vendoredAt": "2026-11-06",
+  "notes": "Verbatim dist/css/bootstrap.min.css from the published npm distribution (npm pack bootstrap@5.3.8, npm dist.integrity sha512-HP1SZDqaLDPwsNiqRqi5NcP0SSXciX2s9E+RyqJIIqGo+vJeN5AJVM98CXmW/Wux0nQ5L7jeWUdplCEf0Ee+tg==). The only local change is one appended trailing LF; upstream bytes are 232111 without a final newline, the vendored file is 232112 and shares the identical prefix. Upstream LICENSE (MIT, Copyright (c) 2011-2025 The Bootstrap Authors) is vendored next to it. This file is a scoped design reference only and must not be linked globally; static/bootstrap-scope.css holds the opt-in .bs-scope adapter."
+}

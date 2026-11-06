@@ -115,7 +115,9 @@ export function mergePriceCatalog(primary:JsonObject[],supplement:JsonObject[]){
 }
 export async function collectRegistry(options:{days:string[],loader:PriceLoader,
   evidence:(url:string,body:string)=>void,check?:()=>void,progress?:(value:JsonObject)=>void,catalogDate?:string,
-  cacheRead?:(blob:string)=>{raw:string,source:string}|null,cacheWrite?:(blob:string,raw:string,source:string)=>void}){
+  cacheRead?:(blob:string)=>{raw:string,source:string}|null,cacheWrite?:(blob:string,raw:string,source:string)=>void,
+  /** Last successfully stored catalogue; used only when the registry API is rate limited. */
+  retainedCatalog?:()=>{snapshots:PriceSnapshot[],gaps:JsonObject[],errors:JsonObject[]}|null}){
   const {loader,evidence,check}=options;
   const errors:JsonObject[]=[],gaps:JsonObject[]=[],snapshots:PriceSnapshot[]=[];
   const today=new Date().toISOString().slice(0,10),headDay=options.catalogDate||today,days=[...new Set(options.catalogDate?[headDay]:[...options.days,today])].sort();
@@ -126,8 +128,22 @@ export async function collectRegistry(options:{days:string[],loader:PriceLoader,
     check?.();const result=await loader(url);if(result.body==null)throw Error('首次读取不能使用空的价格响应');
     evidence(url,result.body);check?.();return parseExact(result.body);
   };
-  const revisions=await read(API+'/commits?path=pricing&per_page=1&until='+headDay+'T23:59:59Z');
-  const head=revisions?.[0];
+  const unresolved=async(url:string)=>{
+    check?.();const result=await loader(url);if(result.body==null)return null;
+    evidence(url,result.body);check?.();return parseExact(result.body);
+  };
+  // GitHub's unauthenticated API is rate limited (HTTP 403 with a `rate limit` body). The
+  // catalogue itself lives on the CDN and stays readable, so a throttled revision probe
+  // must not fail the whole sync: reuse the last successfully stored catalogue instead.
+  let revisions:JsonObject[]|null=null,throttled=false;
+  try{revisions=await read(API+'/commits?path=pricing&per_page=1&until='+headDay+'T23:59:59Z');}
+  catch(error:any){if(error?.status===403||error?.status===429)throttled=true;else throw error;}
+  if(throttled){
+    const retained=options.retainedCatalog?.();
+    if(retained){gaps.push({source:API,error:'registry_api_rate_limited',message:'GitHub 目录接口限流，复用已存快照'});return retained;}
+    throw Error('公开价格目录接口限流；缓存保留，请稍后刷新');
+  }
+  const head=(revisions||[])[0];
   if(!/^[a-f0-9]{40}$/.test(head?.sha||''))throw Error('价格仓库版本无效');
   const manifest=await read(API+'/contents/pricing?ref='+head.sha);
   if(!Array.isArray(manifest))throw Error('供应商价格清单无效');

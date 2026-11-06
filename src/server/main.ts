@@ -27,6 +27,8 @@ import { News } from "./news.ts";
 import { parseBill, parseNotification } from "./parsers.ts";
 import { analyzeTask } from "./text-agent.ts";
 import { Monitor, iso } from "./monitor.ts";
+import { GitTimeline } from "./git-timeline.ts";
+import { sessionUsage } from "./session-usage.ts";
 import { Codex } from "./codex.ts";
 import { Agents } from "./agents.ts";
 import { Sources } from "./sources.ts";
@@ -96,7 +98,8 @@ export async function startServer(
     deepseekAuthorization:DeepseekAuthorization,
     relay: Relay,
     pricing: Pricing,
-    valuation: ValuationTasks;
+    valuation: ValuationTasks,
+    gitTimeline: GitTimeline;
   let resourceManager:RuntimeResources;let scheduler:AgentScheduler;
   const collectAgent = async (scope: string) => {
     const config = control.state().config,
@@ -142,6 +145,7 @@ export async function startServer(
       new Monitor(profile);new Pricing(monitor);
     }
     valuation = new ValuationTasks(pricing, control, syncAgent);
+    gitTimeline = new GitTimeline(process.env.WORKBENCH_APP_ROOT || root);
     monitor.valuation = (rows, currency) => pricing.rows(rows, currency, true, true);
     monitor.priceVersion = () => pricing.version();
     monitor.accounting = (scope) =>
@@ -961,7 +965,24 @@ export async function startServer(
       body(request),
     ),
   );
-  app.get("/api/usage/value", () => pricing.state());
+  app.get("/api/usage/value", (request) => {
+    const params = qs(request);
+    // The catalogue can exceed 14 MB because every interval carries its raw pricing
+    // dimensions, so unlimited reads are the exception rather than the default. The
+    // evidence dialog asks for the compact projection; full per-model detail stays on
+    // /api/pricing/details.
+    const requested = Number(params.limit);
+    const limit =
+      Number.isFinite(requested) && requested > 0
+        ? Math.min(2000, Math.trunc(requested))
+        : undefined;
+    return pricing.state({
+      compact: params.compact === "1",
+      limit,
+      model: params.model ? String(params.model) : undefined,
+      provider: params.provider ? String(params.provider) : undefined,
+    });
+  });
   app.get("/api/pricing/catalog", (request) => pricing.catalog(qs(request)));
   app.get('/api/pricing/details',request=>pricing.details(qs(request)));
   app.get('/api/pricing/history',request=>pricing.history(qs(request)));
@@ -1010,7 +1031,8 @@ export async function startServer(
     const params = qs(request),
       scope = params.scope || "codex",
       metric = params.metric || "tokens";
-    if(params.granularity==='hour')return monitor.hourly(params,scheduler.state()[scope]||{});
+    if (params.granularity === "hour")
+      throw new Error("已取消按小时趋势，请使用按日视图");
     params.valuation_enabled =
       scope === "codex" && !!valuation.status("codex").coverage;
     const snapshot =
@@ -1117,6 +1139,27 @@ export async function startServer(
       metric,
       currency,
     };
+  });
+  app.get("/api/usage/sessions", (request) => {
+    const params = qs(request),
+      scope = params.scope || "codex";
+    if (!["codex", "zcode", "dsh", "api", ""].includes(scope))
+      throw new Error("来源不正确");
+    // Reuse the same filtered rows as /api/usage so session totals always reconcile with
+    // the daily summary; there is no second accounting path.
+    if (scope === "api")
+      throw new Error("API 供应商来源没有会话标识，请使用 Codex／ZCode／DSH");
+    return sessionUsage(monitor.dataset(scope, params), {
+      scope,
+      params,
+      limit: params.limit,
+      days: Number(params.days) || 30,
+      dataVersion: String(monitor.version()),
+    });
+  });
+  app.get("/api/git/timeline", (request) => {
+    const params = qs(request);
+    return gitTimeline.read({ limit: params.limit, force: params.force === "1" });
   });
   const staticFile = async (request: any, reply: any) => {
     const route = new URL(request.url, "http://localhost").pathname,

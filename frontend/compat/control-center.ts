@@ -1358,7 +1358,6 @@
       request();
     });
     body.addEventListener("usage-value-refresh", () => {
-      body.dispatchEvent(new CustomEvent('usage-trend-refresh'));
       cache.clear();
       request();
     });
@@ -1412,7 +1411,7 @@
       refreshing=true;try{const activeScope=scope,collection=await call('GET','/api/usage/collection');
         if(activeScope!==scope||!body.isConnected)return;
         const current=collection[scope];const note=q('#usage-sync-result',root);
-        const nextCollectionKey=JSON.stringify([scope,current]);if(collectionKey!==nextCollectionKey){collectionKey=nextCollectionKey;body.dispatchEvent(new CustomEvent('usage-trend-refresh'))}
+        const nextCollectionKey=JSON.stringify([scope,current]);if(collectionKey!==nextCollectionKey)collectionKey=nextCollectionKey;
         if(current?.status==='collecting')note.textContent='正在自动读取日志，已出现的用量会继续补齐历史…';
         else if(current?.status==='error')note.textContent=current.error;
         else if(current?.status==='ready')note.textContent=current.error||'已自动同步 '+new Date(current.syncedAt).toLocaleTimeString();

@@ -1,0 +1,151 @@
+/* ===========================================================================
+   Bootstrap 5.3.8 设计语言 · 作用域适配层（项目自有代码，非上游拷贝）
+   上游：static/vendor/bootstrap/bootstrap.min.css（MIT；见同目录 LICENSE 与 SOURCE.json）
+   生效范围：仅当容器带 .bs-scope 时生效；禁止全局 <link> bootstrap.min.css。
+   刻度：间距沿用 Bootstrap 的 4px 基准刻度（0/4/8/16/24/48），与项目 8 点栅格重合；
+        圆角沿用项目令牌（--radius-sm 卡面、--radius 卡片，不采用上游 0.25rem 默认）；
+        颜色只引用项目令牌，深色由 html[data-theme] 切换令牌后自动跟随，
+        因此本文件不写 prefers-color-scheme 分支。
+   ========================================================================== */
+
+/* -- 1. 令牌映射：Bootstrap 语义变量指回项目变量 ---------------------------- */
+.bs-scope {
+  /* 项目字体栈固定在 body（theme.css）；这里预留 --font-ui 令牌位，暂以同一栈回退 */
+  --bs-body-font-family: var(--font-ui, "Segoe UI Variable", "Microsoft YaHei UI", system-ui, sans-serif);
+  --bs-body-font-size: var(--text-ui-base, 14px);
+  --bs-body-color: var(--ink, currentColor);
+  --bs-body-bg: var(--surface, transparent);
+  --bs-emphasis-color: var(--ink, currentColor);
+  --bs-secondary-color: var(--ink-2, currentColor);
+  --bs-tertiary-bg: var(--surface-soft, transparent);
+  --bs-border-color: var(--line, currentColor);
+  --bs-border-width: 1px;
+  --bs-border-radius: var(--radius-sm, 4px);
+  --bs-border-radius-sm: var(--radius-sm, 4px);
+  --bs-border-radius-lg: var(--radius, 8px);
+  --bs-primary: var(--accent, currentColor);
+  --bs-link-color: var(--accent, currentColor);
+  --bs-link-hover-color: var(--accent, currentColor);
+  color: var(--bs-body-color);
+  font-family: var(--bs-body-font-family);
+  font-size: var(--bs-body-font-size);
+}
+
+.bs-scope,
+.bs-scope *,
+.bs-scope *::before,
+.bs-scope *::after { box-sizing: border-box; }
+.bs-scope a { color: var(--bs-link-color); text-decoration: none; }
+.bs-scope a:hover,
+.bs-scope a:focus-visible { color: var(--bs-link-hover-color); text-decoration: underline; }
+
+/* -- 2. 卡片：对应 Bootstrap .card 的表面与间距语义 -------------------------- */
+.bs-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px;
+  color: var(--ink, currentColor);
+  background: var(--color-card, var(--surface, transparent));
+  border: 1px solid var(--line, currentColor);
+  border-radius: var(--radius-sm, 4px);
+}
+.bs-card__title { margin: 0; font-size: var(--text-ui-base, 14px); font-weight: 600; line-height: 1.4; }
+.bs-card__body { min-width: 0; font-size: var(--text-ui-sm, 12px); line-height: 1.6; }
+.bs-card__footer { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding-top: 8px; border-top: 1px solid var(--line, currentColor); }
+
+/* -- 3. 表格：对应 Bootstrap .table 的密度与分隔线，仅作包裹层 ----------------- */
+.bs-table {
+  width: 100%;
+  min-width: 0;
+  overflow: auto;
+  background: var(--surface, transparent);
+  border: 1px solid var(--line, currentColor);
+  border-radius: var(--radius-sm, 4px);
+}
+.bs-table > table { width: 100%; margin: 0; border-collapse: collapse; font-size: var(--text-ui-sm, 12px); }
+.bs-table > table th,
+.bs-table > table td { padding: 8px 12px; text-align: left; vertical-align: middle; border-bottom: 1px solid var(--line, currentColor); }
+.bs-table > table th { color: var(--ink-2, currentColor); font-weight: 500; white-space: nowrap; }
+.bs-table > table tbody tr:last-child > td,
+.bs-table > table tbody tr:last-child > th { border-bottom: 0; }
+.bs-table > table tbody tr:hover > td { background: var(--surface-soft, transparent); }
+
+/* -- 4. 堆叠与行内排列：对应 Bootstrap 的 flex 工具类 ------------------------ */
+.bs-stack { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.bs-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+
+/* -- 5. 次要文字：对应 Bootstrap .text-body-secondary ----------------------- */
+.bs-muted { color: var(--ink-2, currentColor); font-size: var(--text-ui-sm, 12px); }
+
+/* -- 6. 徽标：对应 Bootstrap .badge ---------------------------------------- */
+.bs-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: var(--text-ui-xs, 11px);
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--ink-2, currentColor);
+  background: var(--surface-soft, transparent);
+  border-radius: var(--radius-sm, 4px);
+  white-space: nowrap;
+}
+.bs-badge--accent { color: var(--accent, currentColor); background: var(--accent-soft, transparent); }
+.bs-badge--danger { color: var(--danger, currentColor); background: var(--surface-soft, transparent); }
+
+/* -- 7. 进度条：对应 Bootstrap .progress / .progress-bar -------------------- */
+.bs-progress {
+  height: 8px;
+  overflow: hidden;
+  background: var(--surface-soft, transparent);
+  border-radius: var(--radius-sm, 4px);
+}
+.bs-progress__bar {
+  width: var(--bs-progress-value, 0%);
+  height: 100%;
+  background: var(--bs-primary);
+  border-radius: inherit;
+  transition: width 140ms cubic-bezier(.22, 1, .36, 1); /* 项目 micro 动效 140ms，暂无对应令牌 */
+}
+.bs-progress__bar--warning { background: var(--danger, currentColor); }
+
+/* -- 8. 12 栏栅格：对应 Bootstrap .row / .col-*，改用 CSS Grid -------------- */
+.bs-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; min-width: 0; }
+.bs-col { grid-column: span var(--bs-span, 12); min-width: 0; }
+.bs-col-1 { --bs-span: 1; }
+.bs-col-2 { --bs-span: 2; }
+.bs-col-3 { --bs-span: 3; }
+.bs-col-4 { --bs-span: 4; }
+.bs-col-5 { --bs-span: 5; }
+.bs-col-6 { --bs-span: 6; }
+.bs-col-7 { --bs-span: 7; }
+.bs-col-8 { --bs-span: 8; }
+.bs-col-9 { --bs-span: 9; }
+.bs-col-10 { --bs-span: 10; }
+.bs-col-11 { --bs-span: 11; }
+.bs-col-12 { --bs-span: 12; }
+
+/* 只保留插件实际需要的 md（768px）一档，其余断点见 docs/BOOTSTRAP_USAGE.md */
+@media (min-width: 768px) {
+  .bs-col-md-3 { --bs-span: 3; }
+  .bs-col-md-4 { --bs-span: 4; }
+  .bs-col-md-6 { --bs-span: 6; }
+  .bs-col-md-8 { --bs-span: 8; }
+  .bs-col-md-12 { --bs-span: 12; }
+}
+
+/* -- 9. 间距助手：对应 Bootstrap .gap-0…5（0/4/8/16/24/48） ------------------ */
+.bs-gap-0 { gap: 0; }
+.bs-gap-1 { gap: 4px; }
+.bs-gap-2 { gap: 8px; }
+.bs-gap-3 { gap: 16px; }
+.bs-gap-4 { gap: 24px; }
+.bs-gap-5 { gap: 48px; }
+
+/* -- 10. 动效降级：项目的减少动态效果约定 ---------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .bs-progress__bar { transition: none; }
+}

@@ -8,8 +8,7 @@ import {
   stamp,
   type JsonObject,
 } from "./profile.ts";
-import { Dataset, FIELDS, shanghaiDay } from "./usage-summary.ts";
-import {hourlyTrend} from "./usage-hourly.ts";
+import { Dataset, FIELDS, dateRange, shanghaiDay } from "./usage-summary.ts";
 import { UsageCube } from "./usage-cube.ts";
 import { isUsageEventRecord } from "../shared/contracts.ts";
 import { ResponseCache } from "./response-cache.ts";
@@ -261,14 +260,37 @@ export class Monitor {
       )?.version || 0
     );
   }
-  hourly(params:JsonObject,collection:JsonObject={}){
-    const now=Date.now(),coverage=this.accounting?.(params.scope||'codex')||{incomplete:true};
-    const key=canonical(['hour',this.profile.owner,this.version(),params,coverage,collection,Math.floor(now/60000)]);
-    const cached=this.responseCache.get(key);if(cached)return cached;
-    const data=hourlyTrend(this.profile,params,coverage,collection,now);data.dataVersion=String(this.version());this.responseCache.put(key,data);return data;
+  /**
+   * The event-level dataset backing `/api/usage`, exposed so session aggregation resolves
+   * sessions through the exact same filter rules instead of a second query path.
+   * `usageCube.rows` is day-aggregated and has no session identity, so read raw events.
+   *
+   * `period=all` and `period=recent-year` need the earliest recorded day; `dateRange`
+   * cannot infer it, so the range is widened to the whole observed history and the
+   * aggregation re-applies the caller's real range afterwards.
+   */
+  dataset(scope: string, params: JsonObject = {}, days = 30): Dataset {
+    const allTime =
+      params.period === "all" ||
+      params.period === "recent-year" ||
+      params.period === "year";
+    const [start, end] = allTime
+      ? (["2000-01-01", shanghaiDay(new Date())] as [string, string])
+      : dateRange(days, params);
+    const rows = this.usageCube
+      .recent({ ...params, scope, include_all: true }, { start, end })
+      .filter(
+        (r) =>
+          !["codex-cumulative", "unverified"].includes(String(r.source)) &&
+          !(
+            r.source === "codex" &&
+            String(r.id).startsWith("codex:") &&
+            !String(r.id).startsWith("codex:v4:")
+          ),
+      );
+    return new Dataset(rows, params.cost_currency || "CNY", params.range_earliest);
   }
-  snapshot(params: JsonObject = {}, rowsOverride?: JsonObject[]) {
-    const version = this.version(),
+  snapshot(params: JsonObject = {}, rowsOverride?: JsonObject[]) {    const version = this.version(),
       key = canonical([
         this.profile.owner,
         version,

@@ -317,16 +317,6 @@
       q("[data-table-sort]", section).onchange = () =>
         table(root, state, i, true);
     });
-    const trendHost=document.createElement('div');q('.usage-plot',root).before(trendHost);
-    state.trendControl=mountTrendControl(trendHost,{
-      radio:(host,value,onChange)=>window.WorkbenchUI.radio(host,{label:'趋势时间粒度',items:[['day','按日'],['hour','按小时']],value,onChange}),
-      load:(date,signal)=>{const params=new URLSearchParams();for(const [k,v] of Object.entries(state.snapshot?.query||{})){if(Array.isArray(v))v.forEach(x=>params.append(k,x));else if(v!=null)params.set(k,String(v));}params.set('scope',state.scope);params.set('granularity','hour');params.set('metric','tokens');params.set('date',date);params.set('timezone','Asia/Shanghai');return window.workbenchRequest('GET','/api/usage/chart?'+params,undefined,{signal})},
-      commit:()=>{state.signatures.trend=null;charts(root,state)},
-      disposeRadio:()=>window.WorkbenchReact.unmount?.(trendHost.querySelector('.trend-period'))
-    });
-    const refreshTrend=()=>state.trendControl.refresh();root.addEventListener('usage-trend-refresh',refreshTrend);
-    window.usageCharts.track(root,()=>root.removeEventListener('usage-trend-refresh',refreshTrend));
-    window.usageCharts.track(root,()=>state.trendControl.dispose());
     window.usageCharts.mount(root);
     window.usageRadios?.mount(root);
     window.usageRadios?.sync(root);
@@ -341,7 +331,7 @@
     dialog.className = "usage-value-dialog";
     state.valueDialog = dialog;
     dialog.innerHTML =
-      '<div class="section-title"><h3>API 等价值 · 实验</h3><button type="button" class="btn ghost" data-close aria-label="关闭">×</button></div><p class="meta">ModelRadar 当日原币文本 Token 参考折算，不含工具、缓存存储与订阅费用。缺少价格或计费明细的记录不计入金额。</p><button type="button" class="btn ghost" data-sync-value>同步价格与历史汇率</button><p class="meta" data-value-status>正在读取价格…</p><div class="control-table-wrap" data-price-list></div>';
+      '<div class="section-title"><h3>API 等价值 · 实验</h3><button type="button" class="btn ghost" data-close aria-label="关闭">×</button></div><p class="meta" data-price-source>Portkey 版本化公开目录 · 原币文本 Token 参考折算，不含工具、缓存存储与订阅费用。缺少价格或计费明细的记录不计入金额。</p><button type="button" class="btn ghost" data-sync-value>同步价格与历史汇率</button><p class="meta" data-value-status>正在读取价格…</p><div class="control-table-wrap" data-price-list></div>';
     document.body.append(dialog);
     dialog.showModal();
     q("[data-close]", dialog).onclick = () => dialog.close();
@@ -356,23 +346,58 @@
     );
     window.usageCharts.track(root, () => dialog.remove());
     const paint = async () => {
-      const data = await api("GET", "/api/usage/value");
+      // Ask for the compact projection: the full catalogue carries a raw pricing
+      // `dimensions` block per interval (~14 MB), which stalls this dialog. The compact
+      // response keeps the quote/source/status columns it actually renders.
+      const data = await api("GET", "/api/usage/value?compact=1&limit=300");
       if (!dialog.isConnected || !root.isConnected) return;
+      // The backend owns the price engine identity. Reject a response that cannot
+      // prove it came from a supported, evidence-bearing catalog, but do not pin a
+      // single historical vendor name: the engine has moved from ModelRadar to
+      // Portkey/CloudPrice and would otherwise fail every read.
       if (
-        data.mode !== "ModelRadar/native-currency/text" ||
-        data.source !== "https://modelradar.cn/data/models.json"
+        typeof data?.mode !== "string" ||
+        !data.mode ||
+        typeof data?.source !== "string" ||
+        !/^https:\/\//.test(data.source) ||
+        !Array.isArray(data.prices)
       )
-        throw Error("后端仍返回旧价格接口，请重启网站服务；旧报价已拒绝显示");
+        throw Error("价格接口响应不完整，旧报价已拒绝显示");
       const issues = state.snapshot.valuation?.issues || {};
+      const sourceLabel = q("[data-price-source]", dialog);
+      if (sourceLabel)
+        sourceLabel.textContent =
+          `${e(data.mode)} · 原币文本 Token 参考折算，不含工具、缓存存储与订阅费用。缺少价格或计费明细的记录不计入金额。`;
+      const shown = data.prices.length;
+      const total = Number(data.totalIntervals) || shown;
       q("[data-value-status]", dialog).textContent =
-        `${data.prices.length} 个价格区间 · ${data.fxDays} 天历史汇率${Object.keys(issues).length ? " · 部分记录缺少历史价格或计费明细" : ""}`;
+        `${shown}${total > shown ? ` / ${total}` : ""} 个价格区间 · ${Number(data.fxDays) || 0} 天历史汇率${Object.keys(issues).length ? " · 部分记录缺少历史价格或计费明细" : ""}${data.refreshing ? " · 正在后台同步" : ""}`;
       q("[data-price-list]", dialog).innerHTML =
         '<table class="control-table"><thead><tr><th>模型</th><th>起始 / 截止</th><th>输入 / 缓存 / 写入 / 输出<br>原币 / 百万 Token</th><th>来源</th></tr></thead><tbody>' +
         data.prices
-          .map(
-            (p) =>
-              `<tr><td>${e(p.model)} · ${e(p.currency || "未知币种")}</td><td>${e(p.start.slice(0, 10))}<br>${e(p.end.slice(0, 10))} 前</td><td>${["input", "cached", "write", "output"].map((k) => e(p.quote[k] ?? "—")).join(" / ")}</td><td><a href="${e(p.snapshotSource)}" target="_blank" rel="noopener noreferrer">ModelRadar 日期快照</a><br><a href="${e(p.source)}" target="_blank" rel="noopener noreferrer">供应商来源</a><br>${e(p.sourceType === "provider" ? "供应商数据" : "备用数据，不参与计算")}</td></tr>`,
-          )
+          .map((p) => {
+            const start = String(p.start || "").slice(0, 10) || "—";
+            const end = String(p.end || "").slice(0, 10) || "—";
+            const quote = p.quote || {};
+            const snapshot = String(p.snapshotSource || p.source || "");
+            const source = String(p.source || "");
+            const link = (url, label) =>
+              /^https:\/\//.test(url)
+                ? `<a href="${e(url)}" target="_blank" rel="noopener noreferrer">${e(label)}</a>`
+                : e(label);
+            const typeLabel =
+              p.sourceType === "registry"
+                ? "公开版本化目录"
+                : p.sourceType === "current_catalog"
+                  ? "当日目录"
+                  : "备用数据，不参与计算";
+            const issue = p.integrityIssue
+              ? `<br>报价冲突：${e(p.integrityIssue)}`
+              : p.unsupported
+                ? "<br>复杂规则，不参与单值计价"
+                : "";
+            return `<tr><td>${e(p.model)} · ${e(p.currency || "未知币种")}</td><td>${e(start)}<br>${e(end)} 前</td><td>${["input", "cached", "write", "output"].map((k) => e(quote[k] ?? "—")).join(" / ")}</td><td>${link(snapshot, "版本化快照")}<br>${link(source, "供应商来源")}<br>${e(typeLabel)}${issue}</td></tr>`;
+          })
           .join("") +
         "</tbody></table>";
     };
@@ -394,7 +419,9 @@
             if (!dialog.isConnected || !dialog.open) return;
             if(document.hidden){state.valuePoll=setTimeout(poll,1000);return;}
             try {
-              const next = await api("GET", "/api/usage/value");
+              // Poll with a single-row compact probe: only `refreshing` and `task.errors`
+              // are needed here, so do not pull the whole catalogue every second.
+              const next = await api("GET", "/api/usage/value?compact=1&limit=1");
               if (next.refreshing) {
                 state.valuePoll = setTimeout(poll, 1000);
                 return;
@@ -631,11 +658,9 @@
             agentScope(state.scope),
           )
         : s.groups;
-    const filterKey=JSON.stringify([state.scope,s.query,s.dataVersion,Math.floor(Date.now()/3600000)]);
-    state.trendControl.update({scope:state.scope,start:s.range.start,end:s.range.end,key:filterKey});
-    const hourly=state.trendControl.period==='hour',hourResult=state.trendControl.result,trendCash=cash&&!hourly;
-    root.dataset.trendPeriod=hourly?'hour':'day';
-    const trendDaily=hourly?(hourResult?.series||[]):daily,
+    const trendCash = cash;
+    root.dataset.trendPeriod = "day";
+    const trendDaily = daily,
       plot = q(".usage-plot", root),
       button = q("[data-chart-mode]", root),
       pie = q(".usage-interactive-pie", root),
@@ -648,7 +673,7 @@
         models: r.models || [],
         provided: r.provided,
       }));
-    plot.dataset.granularity=hourly?'hour':'day';
+    plot.dataset.granularity='day';
     plot.dataset.experimental = String(trendCash && agentScope(state.scope));
     pie.dataset.experimental = String(cash && agentScope(state.scope));
     plot.dataset.transition =
@@ -693,14 +718,13 @@
     button.title = button.getAttribute("aria-label");
     root.dataset.chartViewMode = state.mode;
     if (cash && agentScope(state.scope)) {
-      if(!hourly)q(".usage-chart-heading h3", root).textContent = "每日 API 基准估算 · 已知部分";
+      q(".usage-chart-heading h3", root).textContent = "每日 API 基准估算 · 已知部分";
       q(".usage-pie-heading h3", root).textContent =
         "模型基准估算占比" + (valued.summary.costUnknown ? "（已知）" : "");
     }
     if (plot.dataset.valueCurrency && plot.dataset.valueCurrency !== currency)
       plot.dataset.transition = "vertical";
     plot.dataset.valueCurrency = currency || "";
-    if(hourly){q('.usage-chart-heading h3',root).textContent='每小时 Token 趋势';plot.querySelector('svg').setAttribute('aria-label','每小时Token趋势，左右方向键查看小时用量');}
     const trendKey = JSON.stringify([series, state.mode, keys, trendCash, currency]);
     if (state.signatures.trend !== trendKey) {
       plot.dataset.series = JSON.stringify(series);
@@ -728,9 +752,9 @@
     q(".usage-pie-empty", root).textContent = cash
       ? "暂无模型费用"
       : "暂无模型用量";
-    q("[data-trend-start]", root).textContent = hourly?(hourResult?.date||state.trendControl.date):trendDaily[0]?.date||"—";
+    q("[data-trend-start]", root).textContent = trendDaily[0]?.date || "—";
     q("[data-trend-end]", root).textContent =
-      hourly?"00–23时 · 上海":trendDaily.at(-1)?.endDate||trendDaily.at(-1)?.date||"—";
+      trendDaily.at(-1)?.endDate || trendDaily.at(-1)?.date || "—";
     window.usageRadios?.sync(root);
     const known = series.filter((r) => Number.isFinite(r.total));
     q("[data-trend-peak]", root).textContent =

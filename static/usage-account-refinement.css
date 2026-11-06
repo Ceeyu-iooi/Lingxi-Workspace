@@ -67,3 +67,21 @@
 
 .usage-stable .usage-table-tools .usage-model-picker{width:180px;max-width:100%}
 @media(max-width:600px){.usage-stable .usage-table-tools .usage-model-picker{width:100%}}
+
+/* Price evidence dialog: four-column evidence table would overflow the 780px dialog with
+   nowrap cells, pushing 来源 out of view. Allow wrapping and give the source column room. */
+.usage-value-dialog{width:min(920px,calc(100vw - 32px))}
+.usage-value-dialog .control-table{white-space:normal;table-layout:fixed;font-size:11.5px}
+.usage-value-dialog .control-table th,.usage-value-dialog .control-table td{padding:8px 10px;vertical-align:top;overflow-wrap:anywhere}
+.usage-value-dialog .control-table th:nth-child(1),.usage-value-dialog .control-table td:nth-child(1){width:26%}
+.usage-value-dialog .control-table th:nth-child(2),.usage-value-dialog .control-table td:nth-child(2){width:17%}
+.usage-value-dialog .control-table th:nth-child(3),.usage-value-dialog .control-table td:nth-child(3){width:24%;font-variant-numeric:tabular-nums}
+.usage-value-dialog .control-table th:nth-child(4),.usage-value-dialog .control-table td:nth-child(4){width:33%;font-size:11px;color:var(--ink-2)}
+.usage-value-dialog .control-table a{color:var(--accent)}
+.usage-value-dialog [data-price-list]{max-height:52vh;overflow:auto}
+@media (max-width:720px){
+  .usage-value-dialog .control-table th:nth-child(2),.usage-value-dialog .control-table td:nth-child(2){display:none}
+  .usage-value-dialog .control-table th:nth-child(1),.usage-value-dialog .control-table td:nth-child(1){width:32%}
+  .usage-value-dialog .control-table th:nth-child(3),.usage-value-dialog .control-table td:nth-child(3){width:30%}
+  .usage-value-dialog .control-table th:nth-child(4),.usage-value-dialog .control-table td:nth-child(4){width:38%}
+}

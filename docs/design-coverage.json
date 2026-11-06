@@ -1,5 +1,5 @@
 {
-  "version": "0.1.31",
+  "version": "0.1.32",
   "specification": "design.md",
   "preview": {
     "light": "/preview.html",
@@ -22,10 +22,13 @@
       "floating",
       "floating-themes",
       "filter-contract",
-      "hourly-usage",
+      "sessions-usage",
       "skills-library",
       "plugin-settings",
       "pricing-trends"
+    ],
+    "pages": [
+      "/git-timeline.html"
     ]
   },
   "businessModules": [
@@ -347,5 +350,24 @@
     }
   },
   "skillIdentity": "original-name-primary-chinese-translation-secondary",
-  "exchangeRateAxis": "decimal-extent-six-intervals"
+  "exchangeRateAxis": "decimal-extent-six-intervals",
+  "bootstrap": {
+    "name": "Bootstrap",
+    "version": "5.3.8",
+    "license": "MIT",
+    "vendored": "static/vendor/bootstrap/bootstrap.min.css",
+    "sha256": "3adcc6d93321c336da2db20002b8a2361dbbcc5d58af418147616b8b376b9ef2",
+    "appliedLayer": "static/bootstrap-scope.css",
+    "scopeSelector": ".bs-scope",
+    "globallyLinked": false,
+    "notes": "审计基线，不全局引入；生效层把 --bs-* 指向项目令牌，深色随 html[data-theme]。"
+  },
+  "gitTimeline": {
+    "route": "/api/git/timeline",
+    "page": "/git-timeline.html",
+    "contract": "src/shared/git-timeline.ts",
+    "server": "src/server/git-timeline.ts",
+    "styles": "static/git-timeline.css",
+    "readOnly": true
+  }
 }

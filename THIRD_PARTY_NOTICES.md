@@ -97,3 +97,11 @@ The DSH source selector uses the unmodified official Harness favicon at `static/
 [jieba-wasm 2.4.0](https://github.com/fengkx/jieba-wasm), MIT, provides the actual Node.js Jieba/WASM segmentation and POS runtime. License is retained at `static/vendor/jieba-wasm/LICENSE` and in the bundled dependency. Local task extraction combines these tokens with explicit date/location rules; it is not a trained neural NER model.
 
 [https-proxy-agent 7.0.6](https://github.com/TooTallNate/proxy-agents/tree/main/packages/https-proxy-agent), MIT, enables explicitly configured HTTP(S) proxy tunnels for public pricing requests; upstream licenses remain in the bundled runtime dependencies.
+
+## Frontend layout reference (0.1.32)
+
+Bootstrap 5.3.8, Copyright (c) 2011-2025 The Bootstrap Authors, MIT License.
+Source: official npm distribution `bootstrap@5.3.8` (`https://registry.npmjs.org/bootstrap/-/bootstrap-5.3.8.tgz`), file `dist/css/bootstrap.min.css`.
+Vendored copy: `static/vendor/bootstrap/bootstrap.min.css` (verbatim upstream bytes plus one trailing LF), with the upstream MIT license at `static/vendor/bootstrap/LICENSE` and the version/source/SHA-256 record at `static/vendor/bootstrap/SOURCE.json`.
+
+The vendored stylesheet is a **design-language audit baseline only**; it is never linked into any page. The actually-loaded layer is the project's own `static/bootstrap-scope.css`, which maps Bootstrap's semantic variables onto this project's tokens and only applies inside `.bs-scope` containers. No Bootstrap JavaScript, Popper, or upstream component behaviour is shipped. Upstream is not rebuilt or modified.

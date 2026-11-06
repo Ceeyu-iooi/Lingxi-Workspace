@@ -29,7 +29,8 @@
 | --- | --- | --- | --- |
 | 主题、缩放 | Profile设置；共享主题预设与唯一缩放写入口 | 应用外壳及共享Token；页面只消费变量 | 浅深、125%缩放、保存／放弃、多窗口修订冲突 |
 | 用量筛选 | 主应用和任务栏插件各自筛选；响应绑定已提交查询 | 现有日期／模型控件，禁止另做相似控件 | 模型或／其他条件且；快速切换、失败保留快照身份 |
-| 小时趋势 | 服务端有效事件；`src/shared/usage-trend.ts`契约；日期和请求由`usage-trend-control.ts`持有 | 原JellyRadio、usageCharts；`usage-trend.css`只负责新增控件和缺口标记 | 24桶精确核对、未知／未来／缺口、日小时和曲线柱状、重试、隐藏释放 |
+| 会话用量 | `/api/usage/sessions` 复用 `/api/usage` 同一份已筛选行；`src/shared/session-usage.ts` 为唯一契约 | 服务端 `src/server/session-usage.ts`；插件 `frontend/private/floating/sessions.tsx` 与 `style.css`；布局语义取 `.bs-scope` 适配层 | 合计与日汇总对账、未识别会话归并、未知字段标注、排序／条数共享状态、420／360 DIP 列收起 |
+| Git 时间轴 | `/api/git/timeline` 只读 `git log`／`branch`／`tag`；`src/shared/git-timeline.ts` 契约 | 服务端 `src/server/git-timeline.ts`；页面 `frontend/app/git-timeline.tsx`；样式 `static/git-timeline.css` | 泳道推导、节点密度自适应、变更统计上限、未知项中文说明、浅深与窄屏 |
 | 图表交互 | 数据宿主维护结果，usageCharts维护绘图和提示 | `frontend/compat/usage-charts.ts`；沿用图表令牌 | 鼠标／键盘提示、空数据、缩放、离页观察器与监听释放 |
 | 技能资源 | 登记目录的只读索引；本地中文词目与Profile展示覆盖 | library-views、skillIdentity、ui-system及workspace-layout | 原名主标题、英文下方中文副标题、中文搜索、快速分页／失败快照、来源隔离、详情保存不改原文件 |
 | 任务栏配置 | 主进程带修订号配置为权威；设置持有未保存草稿 | frontend/app/taskbar-settings.tsx与taskbar-settings.css；两入口共用严格类型组件及轻量样式预览 | 双窗口修改、保存失败和放弃、旧响应不覆盖新编辑 |
