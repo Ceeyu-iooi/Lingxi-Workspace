@@ -4,3 +4,22 @@
 .usage-stable .usage-charts[data-pie-hidden=true]>section:nth-child(2){display:block!important}.usage-stable .usage-charts[data-pie-hidden=true] .usage-pie-layout{display:none!important}
 .usage-date-presets button,.usage-date-range>button{border-radius:999px!important}
 @media(max-width:760px){.usage-stable .usage-pie-layout{grid-template-columns:minmax(0,1fr)!important;gap:16px}.usage-stable .usage-donut{width:240px!important;height:240px!important}.usage-stable .usage-legend{height:300px}.usage-stable .usage-legend>[data-pie-legend]{grid-template-columns:minmax(95px,38%) minmax(0,1fr) minmax(55px,auto);gap:6px;padding:6px 2px!important;font-size:11px}.usage-model-value b{font-size:11px}.usage-stable .usage-trend{height:260px!important}.usage-chart-tools{margin-left:0}.usage-heat-gradient{width:90px!important}}
+
+/* ===== 0.1.33 model brand + module dots ===== */
+.brand-dot { display:inline-block; flex:none; width:8px; height:8px; border-radius:50%; vertical-align:1px; margin-right:6px }
+.usage-model-tag { display:inline-flex; align-items:center; gap:2px; flex:none; margin-right:6px; vertical-align:-4px }
+.usage-model-tag .brand-dot { margin-right:3px }
+.usage-model-tag em { display:grid; place-items:center; width:20px; height:20px; border-radius:6px; font-style:normal; font-size:10px; font-weight:700; letter-spacing:-.02em; color:var(--brand-strong,var(--accent)); background:color-mix(in srgb,var(--brand,var(--accent)) 14%,transparent); border:1px solid color-mix(in srgb,var(--brand,var(--accent)) 26%,transparent) }
+.usage-model-cell { display:flex; align-items:center; gap:2px; min-width:0 }
+.usage-model-cell>span { min-width:0 }
+.usage-legend .usage-model-name { display:flex; align-items:center; gap:2px; flex-wrap:wrap }
+.usage-legend .usage-model-name .brand-dot { margin-right:5px }
+/* module titles get the same green dot as the taskbar panel */
+:is(.usage-stable,.usage-surface,.usage-view,.control-surface,.overview-board) :is(.control-section>h3,.control-section>.section-title>h3,.section-title>h3,h3.module-title):not(.no-dot)::before { content:""; display:inline-block; width:7px; height:7px; margin-right:8px; border-radius:50%; background:linear-gradient(135deg,#34d399,#10b981); vertical-align:1px; flex:none }
+/* press feedback for every button inside the usage surfaces */
+.usage-view :is(button,.btn,[role=button]):active { transform:scale(.96) }
+.usage-view :is(button,.btn,[role=button]) { transition:transform 120ms cubic-bezier(.22,1,.36,1),background 140ms ease,color 140ms ease }
+@media (prefers-reduced-motion: reduce) {
+  .usage-view :is(button,.btn,[role=button]) { transition:none }
+  .usage-view :is(button,.btn,[role=button]):active { transform:none }
+}

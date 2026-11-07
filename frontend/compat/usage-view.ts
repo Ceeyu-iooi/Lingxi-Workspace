@@ -62,12 +62,26 @@
             : (m.costs?.[currency] ?? 0),
       })),
     }));
+  /**
+   * Priced ledger for the current scope. Every local source (dsh/zcode) now carries
+   * official prices, so the cost views must not be limited to codex any more. When the
+   * payload has no explicit `costAvailable` flag, "there is at least one priced row"
+   * is the honest reading: unpriced rows still count as unknown, never as zero.
+   */
   const valueSnapshot = (state) => {
     if(state.scope==='api')return state.snapshot;
+    const ledger=state.snapshot.valuation;
+    if(ledger){
+      if(ledger.costAvailable!==undefined)return ledger;
+      return {...ledger,costAvailable:(Number(ledger.summary&&ledger.summary.pricedRequests)||0)>0};
+    }
     if(state.scope!=='codex')return null;
-    if(state.snapshot.valuation)return state.snapshot.valuation;
     const unknown=rows=>(rows||[]).map(row=>({...row,costUnknown:row.requests||1,pricedRequests:0,cost:null,costs:{CNY:null,USD:null}}));
     return {...state.snapshot,costCurrency:'CNY',cachedAvailable:false,activity:unknown(state.snapshot.activity),daily:unknown(state.snapshot.daily),groups:unknown(state.snapshot.groups),events:unknown(state.snapshot.events)};
+  };
+  const modelTag = (row) => {
+    const brand = modelBrand(row && row.provider, row && row.model);
+    return `<span class="usage-model-tag" title="${e(brand.label)}"><i class="brand-dot" style="background:linear-gradient(135deg,${brand.color},${brand.colorStrong})"></i><em style="--brand:${brand.color};--brand-strong:${brand.colorStrong}">${e(brand.monogram)}</em></span>`;
   };
   const chartIcon = (mode) =>
     '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 3v17h17" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>' +
@@ -75,68 +89,28 @@
       ? '<path d="M8 16V9m5 7V5m5 11v-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>'
       : '<path d="m6 15 4-6 4 3 6-7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>') +
     "</svg>";
+  // Heat ramp: neutral low end, then cyan → indigo → magenta with even perceptual steps,
+  // so neighbouring days stay distinguishable instead of merging into one blue mass.
   const heatStops = [
-    [0.0, [255, 255, 255]],
-    [0.01694915254237288, [247, 252, 254]],
-    [0.03389830508474576, [238, 250, 254]],
-    [0.05084745762711865, [230, 247, 253]],
-    [0.06779661016949153, [222, 244, 253]],
-    [0.0847457627118644, [214, 242, 252]],
-    [0.1016949152542373, [205, 239, 251]],
-    [0.11864406779661017, [197, 236, 251]],
-    [0.13559322033898305, [189, 234, 250]],
-    [0.15254237288135594, [181, 231, 250]],
-    [0.1694915254237288, [172, 228, 249]],
-    [0.1864406779661017, [164, 226, 248]],
-    [0.2033898305084746, [156, 223, 248]],
-    [0.22033898305084745, [148, 221, 247]],
-    [0.23728813559322035, [139, 218, 246]],
-    [0.2542372881355932, [131, 215, 246]],
-    [0.2711864406779661, [123, 213, 245]],
-    [0.288135593220339, [115, 210, 245]],
-    [0.3050847457627119, [106, 207, 244]],
-    [0.3220338983050847, [98, 205, 243]],
-    [0.3389830508474576, [90, 202, 243]],
-    [0.3559322033898305, [82, 199, 242]],
-    [0.3728813559322034, [73, 197, 242]],
-    [0.3898305084745763, [65, 194, 241]],
-    [0.4067796610169492, [75, 186, 237]],
-    [0.423728813559322, [89, 178, 233]],
-    [0.4406779661016949, [101, 170, 229]],
-    [0.4576271186440678, [113, 162, 226]],
-    [0.4745762711864407, [124, 154, 222]],
-    [0.4915254237288136, [136, 146, 218]],
-    [0.5084745762711864, [148, 138, 214]],
-    [0.5254237288135594, [160, 130, 210]],
-    [0.5423728813559322, [172, 122, 206]],
-    [0.559322033898305, [184, 114, 202]],
-    [0.576271186440678, [196, 106, 198]],
-    [0.5932203389830508, [208, 98, 195]],
-    [0.6101694915254238, [231, 90, 182]],
-    [0.6271186440677966, [231, 82, 183]],
-    [0.6440677966101694, [243, 74, 183]],
-    [0.6610169491525424, [247, 63, 171]],
-    [0.6779661016949152, [239, 60, 163]],
-    [0.6949152542372882, [231, 57, 155]],
-    [0.711864406779661, [223, 54, 146]],
-    [0.7288135593220338, [215, 51, 138]],
-    [0.7457627118644068, [206, 48, 130]],
-    [0.7627118644067796, [198, 45, 122]],
-    [0.7796610169491526, [190, 39, 106]],
-    [0.7966101694915254, [174, 36, 98]],
-    [0.8135593220338984, [158, 33, 90]],
-    [0.8305084745762712, [158, 30, 81]],
-    [0.847457627118644, [150, 27, 73]],
-    [0.864406779661017, [142, 24, 65]],
-    [0.8813559322033898, [134, 21, 49]],
-    [0.8983050847457628, [126, 18, 49]],
-    [0.9152542372881356, [117, 15, 41]],
-    [0.9322033898305084, [109, 12, 33]],
-    [0.9491525423728814, [101, 9, 24]],
-    [0.9661016949152542, [93, 6, 16]],
-    [0.9830508474576272, [85, 5, 3]],
-    [1.0, [77, 0, 0]],
-  ];
+    [0.0, [246, 248, 251]],
+    [0.06, [234, 247, 251]],
+    [0.12, [214, 240, 250]],
+    [0.18, [185, 230, 248]],
+    [0.24, [150, 218, 245]],
+    [0.3, [111, 204, 240]],
+    [0.36, [79, 190, 234]],
+    [0.42, [63, 170, 227]],
+    [0.48, [79, 147, 218]],
+    [0.54, [107, 123, 208]],
+    [0.6, [142, 103, 198]],
+    [0.66, [179, 90, 186]],
+    [0.72, [212, 79, 172]],
+    [0.78, [233, 72, 155]],
+    [0.84, [240, 72, 138]],
+    [0.9, [228, 59, 120]],
+    [0.95, [206, 47, 102]],
+    [1.0, [176, 37, 86]],
+  ];;
   function number(el, value, raw = false, suffix = "", replay = false) {
     if (!el) return;
     const previous=counters.get(el), signature=JSON.stringify([value,raw,suffix,el.dataset.currency]);
@@ -331,7 +305,7 @@
     dialog.className = "usage-value-dialog";
     state.valueDialog = dialog;
     dialog.innerHTML =
-      '<div class="section-title"><h3>API 等价值 · 实验</h3><button type="button" class="btn ghost" data-close aria-label="关闭">×</button></div><p class="meta" data-price-source>Portkey 版本化公开目录 · 原币文本 Token 参考折算，不含工具、缓存存储与订阅费用。缺少价格或计费明细的记录不计入金额。</p><button type="button" class="btn ghost" data-sync-value>同步价格与历史汇率</button><p class="meta" data-value-status>正在读取价格…</p><div class="control-table-wrap" data-price-list></div>';
+      '<div class="section-title"><h3>API 等价值 · 实验</h3><button type="button" class="btn ghost" data-close aria-label="关闭">×</button></div><p class="meta" data-price-source>官方价格表 · 原币文本 Token 参考折算，峰谷按时段自动折算，不含工具、缓存存储与订阅费用。缺少价格或计费明细的记录不计入金额。</p><button type="button" class="btn ghost" data-sync-value>同步价格与历史汇率</button><p class="meta" data-value-status>正在读取价格…</p><div class="control-table-wrap" data-price-list></div>';
     document.body.append(dialog);
     dialog.showModal();
     q("[data-close]", dialog).onclick = () => dialog.close();
@@ -717,7 +691,7 @@
     );
     button.title = button.getAttribute("aria-label");
     root.dataset.chartViewMode = state.mode;
-    if (cash && agentScope(state.scope)) {
+    if (cash && ["codex", "api"].includes(state.scope)) {
       q(".usage-chart-heading h3", root).textContent = "每日 API 基准估算 · 已知部分";
       q(".usage-pie-heading h3", root).textContent =
         "模型基准估算占比" + (valued.summary.costUnknown ? "（已知）" : "");
@@ -770,7 +744,7 @@
     if (!s) return;
     const valued = valueSnapshot(state),
       cash =
-        index === 0 && ["codex","api"].includes(state.scope) && !!valued && state.metrics["table" + index];
+        index === 0 && !!valued && state.metrics["table" + index];
     const section = all("[data-usage-table]", root)[index],
       model = q("[data-table-model]", section),
       sort = q("[data-table-sort]", section),
@@ -786,7 +760,7 @@
           "时间",
           "Agent",
           "实际模型 / 请求模型",
-          cash ? (state.scope==="codex"?"API 参考费用":"费用") : "Token",
+          cash ? (state.scope==="codex"||state.scope==="api"?"API 参考费用":"费用（官方价）") : "Token",
           "状态",
           "耗时",
         ]
@@ -800,7 +774,9 @@
                 "输出金额",
                 "缓存命中金额",
                 "缓存写入金额",
-                "API 等价值 · 实验",
+                state.scope === "codex" || state.scope === "api"
+                  ? "API 等价值 · 实验"
+                  : "费用合计 · 官方价",
               ]
             : ["输入", "输出", "缓存", "推理", "Token"]),
           "请求 / 失败",
@@ -869,7 +845,7 @@
     const html = rows
       .map(
         (r) =>
-          `<tr data-model="${e(r.model)}" data-at="${e(r.at)}" data-total="${r.total ?? ""}">${index ? `<td>${e(timestampFormat.format(new Date(r.at)))}</td><td>${e(r.agent)}</td><td>${e(r.model)}${r.requested_model ? `<br><small>${e(r.requested_model)}</small>` : ""}</td><td title="${Number.isFinite(r.total) ? full(r.total) + " Token" : "未返回用量"}">${amount(r, "total")}</td><td>${r.status === "error" ? "失败" : "已记录"}</td><td>${r.duration_ms ? fmt(r.duration_ms) + " ms" : "—"}</td>` : `<td>${r.at ? e(dateFormat.format(new Date(r.at))) : "—"}</td><td>${e(r.source === "official-api" ? "官方 API" : r.source)}${r.agent ? " / " + e(r.agent) : ""}</td><td>${e(r.provider)}<br><small>${e(r.model)}</small></td>${["input", "output", "cached", "reasoning", "total"].map((k) => `<td title="${Number.isFinite(r[k]) ? full(r[k]) : "未返回"}">${amount(r, k)}</td>`).join("")}<td>${s.aggregated ? (Number.isFinite(r.platformRequests) ? fmt(r.platformRequests) : "—") : fmt(r.requests) + " / " + fmt(r.failures)}</td>`}</tr>`,
+          `<tr data-model="${e(r.model)}" data-at="${e(r.at)}" data-total="${r.total ?? ""}">${index ? `<td>${e(timestampFormat.format(new Date(r.at)))}</td><td>${e(r.agent)}</td><td>${modelTag(r)}${e(r.model)}${r.requested_model ? `<br><small>${e(r.requested_model)}</small>` : ""}</td><td title="${Number.isFinite(r.total) ? full(r.total) + " Token" : "未返回用量"}">${amount(r, "total")}</td><td>${r.status === "error" ? "失败" : "已记录"}</td><td>${r.duration_ms ? fmt(r.duration_ms) + " ms" : "—"}</td>` : `<td>${r.at ? e(dateFormat.format(new Date(r.at))) : "—"}</td><td>${e(r.source === "official-api" ? "官方 API" : r.source)}${r.agent ? " / " + e(r.agent) : ""}</td><td><span class="usage-model-cell">${modelTag(r)}<span>${e(r.provider)}<br><small>${e(r.model)}</small></span></span></td>${["input", "output", "cached", "reasoning", "total"].map((k) => `<td title="${Number.isFinite(r[k]) ? full(r[k]) : "未返回"}">${amount(r, k)}</td>`).join("")}<td>${s.aggregated ? (Number.isFinite(r.platformRequests) ? fmt(r.platformRequests) : "—") : fmt(r.requests) + " / " + fmt(r.failures)}</td>`}</tr>`,
       )
       .join("");
     const signature = JSON.stringify([html, cash, valued?.costCurrency]);
@@ -948,7 +924,7 @@
       b.setAttribute("aria-label", b.title);
     });
     all("[data-table-money]", root).forEach((b) => {
-      b.hidden = !["codex","api"].includes(scope);
+      b.hidden = !valued;
       b.textContent = currency === "USD" ? "$" : "￥";
     });
     all(

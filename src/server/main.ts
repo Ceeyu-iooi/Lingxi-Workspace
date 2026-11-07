@@ -34,12 +34,13 @@ import { Agents } from "./agents.ts";
 import { Sources } from "./sources.ts";
 import { UsageAccounts } from "./usage-accounts.ts";
 import {DeepseekAuthorization} from './deepseek-authorization.ts';
+import {OFFICIAL_POLICY,OFFICIAL_RATES,shanghaiPeak} from './official-pricing.ts';
 import { Relay } from "./relay.ts";
 import { Pricing, ValuationTasks } from "./pricing.ts";
 import { parseUsageFile } from "./usage-import.ts";
 import { Decimal } from "decimal.js";
 import { profileStorage, clearDerived, preflight } from "./maintenance.ts";
-import {installUsageStorage,registerStorageFunctions,initializeUsageStorage,packPendingUsage} from './usage-storage.ts';
+import {installUsageStorage,registerStorageFunctions,initializeUsageStorage,packPendingUsage,repairPromptTotals} from './usage-storage.ts';
 
 export async function startServer(
   options: {
@@ -119,6 +120,10 @@ export async function startServer(
   const initialize = () => {
     scheduler?.close();resourceManager?.close();
     initializeUsageStorage(profile);
+    // Legacy rows scanned before prompt-total recovery stay incomplete forever unless
+    // repaired once; the call is a no-op after the first pass.
+    const repaired=repairPromptTotals(profile.db);
+    if(repaired)console.info('[usage] 已从 total - output 补齐 '+repaired+' 条缺失的输入 Token');
     business = new Business(profile);
     control = new Control(profile);
     codexLogin?.close();
@@ -321,8 +326,8 @@ export async function startServer(
     preview: options.preview || process.env.WORKBENCH_PREVIEW === "1",
     sharedService: !desktop,
     backend: "node-typescript",
-    pricePolicy: "archived-reference-with-daily-update",
-    priceEngine: "Portkey/versioned-registry + CloudPrice/current-catalog",
+    pricePolicy: OFFICIAL_POLICY,
+    priceEngine: "官方价目表 + DeepSeek 峰谷时段",
     profileId: profile.meta?.profileId || null,
     serviceId: profile.serviceId,
   }));
@@ -666,6 +671,124 @@ export async function startServer(
   app.post("/api/skills/presentation",(request)=>skills.presentation(body(request)));
   app.post("/api/skills/source", (request) => skills.source(body(request)));
   app.post("/api/skills/scan", () => skills.scan());
+  // 技能管理中台（新前缀）：写操作只允许本机实例，读操作同样限制来源。
+  const skillManager = () => skills.manager,
+    skillWrite = (request: any) => {
+      if (!local(request))
+        throw new Error("技能管理中台仅允许本机实例写入");
+    };
+  app.get("/api/skill-manager/overview", (request) => {
+    if (!local(request)) throw new Error("技能管理中台仅允许本机实例访问");
+    return skillManager().overview();
+  });
+  app.get("/api/skill-manager/agents", (request) => {
+    if (!local(request)) throw new Error("技能管理中台仅允许本机实例访问");
+    return { items: skillManager().agents() };
+  });
+  app.post("/api/skill-manager/agents", (request) => {
+    skillWrite(request);
+    return skillManager().agentsSave(body(request));
+  });
+  app.get("/api/skill-manager/workspaces", (request) => {
+    if (!local(request)) throw new Error("技能管理中台仅允许本机实例访问");
+    return { items: skillManager().workspaces() };
+  });
+  app.post("/api/skill-manager/workspaces", (request) => {
+    skillWrite(request);
+    return skillManager().workspaceSave(body(request));
+  });
+  app.post("/api/skill-manager/workspaces/delete", (request) => {
+    skillWrite(request);
+    return skillManager().workspaceDelete(body(request));
+  });
+  app.post("/api/skill-manager/workspace/entries", (request) => {
+    if (!local(request)) throw new Error("技能管理中台仅允许本机实例访问");
+    return skillManager().workspaceEntries(body(request));
+  });
+  app.get("/api/skill-manager/library", (request) => {
+    if (!local(request)) throw new Error("技能管理中台仅允许本机实例访问");
+    const value = qs(request),
+      q = String(value.q || "").toLowerCase(),
+      tag = String(value.tag || ""),
+      agentId = String(value.agent || "");
+    const items = skillManager()
+      .librarySkills()
+      .filter((card) => {
+        if (q && !(card.displayName + "\n" + card.displayDescription + "\n" + card.name + "\n" + card.description).toLowerCase().includes(q))
+          return false;
+        if (tag && !card.tags.includes(tag)) return false;
+        if (agentId && !card.agents.some((b) => b.agentId === agentId && b.deployed)) return false;
+        return true;
+      });
+    const offset = Math.max(0, Number(value.offset) || 0),
+      limit = Math.min(100, Math.max(1, Number(value.limit) || 50));
+    return {
+      items: items.slice(offset, offset + limit),
+      total: items.length,
+      offset,
+      limit,
+    };
+  });
+  app.get("/api/skill-manager/skill", (request) => {
+    if (!local(request)) throw new Error("技能管理中台仅允许本机实例访问");
+    return skillManager().detail(qs(request));
+  });
+  app.post("/api/skill-manager/presentation", (request) => {
+    skillWrite(request);
+    return skillManager().presentation(body(request));
+  });
+  app.post("/api/skill-manager/tags", (request) => {
+    skillWrite(request);
+    return skillManager().tagsSave(body(request));
+  });
+  app.post("/api/skill-manager/remove", (request) => {
+    skillWrite(request);
+    return skillManager().remove(body(request));
+  });
+  app.post("/api/skill-manager/deploy", (request) => {
+    skillWrite(request);
+    return skillManager().deploy(body(request));
+  });
+  app.post("/api/skill-manager/undeploy", (request) => {
+    skillWrite(request);
+    return skillManager().undeploy(body(request));
+  });
+  app.post("/api/skill-manager/sync", (request) => {
+    skillWrite(request);
+    return skillManager().sync(body(request));
+  });
+  app.get("/api/skill-manager/presets", (request) => {
+    if (!local(request)) throw new Error("技能管理中台仅允许本机实例访问");
+    return { items: skillManager().presets() };
+  });
+  app.post("/api/skill-manager/preset", (request) => {
+    skillWrite(request);
+    return skillManager().presetSave(body(request));
+  });
+  app.post("/api/skill-manager/preset/delete", (request) => {
+    skillWrite(request);
+    return skillManager().presetDelete(body(request));
+  });
+  app.post("/api/skill-manager/preset/apply", (request) => {
+    skillWrite(request);
+    return skillManager().presetApply(body(request));
+  });
+  app.post("/api/skill-manager/updates", (request) => {
+    if (!local(request)) throw new Error("技能管理中台仅允许本机实例访问");
+    return skillManager().checkUpdates(body(request));
+  });
+  app.get("/api/skill-manager/activity", (request) => {
+    if (!local(request)) throw new Error("技能管理中台仅允许本机实例访问");
+    return { items: skillManager().activity(Number(qs(request).limit) || 50) };
+  });
+  app.get("/api/skill-manager/settings", (request) => {
+    if (!local(request)) throw new Error("技能管理中台仅允许本机实例访问");
+    return skillManager().settings();
+  });
+  app.post("/api/skill-manager/settings", (request) => {
+    skillWrite(request);
+    return skillManager().settings(body(request));
+  });
   app.post("/api/bills/preview", (request) =>
     parseBill(
       body(request).filename || "",
@@ -815,8 +938,11 @@ export async function startServer(
   app.get("/api/usage", (request) => {
     const params = qs(request),
       scope = params.scope || "";
+    // 费用对所有来源开放：本地事件（dsh/zcode/agent）按官方价格表与峰谷规则逐条计价，
+    // 缺价格或缺用量证据的行会保留 cost=null 并写明原因，绝不以猜测值代替。
+    // codex 额外要求准备任务已产出覆盖范围，因为它依赖账号侧证据。
     params.valuation_enabled =
-      scope === "codex" && !!valuation.status("codex").coverage;
+      scope === "api" ? false : scope === "codex" ? !!valuation.status("codex").coverage : true;
     const result =
       scope === "api"
         ? accounts.providerSnapshot(params)
@@ -920,7 +1046,7 @@ export async function startServer(
     const params: JsonObject = { ...qs(request), include_all: true },
       scope = params.scope;
     params.valuation_enabled =
-      scope === "codex" && !!valuation.status("codex").coverage;
+      scope === "api" ? false : scope === "codex" ? !!valuation.status("codex").coverage : true;
     const result =
       scope === "api"
         ? accounts.providerSnapshot(params)
@@ -989,6 +1115,38 @@ export async function startServer(
   app.get('/api/pricing/auto-update',()=>valuation.autoStatus());
   app.post('/api/pricing/auto-update',request=>valuation.setAuto(body(request).enabled));
   app.get("/api/pricing/fx", (request) => pricing.fxSeries(qs(request)));
+  // Peak/off-peak is a billing fact, not a chart: the UI shows the vendor's own
+  // windows in the vendor's time zone and marks which side is currently billed.
+  app.get("/api/pricing/peak", () => {
+    const at = new Date(),
+      rates = OFFICIAL_RATES.filter((rate) => rate.peak.windows.length),
+      rule = rates[0]?.peak ?? {
+        timezone: "Asia/Shanghai" as const,
+        windows: [] as { days: "mon-fri"; from: string; to: string }[],
+        holidays: "off-peak" as const,
+        offPeakFraction: "1",
+      };
+    const verdict = shanghaiPeak(at, rule);
+    return {
+      at: at.toISOString(),
+      policy: OFFICIAL_POLICY,
+      timezone: rule.timezone,
+      windows: rule.windows,
+      holidays: rule.holidays,
+      offPeakFraction: rule.offPeakFraction,
+      verdict,
+      models: rates.map((rate) => ({
+        provider: rate.provider,
+        model: rate.model,
+        modelName: rate.modelName,
+        currency: rate.currency,
+        sourceUrl: rate.sourceUrl,
+        peak: rate.quote.peak,
+        offPeak: rate.quote.offPeak,
+        current: verdict.peak ? rate.quote.peak : rate.quote.offPeak,
+      })),
+    };
+  });
   app.post("/api/pricing/sync", (request) => {
     const date = body(request).date || new Date().toISOString().slice(0, 10);
     return jobs.start("price-sync", async () => {
@@ -1157,9 +1315,11 @@ export async function startServer(
       dataVersion: String(monitor.version()),
     });
   });
-  app.get("/api/git/timeline", (request) => {
+  app.get("/api/git/timeline", async (request) => {
     const params = qs(request);
-    return gitTimeline.read({ limit: params.limit, force: params.force === "1" });
+    // readAsync falls back to the remote repository (GitHub API) when no local work tree
+    // is readable, which is the case inside the packaged desktop app.
+    return gitTimeline.readAsync({ limit: params.limit, force: params.force === "1" });
   });
   const staticFile = async (request: any, reply: any) => {
     const route = new URL(request.url, "http://localhost").pathname,
@@ -1196,6 +1356,13 @@ export async function startServer(
   app.get('/licenses/chromium',(_request,reply)=>{const file=join(assets,'chromium-licenses.html.gz');if(!existsSync(file))return reply.code(404).send({error:'此版本未打包 Chromium 运行时'});return reply.header('Content-Encoding','gzip').type('text/html; charset=utf-8').send(readFileSync(file));});
   app.get("/", staticFile);
   app.get("/*", staticFile);
+  // 本地来源计价：每次启动先补一遍，之后只在用量版本变化或每 10 分钟兜底时再扫，
+  // 避免每 30 秒扫全库。
+  const localValuation = ["dsh", "zcode"] as const;
+  const localValuationSeed = new Set<string>(localValuation);
+  const localValuationVersion = new Map<string, number>();
+  const localValuationSettled = new Map<string, number>();
+  let valuationSweep = 0;
   const background = setInterval(async () => {
     if (
       closing ||
@@ -1212,6 +1379,22 @@ export async function startServer(
       scheduler.trigger();
       accounts.tick();
       valuation.tickAuto();
+      // 本地采集来源（dsh/zcode）的逐条计价不需要联网准备：官方价格表随应用内置，
+      // 这里只把待计价队列按批消化掉，缺证据/缺价格的行会保留原因，不阻塞其它任务。
+      const version = monitor.version();
+      for (const source of localValuation) {
+        if (closing) break;
+        const seeded = localValuationSeed.delete(source);
+        const changed = localValuationVersion.get(source) !== version;
+        // Local sources keep their own price queue: settle at most every two minutes so a
+        // fresh import is priced soon without holding the shared 30s tick for long.
+        const due = Date.now() - (localValuationSettled.get(source) || 0) >= 120000;
+        if (!seeded && !changed && !due) continue;
+        await pricing.settleLocal(source);
+        localValuationSettled.set(source, Date.now());
+        localValuationVersion.set(source, version);
+      }
+      valuationSweep++;
     } finally {
       backgroundBusy = false;
     }
@@ -1353,6 +1536,7 @@ if (
       })
       .catch((error) => {
         console.error("灵犀后台启动失败：" + error.message);
+        if (process.env.WORKBENCH_DEBUG === "1") console.error(error.stack);
         process.exitCode = 1;
       });
 }

@@ -1,5 +1,6 @@
 // @ts-nocheck
 import {decimalAxis} from "../../src/shared/chart-scale";
+import {modelBrand} from "../../src/shared/model-brand";
 // Compatibility controller: retain the validated interactions during the React migration.
 (() => {
   const escape = (s) =>
@@ -114,6 +115,10 @@ import {decimalAxis} from "../../src/shared/chart-scale";
         const markup=window.LingxiDesign.tooltipMarkup(text);
         if(markup!==lastMarkup){tip.innerHTML=markup;lastMarkup=markup;}
         tip.hidden = false;
+        // The tooltip is portalled to <body>, so it must carry the theme itself:
+        // a light surface gets a light card, a dark surface gets a dark card.
+        const darkHost = !!host.closest('.dark') || !!host.closest('[data-theme="dark"]') || document.documentElement.dataset.theme === 'dark';
+        tip.classList.toggle('is-dark', darkHost);
         const portal = host.closest('dialog') || document.body;
         if(tip.parentElement!==portal)portal.append(tip);
         tip.style.position='fixed';
@@ -198,7 +203,7 @@ import {decimalAxis} from "../../src/shared/chart-scale";
     const keys = [...new Set(groups.map(modelKey))].sort((a, b) =>
       a.localeCompare(b),
     );
-    return `<div class="usage-plot" data-series="${escape(JSON.stringify(series))}" data-mode="${mode === "bar" ? "bar" : "line"}" data-model-keys="${escape(JSON.stringify(keys))}"><svg class="usage-trend" tabindex="0" role="group" aria-label="${escape(label)}，左右方向键查看每日用量" viewBox="0 0 700 260"></svg></div>`;
+    return `<div class="usage-plot" data-series="${escape(JSON.stringify(series))}" data-mode="${["bar", "stacked"].includes(mode) ? mode : mode === "area" ? "area" : "line"}" data-model-keys="${escape(JSON.stringify(keys))}"><svg class="usage-trend" tabindex="0" role="group" aria-label="${escape(label)}，左右方向键查看每日用量" viewBox="0 0 700 260"></svg></div>`;
   }
   function point(svg, x, y) {
     const matrix = svg.getScreenCTM();
@@ -246,6 +251,8 @@ import {decimalAxis} from "../../src/shared/chart-scale";
         .join("")
     );
   }
+  /** Mode normaliser shared by the panel and the main app so "堆叠" always maps to one key. */
+  const trendMode = (value) => (value === "stacked" ? "stacked" : value === "bar" ? "bar" : value === "area" ? "area" : "line");
   function mountTrend(host) {
     if (host.dataset.chartMounted) return;
     host.dataset.chartMounted = "true";
@@ -255,7 +262,7 @@ import {decimalAxis} from "../../src/shared/chart-scale";
     const svg = host.querySelector("svg");
     svg.setAttribute("preserveAspectRatio", "none");
     let rows = seriesRows(JSON.parse(host.dataset.series)),
-      mode = host.dataset.mode,
+      mode = host.dataset.mode === "stacked" ? "stacked" : host.dataset.mode === "bar" ? "bar" : host.dataset.mode === "area" ? "area" : "line",
       keys = JSON.parse(host.dataset.modelKeys || "[]"),
       active = -1,
       layout,
@@ -299,6 +306,7 @@ import {decimalAxis} from "../../src/shared/chart-scale";
       svg
         .querySelectorAll(".usage-bar.is-active")
         .forEach((e) => e.classList.remove("is-active"));
+      host.querySelectorAll(".usage-stack-segment.is-active").forEach((e) => e.classList.remove("is-active"));
       segment?.classList.add("is-active");
       highlight(host, segment?.dataset.modelKey || null);
       const screen = new DOMPoint(x, y).matrixTransform(svg.getScreenCTM());
@@ -354,8 +362,9 @@ import {decimalAxis} from "../../src/shared/chart-scale";
       const times = rows.map((r) => Date.parse(r.date)),
         span = times.at(-1) - times[0],
         dated = times.every(Number.isFinite) && span > 0;
+      const stacked = mode === "stacked";
       const barPad =
-        mode === "bar"
+        mode === "bar" || stacked
           ? Math.min(28, (right - left) / Math.max(1, rows.length) / 2)
           : 0;
       layout = {
@@ -428,6 +437,40 @@ import {decimalAxis} from "../../src/shared/chart-scale";
               geometry.set(key, { y, h });
               chart += `<rect class="usage-bar" ${interactive ? 'tabindex="0" role="img"' : ""} data-interactive="${interactive}" data-geometry="${escape(key)}" data-day="${i}" data-model-key="${escape(modelKey(m))}" data-model="${escape(m.model)}" data-total="${m.total}" ${interactive ? `aria-label="${escape(row.date)} ${escape(m.model)} ${value(host, m.total)}${unit(host)}"` : ""} x="${layout.x(i) - barWidth / 2}" y="${y}" width="${barWidth}" height="${h}" fill="${color}"/>`;
             });
+        });
+      } else if (stacked) {
+        const barWidth = Math.max(
+          1,
+          Math.min(38, ((right - left) / Math.max(1, rows.length)) * 0.74),
+        );
+        rows.forEach((row, i) => {
+          if (!valid(row) || row.total <= 0) return;
+          const models = (row.models?.length
+            ? [...row.models]
+            : [{ model: "未区分模型", provider: "", total: row.total }]
+          )
+            .filter((m) => Number(m.total) > 0)
+            .sort((a, b) => modelKey(a).localeCompare(modelKey(b)));
+          const sum = models.reduce((n, m) => n + Number(m.total || 0), 0);
+          if (!sum) return;
+          // Use the reported row total as the stack height so the bar tip matches the axis
+          // even when per-model rounding leaves a sliver unaccounted for.
+          const stackTop = layout.y(row.total);
+          let cumulative = 0;
+          models.forEach((m) => {
+            const share = Number(m.total) / sum;
+            const from = layout.y(cumulative * row.total);
+            cumulative += share;
+            const to = layout.y(cumulative * row.total);
+            const gap = models.length > 1 ? 1 : 0;
+            const y = to + (to === stackTop ? 0 : 0);
+            const h = Math.max(1, from - to - gap);
+            const color = modelColor(modelKey(m));
+            const key = JSON.stringify([row.date, modelKey(m), "stack"]);
+            geometry.set(key, { y, h });
+            const interactive = h >= 6 && share >= 0.02;
+            chart += `<rect class="usage-bar usage-stack-segment"${interactive ? ' tabindex="0" role="img"' : ""} data-interactive="${interactive}" data-geometry="${escape(key)}" data-day="${i}" data-model-key="${escape(modelKey(m))}" data-model="${escape(m.model)}" data-total="${m.total}" data-stack="${cumulative}" ${interactive ? `aria-label="${escape(row.date)} ${escape(m.model)} ${value(host, m.total)}${unit(host)}"` : ""} x="${layout.x(i) - barWidth / 2}" y="${y}" width="${barWidth}" height="${h}" fill="${color}" rx="${Math.min(3, h / 2)}"/>`;
+          });
         });
       } else {
         let part = [],
@@ -529,9 +572,36 @@ import {decimalAxis} from "../../src/shared/chart-scale";
         const clip = svg.querySelector(".usage-reveal");
         animation = clip.animate(
           [{ width: "0px" }, { width: `${right - left + 4}px` }],
-          { duration: 220, easing: "cubic-bezier(.2,.6,.35,1)" },
+          { duration: 420, easing: "cubic-bezier(.2,.7,.3,1)" },
         );
-        host.dataset.lastAnimation = "reveal";
+        if (mode === "line" || mode === "area") {
+          const data = svg.querySelector(".usage-chart-data");
+          data?.animate(
+            [
+              { opacity: 0, transform: "translateY(10px)" },
+              { opacity: 1, transform: "translateY(0)" },
+            ],
+            { duration: 460, easing: "cubic-bezier(.22,1,.36,1)", fill: "backwards" },
+          );
+        } else {
+          const bars = [...svg.querySelectorAll(".usage-bar")];
+          bars.forEach((bar, index) => {
+            const base = layout.y(0);
+            bar.animate(
+              [
+                { transform: `translateY(${base - Number(bar.getAttribute("y"))}px)`, opacity: 0.2 },
+                { transform: "translateY(0)", opacity: 1 },
+              ],
+              {
+                duration: 460,
+                delay: Math.min(180, index * 6),
+                easing: "cubic-bezier(.22,1,.36,1)",
+                fill: "backwards",
+              },
+            );
+          });
+        }
+        host.dataset.lastAnimation = stacked ? "stack-reveal" : "reveal";
       }
       if (
         previous &&
@@ -652,7 +722,7 @@ import {decimalAxis} from "../../src/shared/chart-scale";
     updates.set(host, () => {
       reset();
       rows = seriesRows(JSON.parse(host.dataset.series));
-      mode = host.dataset.mode;
+      mode = host.dataset.mode === "stacked" ? "stacked" : host.dataset.mode === "bar" ? "bar" : host.dataset.mode === "area" ? "area" : "line";
       keys = JSON.parse(host.dataset.modelKeys || "[]");
       drawWidth = null;
       animated = false;
@@ -709,7 +779,7 @@ import {decimalAxis} from "../../src/shared/chart-scale";
     return rows
       .map(
         (r, i) =>
-          `<div data-pie-legend="${i}" tabindex="0" role="button" aria-label="${escape(r.model)} ${value(host, r.total)}${unit(host)}"><span class="usage-model-name">${escape(r.model)}<small>${escape(r.provider)}</small></span><span class="usage-model-bar"><i style="background:${r.color};--model-width:${(r.total / max) * 100}%"></i></span><span class="usage-model-value"><b>${value(host, r.total)}</b><small>${((r.total / total) * 100).toFixed(1)}%</small></span></div>`,
+          `<div data-pie-legend="${i}" tabindex="0" role="button" aria-label="${escape(r.model)} ${value(host, r.total)}${unit(host)}"><span class="usage-model-name"><i class="brand-dot" style="background:${r.color}"></i>${escape(r.model)}<small>${escape(r.provider)}</small></span><span class="usage-model-bar"><i style="background:${r.color};--model-width:${(r.total / max) * 100}%"></i></span><span class="usage-model-value"><b>${value(host, r.total)}</b><small>${((r.total / total) * 100).toFixed(1)}%</small></span></div>`,
       )
       .join("");
   }
@@ -785,6 +855,13 @@ import {decimalAxis} from "../../src/shared/chart-scale";
         )
         .join("");
       segments = [...svg.querySelectorAll(".usage-segment")];
+      // The arc itself is the most precise hover target: relying on the pointer radius
+      // would miss clicks near the hole or the rim of the largest slice.
+      for (const segment of segments)
+        listen(segment, "pointerover", (ev) => {
+          if (ev.pointerType === "touch") return;
+          show(Number(segment.dataset.pieIndex), ev.clientX, ev.clientY);
+        });
       host.querySelector(".usage-legend").innerHTML = legendHTML(rows, host);
       if (!(
         host.closest('[data-chart-motion="static"]') ||

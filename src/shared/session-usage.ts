@@ -27,6 +27,19 @@ export interface SessionUsageCost {
   unpricedRequests: number;
 }
 
+/** Per-model totals inside one session, sorted by usage. */
+export interface SessionUsageModelTotal {
+  provider: string;
+  /** Empty when the source never reported a model for those rows. */
+  model: string;
+  requests: number;
+  input: Count;
+  cached: Count;
+  total: Count;
+  /** cached/input for this model only; `null` when either side is unknown. */
+  cacheHitRate: number | null;
+}
+
 export interface SessionUsageRow {
   /** Stable request-session identity from the source log. Empty sessions are grouped
    *  under a single "未识别会话" bucket instead of being dropped. */
@@ -50,9 +63,12 @@ export interface SessionUsageRow {
   reasoning: Count;
   total: Count;
   unknownFields: SessionUsageUnknown;
-  /** Fraction of `input + cached` that hit the cache, 0..1. `null` when every row
-   *  reports unknown cache counts (never assume 0). */
+  /** Cache share `cached/input` (input already includes the cache reads), 0..1.
+   *  Measured only on rows that reported both sides; `null` when none did. */
   cacheHitRate: number | null;
+  /** Share of this session's requests that the rate above actually measured, 0..1. */
+  cacheCoverage: number | null;
+  modelTotals: SessionUsageModelTotal[];
   costs: SessionUsageCost[];
   /** Verified failures (error/failed/cancelled) inside the session. */
   failures: number;
@@ -64,6 +80,12 @@ export interface SessionUsageGroupSummary {
   total: Count;
   cached: Count;
   activeDays: number;
+  /** Group-level cached/input share over rows that reported both sides. */
+  cacheHitRate: number | null;
+  /** Share of requests covered by that measurement, so a partial rate is labelled. */
+  cacheCoverage: number | null;
+  /** Largest single-session total inside the range. */
+  peakSession: Count;
 }
 
 export interface SessionUsageResult {

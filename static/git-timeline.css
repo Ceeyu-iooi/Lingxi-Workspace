@@ -309,6 +309,96 @@ body[data-page="git-timeline"] {
   font-size: 9px;
   color: color-mix(in srgb, var(--ink-2, #63758a) 75%, transparent);
 }
+/* ------------------------------------------------------- refs (tags / branches) */
+.gt-node-refs {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  margin-bottom: 7px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+.gt-ref {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 7px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  backdrop-filter: blur(2px);
+  transition: opacity 150ms ease, transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* Tags read as small pennants: a notch on the left edge plus a slightly squarer body. */
+.gt-ref-tag {
+  padding-left: 11px;
+  border-radius: 3px 8px 8px 3px;
+  color: #7a4a00;
+  border-color: color-mix(in srgb, #f0a020 55%, transparent);
+  background: color-mix(in srgb, #ffd79a 72%, var(--surface, #fff));
+  clip-path: polygon(6px 0, 100% 0, 100% 100%, 6px 100%, 0 50%);
+}
+.gt-ref-tag.is-annotated {
+  color: #fff;
+  border-color: color-mix(in srgb, #d97706 60%, transparent);
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+.gt-ref-branch {
+  color: color-mix(in srgb, var(--gt-lane, var(--accent)) 78%, #10243a);
+  border-color: color-mix(in srgb, var(--gt-lane, var(--accent)) 42%, transparent);
+  background: color-mix(in srgb, var(--gt-lane, var(--accent)) 16%, var(--surface, #fff));
+}
+.gt-ref-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 104px;
+}
+.gt-ref-tag .gt-ref-name { max-width: 88px; }
+.gt-node.is-first .gt-node-refs {
+  left: 0;
+  transform: none;
+}
+.gt-node.is-last .gt-node-refs {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.gt-ref-more {
+  color: var(--ink-2, #63758a);
+  border-color: var(--line, #dfe7ef);
+  background: color-mix(in srgb, var(--ink-2, #63758a) 8%, var(--surface, #fff));
+}
+.gt-node.is-lane-active .gt-ref,
+.gt-node.is-selected .gt-ref {
+  transform: translateY(-1px) scale(1.04);
+}
+.gt-node.is-selected .gt-ref {
+  box-shadow: 0 1px 6px rgb(16 30 48 / 18%);
+}
+:root[data-theme='dark'] .gt-ref-tag {
+  color: #2a1a00;
+  background: color-mix(in srgb, #ffd79a 82%, #0f1720);
+}
+:root[data-theme='dark'] .gt-ref-tag.is-annotated {
+  color: #1b1200;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gt-ref,
+  .gt-node.is-lane-active .gt-ref,
+  .gt-node.is-selected .gt-ref {
+    transition: none;
+    transform: none;
+  }
+}
 .gt-truncated {
   margin: 0 14px 10px;
   font-size: 11px;

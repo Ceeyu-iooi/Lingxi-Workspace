@@ -1,238 +1,148 @@
-import {Decimal} from 'decimal.js';
-import {parseExact,encode,type JsonObject} from './profile.ts';
 import {createHash} from 'node:crypto';
+import {parseExact,encode,type JsonObject} from './profile.ts';
 
+/**
+ * Community mirrors. These are *never* priced from and never shown as a source
+ * of truth: they exist so a stored official rate can be cross-checked later and
+ * so a mirror's own layout errors stay discoverable. Official rates live in
+ * official-pricing.ts.
+ */
 export const REGISTRY='https://github.com/Portkey-AI/models';
 export const CURRENT_PRICES='https://ai.cloudprice.net/api/v1/litellm_model_prices.json';
 const API='https://api.github.com/repos/Portkey-AI/models';
-export const MAIN_PROVIDERS=['openai','deepseek','zhipu','anthropic','google','dashscope','moonshot','minimax'];
-/** A browsing policy, never a deletion or a substitute for the historical index. */
-export function mainstreamModel(provider:string,id:string){
-  if(provider==='zai')provider='zhipu';
-  const name=id.toLowerCase().replace(/^.*\//,'');
-  const patterns:Record<string,RegExp>={openai:/^(gpt-(?:[6-9]|5\.[4-9])|o[3-9]|chat-latest)/,deepseek:/^deepseek-(?:flash|v4|chat|reasoner)/,zhipu:/^glm-(?:[5-9]|4\.[6-9])/,anthropic:/^claude-(?:(?:opus|sonnet|haiku|fable)[- ]?[4-9]|[4-9])/,google:/^gemini-(?:[3-9]|2\.5)/,dashscope:/^qwen(?:[3-9]|-?(?:max|plus|turbo|long))/,moonshot:/^kimi-k[2-9]/,minimax:/^minimax-m[2-9]/};
-  if(provider==='anthropic'&&/^(?:claude-4-|claude-(?:opus|sonnet)-4-(?:0|1)(?:-|$))/.test(name))return false;
-  if(provider==='deepseek'&&/^deepseek-(?:chat|reasoner)$/.test(name))return false;
-  return !!patterns[provider.toLowerCase()]?.test(name)&&!/deprecated|retired|instruct-0914/.test(name);
-}
-export function registryBands(custom:JsonObject|undefined){
-  if(!custom)return null;
-  const standard=custom.regions?.default?.execution_modes?.standard?.context_tiers;
-  if(!standard||!custom.context_tier_map)return null;
-  const bands=[];
-  for(const [threshold,tier] of Object.entries(custom.context_tier_map)){
-    if(!/^\d+$/.test(threshold))return null;
-    const rules=standard[String(tier)]?.pricing_config?.pay_as_you_go;
-    if(!rules)return null;
-    const quote:JsonObject={};
-    for(const [field,target]of Object.entries(FIELDS))quote[target]=scalar(rules[field]?.price);
-    if(quote.inputPricePer1M==null||quote.outputPricePer1M==null)return null;
-    bands.push({aboveTokens:threshold,...quote});
-  }
-  return bands.sort((a,b)=>Number(a.aboveTokens)-Number(b.aboveTokens));
-}
-export type PriceLoader=(url:string,etag?:string)=>Promise<{body:string|null,etag:string}>;
+const CURRENT_LIMIT=20000000,REVISION_LIMIT=40;
+export const MIRROR_TYPES=['mirror_registry','mirror_catalog'] as const;
+export type MirrorType=(typeof MIRROR_TYPES)[number];
 export type PriceSnapshot={day:string,body:string,source:string};
-const FIELDS:Record<string,string>={request_token:'inputPricePer1M',response_token:'outputPricePer1M',cache_read_input_token:'cacheReadPricePer1M',cache_write_input_token:'cacheWritePricePer1M'};
-const date=(value:string)=>/^\d{4}-\d{2}-\d{2}$/.test(value)&&new Date(value).toISOString().slice(0,10)===value;
-function scalar(value:unknown):string|null {
+export type PriceLoader=(url:string,etag?:string)=>Promise<{body:string|null,etag:string}>;
+/** Mirror units are USD per token; every comparison converts to per-1M first. */
+export const MIRROR_QUOTE_FIELDS:Record<string,string>={input_cost_per_token:'input',output_cost_per_token:'output',cache_read_input_token_cost:'cached',cache_creation_input_token_cost:'write'};
+const today=()=>new Date().toISOString().slice(0,10);
+function scalar(value:unknown):string|null{
   if(value==null||typeof value==='boolean'||typeof value==='object')return null;
-  const number=new Decimal(String(value));
-  if(!number.isFinite()||number.lt(0)||number.gt(100000))throw Error('公开价格数值无效');
-  return number.times(10000).toString(); // Portkey: cents/token -> USD/1M tokens.
+  const number=Number(String(value));
+  if(!Number.isFinite(number)||number<0||number>100000)throw Error('对照价格数值无效');
+  return String(number*1000000);
 }
-export function normalizeRegistry(provider:string,raw:string,source:string,snapshotAt:string){
+/**
+ * Normalize one mirror file. `default` is a family table covering several
+ * models at once: it cannot be attributed to one model name without guessing, so
+ * it is dropped. Rows that disagree with each other keep both values, which is
+ * exactly the layout ambiguity this comparison exists to expose.
+ */
+export function normalizeMirror(provider:string,raw:string,source:string,day:string,sourceType:MirrorType){
   const data=parseExact(raw),models:JsonObject[]=[];
-  if(!data||typeof data!=='object'||Array.isArray(data))throw Error('价格目录结构无效');
-  for(const [id,value]of Object.entries(data) as [string,JsonObject][]){
-    if(id==='default'||!value?.pricing_config)continue;
-    const cfg=value.pricing_config,standard=cfg.pay_as_you_go||{},dimensions:JsonObject[]=[];
-    for(const [tier,units]of Object.entries(cfg)){
-      if(!units||typeof units!=='object'||Array.isArray(units))continue;
-      for(const [dimension,rule]of Object.entries(units as JsonObject)){
-        if(!rule||typeof rule!=='object')continue;
-        dimensions.push({tier,dimension,unit:'cents_per_declared_unit',rule});
+  if(!data||typeof data!=='object'||Array.isArray(data))throw Error('对照目录结构无效');
+  for(const [name,value]of Object.entries(data) as [string,JsonObject][]){
+    if(name==='default'||!value||typeof value!=='object'||Array.isArray(value))continue;
+    const perMillion:JsonObject={},columns:JsonObject[]=[],conflicts:JsonObject[]=[];
+    const take=(unit:JsonObject,label:string)=>{
+      for(const [field,target]of Object.entries(MIRROR_QUOTE_FIELDS)){
+        const rate=scalar(unit[field]?.price??unit[field]);
+        if(rate==null)continue;
+        columns.push({tier:label,field,target,rate});
+        if(perMillion[target]==null)perMillion[target]=rate;
+        else if(perMillion[target]!==rate)conflicts.push({tier:label,field,target});
       }
-    }
-    const row:JsonObject={id:provider==='openai'?id:provider+'/'+id,provider,currency:value.currency??cfg.currency??data.default?.currency??data.default?.pricing_config?.currency??null,
-      sourceUrl:source,sourceType:'registry',snapshotAt,dimensions,
-      pricingNotes:'Portkey 公开社区目录；历史为仓库截至日期快照，并非官方生效时刻或实际账单。'};
-    const bands=registryBands(value.custom_pricing);
-    row.referenceBands=bands;
-    let complex=!!value.custom_pricing&&!bands;
-    if(value.custom_pricing)dimensions.push({dimension:'custom_pricing',unit:'source_declared_rules',rule:value.custom_pricing});
-    if(value.calculate)dimensions.push({dimension:'calculate',unit:'source_declared_rules',rule:value.calculate});
-    for(const [field,target]of Object.entries(FIELDS)){
-      const rule=standard[field];row[target]=scalar(rule?.price);
-      if(rule&&Object.keys(rule).some(k=>k!=='price'&&k!=='description'))complex=true;
-      if(rule&&row[target]==null)complex=true;
-    }
-    row.registryComplex=complex;
-    models.push(row);
+    };
+    take(value,'flat');
+    for(const [tier,units]of Object.entries(value))if(units&&typeof units==='object'&&!Array.isArray(units))take(units as JsonObject,tier);
+    if(!columns.length)continue;
+    models.push({name,provider,currency:value.currency??data.default?.currency??null,perMillion,columns,conflicts,source,day,sourceType});
   }
-  if(!models.length)throw Error('公开价格目录没有可用模型');
+  if(!models.length)throw Error('对照目录没有可用模型');
   return models;
 }
-export function normalizeCurrent(raw:string,day:string){
-  const data=parseExact(raw),models:JsonObject[]=[];
-  if(data?._cloudprice?.updated_at!==day)throw Error('当前价格接口不是所选日期快照');
-  for(const [id,value]of Object.entries(data) as [string,JsonObject][]){
-    if(id.startsWith('_')||!value?.litellm_provider)continue;
-    const dimensions=Object.entries(value).filter(([key])=>/cost|price/.test(key)&&key!=='cloudprice_model_id').map(([dimension,price])=>({dimension,unit:dimension.includes('per_token')||dimension.includes('input_token_cost')?'USD_per_token':'source_declared_unit',price}));
-    if(!dimensions.length)continue;
-    const rate=(key:string)=>value[key]==null?null:new Decimal(String(value[key])).times(1000000).toString();
-    const namespace=id.includes('/')?id.split('/')[0]:null,native=namespace&&[...MAIN_PROVIDERS,'zai'].includes(namespace)?namespace:null;
-    models.push({id:native?'cloudprice/'+id:id,provider:native||'CloudPrice · '+(namespace||'未标明供应商'),adapter:value.litellm_provider,currency:'USD',sourceType:'current_catalog',sourceUrl:CURRENT_PRICES,snapshotAt:day,
-      inputPricePer1M:rate('input_cost_per_token'),outputPricePer1M:rate('output_cost_per_token'),cacheReadPricePer1M:rate('cache_read_input_token_cost'),cacheWritePricePer1M:rate('cache_creation_input_token_cost'),
-      dimensions,detailId:value.cloudprice_model_id||null,registryComplex:true,
-      pricingNotes:'CloudPrice 当日采集目录；分组为源命名空间，适配器 '+value.litellm_provider+' 不等于实际供应商。请以详细接口的供应商、地域、档位为准；未验证条目不参与自动估值。'});
-  }
-  if(!models.length||models.length>15000)throw Error('当前价格目录无效');
-  return models;
-}
-/** Enrich a registry entry with catalogue evidence without replacing its rates.
- * Apply the same identity rule to current and historical snapshots. Genuine
- * duplicates within either source remain errors instead of being discarded. */
-export function mergePriceCatalog(primary:JsonObject[],supplement:JsonObject[]){
-  const byId=new Map<string,JsonObject>();
-  const copy=(row:JsonObject)=>({...row,dimensions:[...(row.dimensions||[])]});
-  for(const row of primary){
-    if(byId.has(row.id))throw Error('价格来源中存在重复模型身份');
-    byId.set(row.id,copy(row));
-  }
-  const seen=new Set<string>();
-  for(const row of supplement){
-    if(seen.has(row.id))throw Error('补充价格来源中存在重复模型身份');
-    seen.add(row.id);
-    const prior=byId.get(row.id);
-    if(!prior){byId.set(row.id,copy(row));continue;}
-    if(prior.sourceType!=='registry'||row.sourceType!=='current_catalog')throw Error('价格来源中存在冲突模型身份');
-    prior.dimensions.push(...(row.dimensions||[]));
-    prior.detailId=row.detailId;
-    prior.currentSource=CURRENT_PRICES;
-  }
-  return [...byId.values()];
-}
-export async function collectRegistry(options:{days:string[],loader:PriceLoader,
-  evidence:(url:string,body:string)=>void,check?:()=>void,progress?:(value:JsonObject)=>void,catalogDate?:string,
-  cacheRead?:(blob:string)=>{raw:string,source:string}|null,cacheWrite?:(blob:string,raw:string,source:string)=>void,
-  /** Last successfully stored catalogue; used only when the registry API is rate limited. */
-  retainedCatalog?:()=>{snapshots:PriceSnapshot[],gaps:JsonObject[],errors:JsonObject[]}|null}){
-  const {loader,evidence,check}=options;
-  const errors:JsonObject[]=[],gaps:JsonObject[]=[],snapshots:PriceSnapshot[]=[];
-  const today=new Date().toISOString().slice(0,10),headDay=options.catalogDate||today,days=[...new Set(options.catalogDate?[headDay]:[...options.days,today])].sort();
-  if(days.some(d=>!date(d)||d>today))throw Error('价格快照日期无效');
-  let completed=0,total=1;
-  const progress=()=>options.progress?.({phase:'prices',completed,total});
-  const read=async(url:string)=>{
-    check?.();const result=await loader(url);if(result.body==null)throw Error('首次读取不能使用空的价格响应');
-    evidence(url,result.body);check?.();return parseExact(result.body);
-  };
-  const unresolved=async(url:string)=>{
-    check?.();const result=await loader(url);if(result.body==null)return null;
-    evidence(url,result.body);check?.();return parseExact(result.body);
-  };
-  // GitHub's unauthenticated API is rate limited (HTTP 403 with a `rate limit` body). The
-  // catalogue itself lives on the CDN and stays readable, so a throttled revision probe
-  // must not fail the whole sync: reuse the last successfully stored catalogue instead.
-  let revisions:JsonObject[]|null=null,throttled=false;
-  try{revisions=await read(API+'/commits?path=pricing&per_page=1&until='+headDay+'T23:59:59Z');}
-  catch(error:any){if(error?.status===403||error?.status===429)throttled=true;else throw error;}
-  if(throttled){
-    const retained=options.retainedCatalog?.();
-    if(retained){gaps.push({source:API,error:'registry_api_rate_limited',message:'GitHub 目录接口限流，复用已存快照'});return retained;}
-    throw Error('公开价格目录接口限流；缓存保留，请稍后刷新');
-  }
-  const head=(revisions||[])[0];
-  if(!/^[a-f0-9]{40}$/.test(head?.sha||''))throw Error('价格仓库版本无效');
-  const manifest=await read(API+'/contents/pricing?ref='+head.sha);
-  if(!Array.isArray(manifest))throw Error('供应商价格清单无效');
-  const providers=manifest.filter((r:JsonObject)=>r.type==='file'&&/^[a-z0-9-]+\.json$/.test(r.name||'')).map((r:JsonObject)=>r.name.slice(0,-5)).filter((p:string)=>MAIN_PROVIDERS.includes(p));
-  if(!providers.includes('openai')||providers.length>100)throw Error('供应商价格目录不完整');
-  total=providers.length+1;completed=1;progress();
-  const current:JsonObject[]=[];
-  const memo=new Map<string,Promise<{raw:string,source:string}>>();
-  function getFile(provider:string,sha:string,blob?:string){
-    const key=provider+':'+sha;
-    if(!memo.has(key))memo.set(key,(async()=>{
-      if(blob){const cached=options.cacheRead?.(blob);if(cached&&createHash('sha1').update('blob '+Buffer.byteLength(cached.raw)+'\0').update(cached.raw).digest('hex')===blob)return cached;}
-      const verify=(raw:string,source:string)=>{
-        if(blob&&createHash('sha1').update('blob '+Buffer.byteLength(raw)+'\0').update(raw).digest('hex')!==blob)throw Error('价格内容与仓库摘要不一致');
-        if(blob)options.cacheWrite?.(blob,raw,source);
-        return {raw,source};
-      };
-      // CDN and immutable repository content carry the same documented schema.
-      // Do not forward any provider/API credentials to either public source.
-      const rawUrl=`https://raw.githubusercontent.com/Portkey-AI/models/${sha}/pricing/${provider}.json`;
-      try{const r=await loader(rawUrl);if(!r.body)throw Error();evidence(rawUrl,r.body);return verify(r.body,rawUrl);}
-      catch{
-        const source=`${API}/contents/pricing/${provider}.json?ref=${sha}`,r=await read(source);
-        if(r.encoding!=='base64'||typeof r.content!=='string'||r.size>3*1024*1024)throw Error('版本化价格文件无效');
-        const raw=Buffer.from(r.content,'base64').toString('utf8');
-        if(Buffer.byteLength(raw)!==r.size)throw Error('价格文件长度不一致');
-        evidence(rawUrl,raw);return verify(raw,rawUrl);
-      }
-    })());
-    return memo.get(key)!;
-  }
-  let cursor=0;
-  await Promise.all(Array.from({length:4},async()=>{
-    while(cursor<providers.length){const provider=providers[cursor++];check?.();
-      try{const f=await getFile(provider,head.sha,manifest.find((r:JsonObject)=>r.name===provider+'.json')?.sha);current.push(...normalizeRegistry(provider,f.raw,f.source,head.commit.committer.date));}
-      catch{gaps.push({provider,error:'provider_catalog_unavailable',source:REGISTRY});}
-      completed++;progress();
-    }
-  }));
-  if(!current.length)throw Error('公开价格目录读取失败，保留现有证据');
-  let currentProviders=0,currentModels=0,currentSourceDate:string|null=null;
-  let currentExtra:JsonObject[]=[];
-  if(headDay===today){
+/**
+ * Latest mirror revision at or before a day. Files change layout as well as
+ * rates, so each snapshot records the revision that was read.
+ */
+export async function collectMirror(options:{days:string[],loader:PriceLoader,evidence:(url:string,body:string)=>void,check?:()=>void}){
+  const {loader,evidence,check}=options,errors:JsonObject[]=[],gaps:JsonObject[]=[],snapshots:PriceSnapshot[]=[],
+    days=[...new Set(options.days)].filter(day=>day<=today()).sort();
+  for(const day of days.slice(-REVISION_LIMIT)){
+    check?.();
     try{
-      const r=await loader(CURRENT_PRICES);if(!r.body)throw Error();evidence(CURRENT_PRICES,r.body);
-      const published=parseExact(r.body)?._cloudprice?.updated_at;
-      if(!date(published)||published>today||Date.parse(today)-Date.parse(published)>7*86400000)throw Error('补充目录已过期');
-      const extra=normalizeCurrent(r.body,published),merged=mergePriceCatalog(current,extra);
-      currentSourceDate=published;currentExtra=extra;
-      currentProviders=new Set(extra.map(r=>r.provider)).size;currentModels=extra.length;
-      current.splice(0,current.length,...merged);
-    }catch{gaps.push({source:CURRENT_PRICES,error:'current_catalog_unavailable'});}
-  }
-  current.sort((a,b)=>String(a.id).localeCompare(String(b.id),'en'));
-  snapshots.push({day:headDay,body:encode({schemaVersion:1,billingUnit:'per_1m_tokens',effectiveDate:headDay,generatedAt:headDay+'T00:00:00Z',scope:'provider_catalog',coverage:{expectedProviders:providers.length,loadedProviders:providers.length-gaps.filter(g=>g.provider).length,currentProviders,currentModels,currentSourceDate,gaps},models:current}),source:REGISTRY+'/tree/'+head.sha});
-  // Fetch each provider's revision index once, then one file per changed revision.
-  // Every historical date has the same supplier scope as the current catalogue.
-  const historical=options.catalogDate?[]:days.filter(d=>d<today);
-  if(historical.length){
-    const byDay=new Map<string,JsonObject[]>(historical.map(d=>[d,[]]));
-    total+=historical.length*providers.length;progress();
-    let providerCursor=0;
-    await Promise.all(Array.from({length:3},async()=>{while(providerCursor<providers.length){
-    const provider=providers[providerCursor++];
-    const commits:JsonObject[]=[];
-    for(let page=1;page<=10;page++){
-      check?.();
-      try{
-        const batch=await read(`${API}/commits?path=pricing/${provider}.json&per_page=100&page=${page}`);
-        if(!Array.isArray(batch))throw Error();
-        commits.push(...batch);
-        if(batch.length<100||batch.at(-1)?.commit?.committer?.date?.slice(0,10)<=historical[0])break;
-      }catch{gaps.push({provider,source:REGISTRY,error:'historical_index_unavailable'});break;}
-    }
-    for(const day of historical){check?.();
-      const revision=commits.find(r=>r.commit?.committer?.date<=day+'T23:59:59Z');
-      try{
-        if(!revision)throw Error();
-        const f=await getFile(provider,revision.sha),models=normalizeRegistry(provider,f.raw,f.source,revision.commit.committer.date);
-        byDay.get(day)!.push(...models);
-      }catch{gaps.push({day,provider,error:'historical_snapshot_unavailable',source:REGISTRY});}
-      completed++;progress();
-    }
-    }}));
-    for(const [day,primary]of byDay){
-      const loadedProviders=new Set(primary.map(r=>r.provider)).size,hasSupplement=day===currentSourceDate;
-      const models=hasSupplement?mergePriceCatalog(primary,currentExtra):primary;
-      if(models.length)snapshots.push({day,body:encode({schemaVersion:1,billingUnit:'per_1m_tokens',effectiveDate:day,generatedAt:day+'T00:00:00Z',scope:'provider_catalog',coverage:{expectedProviders:providers.length,loadedProviders,currentSourceDate:hasSupplement?currentSourceDate:null,currentModels:hasSupplement?currentExtra.length:0,gaps:gaps.filter(g=>g.provider&&(g.day===day||!g.day))},models:models.sort((a,b)=>String(a.id).localeCompare(String(b.id),'en'))}),source:REGISTRY});
+      const revisions=await loader(`${API}/commits?path=pricing/deepseek.json&until=${day}T23:59:59Z&per_page=1`);
+      if(!revisions.body)throw Error('对照目录没有历史版本');
+      const head=parseExact(revisions.body)?.[0];
+      if(!/^[a-f0-9]{40}$/.test(head?.sha||''))throw Error('对照目录版本无效');
+      const url=`https://raw.githubusercontent.com/Portkey-AI/models/${head.sha}/pricing/deepseek.json`,file=await loader(url);
+      if(!file.body)throw Error('对照目录文件为空');
+      check?.();evidence(url,file.body);
+      const models=normalizeMirror('deepseek',file.body,url,day,'mirror_registry');
+      snapshots.push({day,source:url,body:encode({schemaVersion:1,billingUnit:'per_1m_tokens',effectiveDate:day,generatedAt:day+'T00:00:00Z',scope:'provider_mirror',coverage:{revision:head.sha,committedAt:head.commit?.committer?.date??null},models})});
+    }catch(error:any){
+      if(error?.status===403||error?.status===429)gaps.push({day,error:'mirror_api_rate_limited',message:'社区对照目录接口限流，本次不比对（不影响官方定价）'});
+      else errors.push({day,error:'mirror_catalog_unavailable',message:'社区对照目录读取失败，本次不比对（不影响官方定价）'});
     }
   }
-  return {snapshots,errors,gaps,providers:providers.length,providersLoaded:new Set(current.map(r=>r.provider)).size};
+  return {snapshots,gaps,errors,loaded:snapshots.length,truncated:days.length>REVISION_LIMIT};
 }
+/**
+ * Current catalogue. It names far more models than the versioned mirror and is
+ * read only to compare today's official table. Bounded hard: it is a public
+ * third-party feed with no size guarantee.
+ */
+export async function collectCurrentCatalogue(options:{loader:PriceLoader,evidence:(url:string,body:string)=>void,check?:()=>void}){
+  const {loader,evidence,check}=options,day=today();
+  check?.();
+  const result=await loader(CURRENT_PRICES);
+  if(!result.body)throw Error('当日对照目录为空');
+  if(Buffer.byteLength(result.body)>CURRENT_LIMIT)throw Error('当日对照目录超过体积上限');
+  const data=parseExact(result.body),models:JsonObject[]=[];
+  if(data?._cloudprice?.updated_at!==day)throw Error('当日对照目录不是所选日期快照');
+  for(const [name,value]of Object.entries(data) as [string,JsonObject][]){
+    if(name.startsWith('_')||!value?.litellm_provider||!/deepseek/i.test(name))continue;
+    const perMillion:JsonObject={},columns:JsonObject[]=[];
+    for(const [field,target]of Object.entries(MIRROR_QUOTE_FIELDS)){
+      const rate=scalar(value[field]);
+      if(rate==null)continue;
+      perMillion[target]=rate;columns.push({tier:'flat',field,target,rate});
+    }
+    if(!columns.length)continue;
+    models.push({name,provider:'deepseek',currency:'USD',perMillion,columns,conflicts:[],source:CURRENT_PRICES,day,sourceType:'mirror_catalog',detailId:value.cloudprice_model_id||null});
+  }
+  if(models.length>2000)throw Error('当日对照目录条目过多');
+  check?.();evidence(CURRENT_PRICES,result.body);
+  return {snapshot:{day,source:CURRENT_PRICES,body:encode({schemaVersion:1,billingUnit:'per_1m_tokens',effectiveDate:day,generatedAt:day+'T00:00:00Z',scope:'provider_mirror',coverage:{updatedAt:day},models})} as PriceSnapshot,models:models.length};
+}
+export type MirrorComparison={status:'agrees'|'differs'|'absent'|'not_comparable';reason:string|null;values:JsonObject;details?:JsonObject[]};
+/**
+ * Compare a stored official table with a mirror, hidden from users.
+ *
+ * Official DeepSeek rates are CNY per 1M tokens; the mirrors are USD per token.
+ * Without an official USD table no mirror row can confirm an official number, so
+ * a currency mismatch is reported as `not_comparable` instead of being converted
+ * (a conversion would quietly invent a rate). What the comparison *can* prove is
+ * that the mirror itself is unsound: a column where cache reads cost more than
+ * input, or a per-token figure that is per-million-sized in disguise (an off-by-
+ * 1E6 unit bug), or one file disagreeing with itself about the same model.
+ * Nothing is ever written back into the price table.
+ */
+export function compareMirror(official:{id:string,model:string,currency:string,quote:Record<string,string|null>},models:JsonObject[],kind:MirrorType):MirrorComparison{
+  const bare=official.model.replace(/^.*\//,'').toLowerCase(),
+    exact=models.find(model=>String(model.name).toLowerCase()===bare)||
+      models.find(model=>String(model.name).toLowerCase().replace(/^deepseek-/,'')===bare.replace(/^deepseek-/,''));
+  if(!exact)return {status:'absent',reason:'mirror_missing_model',values:{}};
+  const values:JsonObject={...(exact.perMillion as JsonObject)},details:JsonObject[]=[];
+  if(Array.isArray(exact.conflicts)&&exact.conflicts.length)details.push({problem:'mirror_rows_disagree',rows:exact.conflicts});
+  const input=Number(values.input),cached=Number(values.cached);
+  if(Number.isFinite(input)&&Number.isFinite(cached)&&cached>input)details.push({problem:'mirror_cached_exceeds_input',cached:values.cached,input:values.input});
+  const mirrorCurrency=exact.currency?String(exact.currency).toUpperCase():null;
+  if(mirrorCurrency&&official.currency&&mirrorCurrency!==official.currency.toUpperCase()){
+    for(const [field,value]of Object.entries(values)){
+      const expected=official.quote[field];if(expected==null)continue;
+      const ratio=Number(value)/(Number(expected)*1000); // sanity: expected CNY/1M vs USD/token
+      if(Number.isFinite(ratio)&&(ratio>500||ratio<1/500))details.push({problem:'mirror_unit_implausible',field,value,official:expected});
+    }
+    return {status:'not_comparable',reason:'mirror_currency_differs',values,details};
+  }
+  if(details.length)return {status:'not_comparable',reason:'mirror_unit_or_layout_mismatch',values,details};
+  // Same currency and a sane unit: only now may a value difference be reported.
+  const differing=Object.entries(values)
+    .filter(([field,value])=>official.quote[field]!=null&&String(official.quote[field])!==String(value))
+    .map(([field,value])=>({problem:'rate_differs',field,mirror:value,official:official.quote[field]}));
+  return {status:differing.length?'differs':'agrees',reason:null,values,details:[...differing,...(differing.length?[]:[{problem:'none',kind}])]};
+}
+export function mirrorDigest(body:string){return createHash('sha256').update(body).digest('hex');}

@@ -119,6 +119,8 @@ function TimelineGraph({
   const commits = result.commits;
   const lanes = Math.max(1, result.summary.lanes);
   const laneHeight = 28;
+  // Tags and branch pills ride above the lane graph, so the top lane needs headroom.
+  const topPad = 40;
   const scroller = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState(1200);
   // A horizontal rail that shows only a handful of nodes reads as broken, so the per-node
@@ -135,8 +137,8 @@ function TimelineGraph({
   const wanted = Math.max(1, Math.min(commits.length, 24));
   const nodeGap = Math.max(46, Math.min(132, Math.floor(viewport / wanted)));
   const graphWidth = Math.max(viewport, 40 + Math.max(0, commits.length - 1) * nodeGap);
-  const graphHeight = lanes * laneHeight + 30;
-  const y = (lane: number) => 20 + lane * laneHeight;
+  const graphHeight = lanes * laneHeight + topPad + 14;
+  const y = (lane: number) => topPad + lane * laneHeight;
   const labelEvery = Math.max(1, Math.round(72 / nodeGap));
   return (
     <div
@@ -194,11 +196,24 @@ function TimelineGraph({
             return segments;
           })}
         </svg>
-        {commits.map((commit, index) => (
+        {commits.map((commit, index) => {
+          const refs = commit.refGroups || { branches: [], remotes: [], tags: [] };
+          const flags = [
+            ...(refs.tags || [])
+              .filter((tag) => tag.points !== false)
+              .map((tag) => ({ kind: "tag" as const, name: tag.name, annotated: tag.annotated })),
+            ...(refs.branches || []).map((name) => ({ kind: "branch" as const, name, annotated: false })),
+          ];
+          const shown = flags.slice(0, 2);
+          const extra = flags.length - shown.length;
+          return (
           <div
             key={commit.hash}
             className={
               "gt-node" +
+              (flags.length ? " has-refs" : "") +
+              (index === 0 ? " is-first" : "") +
+              (index === commits.length - 1 ? " is-last" : "") +
               (activeLane === commit.lane ? " is-lane-active" : "") +
               (selected === commit.hash ? " is-selected" : "")
             }
@@ -208,6 +223,24 @@ function TimelineGraph({
               ["--gt-lane" as string]: laneColor(commit.lane),
             }}
           >
+            {shown.length ? (
+              <span className="gt-node-refs" aria-hidden="true">
+                {shown.map((flag) => (
+                  <span
+                    key={flag.kind + ":" + flag.name}
+                    className={
+                      "gt-ref gt-ref-" +
+                      flag.kind +
+                      (flag.annotated ? " is-annotated" : "")
+                    }
+                    title={(flag.kind === "tag" ? "标签 " : "分支 ") + flag.name}
+                  >
+                    <span className="gt-ref-name">{flag.name}</span>
+                  </span>
+                ))}
+                {extra > 0 ? <span className="gt-ref gt-ref-more">+{extra}</span> : null}
+              </span>
+            ) : null}
             <button
               type="button"
               className="gt-node-dot"
@@ -225,7 +258,8 @@ function TimelineGraph({
               </span>
             ) : null}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -72,6 +72,37 @@ export function initializeUsageStorage(profile:ProfileStore){
   }
   return installUsageStorage(profile.db);
 }
+/** Sources whose provider total is exactly `prompt + output`, so a prompt total a
+ * log omitted can be recovered arithmetically instead of stored as unknown. */
+const promptTotalSources=['codex','zcode','dsh'];
+/**
+ * Completes prompt totals that the source did not report but that arithmetic proves
+ * exactly (`input = total - output`). Only rows inside the verified source set are
+ * touched; anything ambiguous stays unknown. Idempotent, so a second startup with
+ * nothing to repair costs one indexed probe.
+ */
+export function repairPromptTotals(db:SQLite,limit=500){
+  const table=db.usageStorage?'compact_events':'events';
+  const sources="'"+promptTotalSources.join("','")+"'";
+  const source=db.usageStorage?'source IN (SELECT k FROM usage_strings WHERE value IN ('+sources+'))':'source IN ('+sources+')';
+  const where='input IS NULL AND total IS NOT NULL AND output IS NOT NULL AND total>=output AND (cached IS NULL OR cached<=total-output) AND '+source;
+  // 全新 Profile 在第一次 Monitor 写入前还没有用量表，此时没有任何历史可补。
+  if(!db.prepare("SELECT 1 FROM sqlite_schema WHERE name=? AND type IN ('table','view')").get(table))return 0;
+  if(!db.prepare('SELECT 1 FROM '+table+' WHERE '+where+' LIMIT 1').get())return 0;
+  const select=db.prepare('SELECT owner,id,total,output FROM '+table+' WHERE '+where+' LIMIT '+Number(limit)),
+    update=db.prepare('UPDATE '+table+' SET input=? WHERE owner=? AND id=? AND input IS NULL');
+  let changed=0;
+  for(;;){
+    const rows=select.all() as any[];
+    if(!rows.length)break;
+    db.exec('BEGIN IMMEDIATE');
+    try{
+      for(const row of rows)changed+=Number(update.run(BigInt(row.total)-BigInt(row.output),row.owner,row.id).changes||0);
+      db.exec('COMMIT');
+    }catch(error){db.exec('ROLLBACK');throw error;}
+  }
+  return changed;
+}
 export function compactEventProjection(alias='e'){
   if(!/^[a-z]+$/.test(alias))throw Error('用量查询别名无效');
   return tables.events.columns.map(column=>{

@@ -219,9 +219,9 @@
       };
     }
     panel.querySelector("h3").textContent =
-      scope === "codex"
+      scope === "codex" || scope === "api"
         ? "API 基准估算"
-        : names[scope] + " · API 参考等价值";
+        : names[scope] + " · 官方价费用";
     const quotaHeading = root.querySelector(".usage-account-heading");
     if (scope === "codex" && quotaHeading) {
       quotaHeading.querySelector("h3").hidden = false;

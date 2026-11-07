@@ -58,13 +58,30 @@ type Bucket = {
   observed: number;
   cachedKnown: bigint;
   inputKnown: bigint;
+  /** cached sum over rows that also reported input: the only measurable share. */
+  rateCached: bigint;
+  /** input sum over those same rows, so the ratio has one denominator. */
+  rateInput: bigint;
+  rateRows: number;
   cachedUnknownRows: number;
   inputUnknownRows: number;
   cachedTotalRows: number;
   failures: number;
+  modelTotals: Map<string, ModelTotal>;
   costs: Map<string, ExactSum>;
   pricedRequests: number;
   unpricedRequests: number;
+};
+
+/** Per-model slice of one session. Kept per session so the expanded workspace tree
+ * shows real per-model totals instead of distributing a session total by guesswork. */
+type ModelTotal = {
+  provider: string;
+  model: string;
+  input: bigint | null;
+  cached: bigint | null;
+  total: bigint | null;
+  requests: number;
 };
 
 function bucket(session: string): Bucket {
@@ -89,10 +106,14 @@ function bucket(session: string): Bucket {
     observed: 0,
     cachedKnown: 0n,
     inputKnown: 0n,
+    rateCached: 0n,
+    rateInput: 0n,
+    rateRows: 0,
     cachedUnknownRows: 0,
     inputUnknownRows: 0,
     cachedTotalRows: 0,
     failures: 0,
+    modelTotals: new Map(),
     costs: new Map(),
     pricedRequests: 0,
     unpricedRequests: 0,
@@ -155,6 +176,27 @@ export function aggregateSessions(
       const value = typeof row[key] === "string" ? row[key] : "";
       if (value) set.add(value);
     }
+    const providerName = typeof row.provider === "string" ? row.provider : "",
+      modelName = typeof row.model === "string" ? row.model : "",
+      modelKey = providerName + "\u0000" + modelName;
+    let modelTotal = b.modelTotals.get(modelKey);
+    if (!modelTotal)
+      b.modelTotals.set(
+        modelKey,
+        (modelTotal = {
+          provider: providerName,
+          model: modelName,
+          input: null,
+          cached: null,
+          total: null,
+          requests: 0,
+        }),
+      );
+    modelTotal.requests += Number(row.platform_requests ?? 1) || 1;
+    for (const key of ["input", "cached", "total"] as const) {
+      const value = row[key];
+      if (value != null) modelTotal[key] = addCount(modelTotal[key] ?? 0n, value) as bigint;
+    }
     const at = typeof row.at === "string" ? row.at : "";
     if (at && (!b.firstAt || at < b.firstAt)) b.firstAt = at;
     if (at && at > b.lastAt) b.lastAt = at;
@@ -181,6 +223,14 @@ export function aggregateSessions(
     if (row.input != null) {
       b.inputKnown += BigInt(row.input);
     } else b.inputUnknownRows++;
+    // The cache share is cached/input — input already contains the cache reads, so
+    // adding cached again would count them twice. Measure it only on rows that
+    // reported both sides; an unknown side stays unknown, never a zero.
+    if (row.cached != null && row.input != null) {
+      b.rateCached += BigInt(row.cached);
+      b.rateInput += BigInt(row.input);
+      b.rateRows++;
+    }
     if (["error", "failed", "cancelled"].includes(String(row.status))) b.failures++;
     const cost = row.cost;
     if (cost != null) {
@@ -198,13 +248,12 @@ export function aggregateSessions(
   }
   const sessionRows: SessionUsageRow[] = [...buckets.values()]
     .map((b) => {
-      // Cache hit rate needs both sides reported on every row. If any row omits either
-      // side the rate is unknown (null), never a partial ratio presented as complete.
-      const denominator = b.inputKnown + b.cachedKnown;
-      const cacheHitRate =
-        denominator > 0n && b.cachedUnknownRows === 0 && b.inputUnknownRows === 0
-          ? Number(b.cachedKnown) / Number(denominator)
-          : null;
+      // `input` is the whole prompt (cache reads included), so the cache share is
+      // cached/input, measured on the rows that reported both. `cacheCoverage` says how
+      // much of the session that measurement actually covers, so a partial ratio is
+      // never presented as complete.
+      const cacheHitRate = b.rateInput > 0n ? Math.min(1, Number(b.rateCached) / Number(b.rateInput)) : null;
+      const cacheCoverage = b.requests > 0 ? b.rateRows / b.requests : null;
       const costs: SessionUsageCost[] = [...b.costs].map(([code, sum]) => ({
         currency: code,
         amount: sum.result(),
@@ -230,6 +279,25 @@ export function aggregateSessions(
         total: countOut(b.total),
         unknownFields: b.unknown,
         cacheHitRate: cacheHitRate != null && Number.isFinite(cacheHitRate) ? cacheHitRate : null,
+        cacheCoverage,
+        modelTotals: [...b.modelTotals.values()]
+          .map((entry) => ({
+            provider: entry.provider,
+            model: entry.model,
+            requests: entry.requests,
+            input: countOut(entry.input),
+            cached: countOut(entry.cached),
+            total: countOut(entry.total),
+            cacheHitRate:
+              entry.input != null && entry.cached != null && entry.input > 0n
+                ? Number(entry.cached) / Number(entry.input)
+                : null,
+          }))
+          .sort((a, b) => {
+            const left = BigInt(a.total ?? 0),
+              right = BigInt(b.total ?? 0);
+            return right > left ? 1 : right < left ? -1 : b.requests - a.requests;
+          }),
         costs,
         failures: b.failures,
       } satisfies SessionUsageRow;
@@ -281,6 +349,21 @@ export function aggregateSessions(
       total: countOut(entry.total),
       requests: entry.requests,
     }));
+  // Group-level cache share and the busiest single session, both exact sums over the
+  // same buckets the table uses.
+  let groupCached = 0n,
+    groupInput = 0n,
+    groupRateRows = 0,
+    groupRequests = 0;
+  let peakSession: bigint | null = null;
+  for (const b of buckets.values()) {
+    groupCached += b.rateCached;
+    groupInput += b.rateInput;
+    groupRateRows += b.rateRows;
+    groupRequests += b.requests;
+    if (b.total != null && (peakSession == null || b.total > peakSession)) peakSession = b.total;
+  }
+  const groupHitRate = groupInput > 0n ? Math.min(1, Number(groupCached) / Number(groupInput)) : null;
   return {
     scope: options.scope,
     range: { start, end },
@@ -298,6 +381,9 @@ export function aggregateSessions(
         typeof summarySum.cached === "bigint" ? summarySum.cached : summarySum.cached ?? null,
       ),
       activeDays: dayTotals.size,
+      cacheHitRate: groupHitRate,
+      cacheCoverage: groupRequests ? groupRateRows / groupRequests : null,
+      peakSession: countOut(peakSession),
     },
     distribution,
     timeline,

@@ -280,7 +280,7 @@ export class Agents {
       let reason = "verified",
         normalized: JsonObject | null = null,
         at = "";
-      const evidence = {
+      const evidence: Record<string, any> = {
         kind,
         session: sid,
         version,
@@ -313,9 +313,28 @@ export class Agents {
         const input = usage.inputTokens,
           cached = usage.cacheReadTokens,
           written = usage.cacheWriteTokens,
-          complete = [input, cached, written].some((v) => v == null)
-            ? null
-            : addCount(input, cached, written);
+          total = usage.totalTokens,
+          output = usage.outputTokens;
+        // DSH reports prompt tokens as uncached input + cache reads + cache writes.
+        // Newer logs omit inputTokens/cacheWriteTokens, but the provider total always
+        // equals prompt + output (verified across every stored row), so the prompt
+        // total is recoverable exactly instead of being stored as unknown.
+        let complete: number | bigint | null = null,
+          derived: string | null = null;
+        if (input != null && cached != null && written != null)
+          complete = addCount(input, cached, written);
+        else if (typeof total === "number" && typeof output === "number") {
+          const prompt = total - output;
+          if (
+            prompt >= 0 &&
+            (cached == null || cached <= prompt) &&
+            (written == null || written <= prompt)
+          ) {
+            complete = prompt;
+            derived = "total_tokens - output_tokens";
+          }
+        }
+        if (derived) evidence.derived = derived;
         normalized = normalizeTokens({
           input_tokens: complete,
           output_tokens: usage.outputTokens,

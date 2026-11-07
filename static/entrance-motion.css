@@ -1,0 +1,47 @@
+/* ===== 0.1.33 entrance motion + press feedback (main app) ===== */
+@keyframes lx-surface-in {
+  from { opacity: 0; transform: translate3d(0, 10px, 0) scale(.996); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes lx-block-in {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes lx-view-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+#main > .module-surface.is-entering {
+  animation: lx-surface-in 320ms cubic-bezier(.22, 1, .36, 1) both;
+  will-change: opacity, transform;
+}
+#main > .module-surface.is-entering > * {
+  animation: lx-block-in 360ms cubic-bezier(.22, 1, .36, 1) both;
+}
+#main > .module-surface.is-entering > *:nth-child(1) { animation-delay: 20ms; }
+#main > .module-surface.is-entering > *:nth-child(2) { animation-delay: 55ms; }
+#main > .module-surface.is-entering > *:nth-child(3) { animation-delay: 90ms; }
+#main > .module-surface.is-entering > *:nth-child(4) { animation-delay: 120ms; }
+#main > .module-surface.is-entering > *:nth-child(5) { animation-delay: 150ms; }
+#main > .module-surface.is-entering > *:nth-child(n + 6) { animation-delay: 175ms; }
+
+/* Shared press feedback for every interactive surface in the app shell. */
+.main-shell :is(button, .btn, [role="button"], summary) {
+  transition: transform 120ms cubic-bezier(.22, 1, .36, 1), background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+.main-shell :is(button, .btn, [role="button"], summary):active {
+  transform: scale(.965);
+}
+.main-shell .nav-item:active { transform: scale(.985); }
+.main-shell :is(button, .btn, [role="button"]):focus-visible {
+  outline: 2px solid var(--color-usage-chart-1, #3b82f6);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #main > .module-surface.is-entering,
+  #main > .module-surface.is-entering > * { animation: none; }
+  .main-shell :is(button, .btn, [role="button"], summary) { transition: none; }
+  .main-shell :is(button, .btn, [role="button"], summary):active { transform: none; }
+}
