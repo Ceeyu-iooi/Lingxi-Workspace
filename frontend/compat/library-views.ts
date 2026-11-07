@@ -1359,19 +1359,1332 @@
 /* 技能管理中台：概览 / 技能库 / Agent / 工作区 / 设置。
    * 数据只来自 /api/skill-manager/*；扫描与预览只读，不执行 SKILL.md 或脚本。
    * 视觉与信息架构参考 skills-manager，使用本工作台的令牌与交互规范。 */
+/* 技能管理中台：严格对照 skills-manager 的信息架构、页面层级与视觉语言。
+   * 数据只来自 /api/skill-manager/*；扫描与预览只读，不执行 SKILL.md 或脚本。
+   * 本工作台已有全局侧栏，因此模块内再现其 220px 应用侧栏 + 主区布局。 */
+/* 技能管理中台：严格对照 skills-manager 的信息架构、页面层级与视觉语言。
+   * 数据只来自 /api/skill-manager/*；扫描与预览只读，不执行 SKILL.md 或脚本。
+   * 本工作台已有全局侧栏，因此模块内再现其 220px 应用侧栏 + 主区布局。 */
+/* 技能管理中台：严格对照 skills-manager 的信息架构、页面层级与视觉语言。
+   * 数据只来自 /api/skill-manager/*；扫描与预览只读，不执行 SKILL.md 或脚本。
+   * 本工作台已有全局侧栏，因此模块内再现其 220px 应用侧栏 + 主区布局。 */
+/* 技能管理中台：严格对照 skills-manager 的信息架构、页面层级与视觉语言。
+   * 数据只来自 /api/skill-manager/*；扫描与预览只读，不执行 SKILL.md 或脚本。
+   * 本工作台已有全局侧栏，因此模块内再现其 220px 应用侧栏 + 主区布局。 */
+/* 技能管理中台：严格对照 skills-manager 的信息架构、页面层级与视觉语言。
+   * 数据只来自 /api/skill-manager/*；扫描与预览只读，不执行 SKILL.md 或脚本。
+   * 本工作台已有全局侧栏，因此模块内再现其 220px 应用侧栏 + 主区布局。 */
   async function skills(root) {
-    const owner = user.username,
-      signal = root._wbAbort?.signal,
-      content = shell(
-        root,
-        "技能管理",
-        "集中浏览已登记的技能目录、Agent 与工作区。索引和预览都是只读的，不会执行 SKILL.md 或任何脚本。",
-        '<button class="btn ghost" data-refresh>刷新数据</button><button class="btn" data-rescan>重建索引</button>',
-      );
-    content.classList.add("sm-page");
-    content.id = "sm-view";
-    content.setAttribute("role", "tabpanel");
-    if (!document.querySelector("link[data-skill-manager-css]")) {
+    const owner = user.username;
+    const signal = root._wbAbort?.signal;
+    const esc = (v) => e(String(v ?? ""));
+
+    const iconPaths = {
+      dashboard: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
+      layers: '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
+      bot: '<rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/>',
+      globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+      settings: '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
+      search: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+      plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+      chevronRight: '<polyline points="9 18 15 12 9 6"/>',
+      chevronDown: '<polyline points="6 9 12 15 18 9"/>',
+      folder: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+      folderOpen: '<path d="M6 14l1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/>',
+      fileText: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>',
+      refresh: '<path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
+      x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+      check: '<polyline points="20 6 9 17 4 12"/>',
+      alert: '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+      link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+      copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+      trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+      edit: '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/>',
+      grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
+      list: '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
+      scan: '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/>',
+      lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+      arrowRight: '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>',
+      download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+      upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+      spark: '<path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>',
+      external: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>',
+      clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+    };
+    const icon = (name, size = 16, cls = "") =>
+      `<svg class="skm-ico ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${iconPaths[name] || ""}</svg>`;
+
+    const state = {
+      view: "overview",
+      overview: null,
+      agents: [],
+      workspaces: [],
+      presets: [],
+      tags: [],
+      activity: [],
+      scan: null,
+      settings: null,
+      library: {
+        items: [], total: 0, q: "", tag: "", agent: "", status: "all", source: "", view: "grid",
+        offset: 0, limit: 12, loading: false, loaded: false, error: "", preset: "",
+      },
+      agentCounts: {},
+      agentSkills: {},
+      entries: {},
+      detail: null,
+      error: "",
+      busy: false,
+    };
+
+    const api = (method, path, body) =>
+      U().request(method, "/api/skill-manager" + path, body, { signal });
+
+    const nf = (n) => Number(n || 0).toLocaleString("zh-CN");
+    const fmtBytes = (n) => {
+      const v = Number(n || 0);
+      if (!v) return "0 B";
+      if (v < 1024) return `${v} B`;
+      if (v < 1024 * 1024) return `${(v / 1024).toFixed(1)} KB`;
+      return `${(v / 1024 / 1024).toFixed(1)} MB`;
+    };
+    const fmtTime = (iso) => {
+      if (!iso) return "未知";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return String(iso);
+      const diff = Date.now() - d.getTime();
+      if (diff >= 0 && diff < 60e3) return "刚刚";
+      if (diff >= 0 && diff < 36e5) return `${Math.floor(diff / 60e3)} 分钟前`;
+      if (diff >= 0 && diff < 864e5) return `${Math.floor(diff / 36e5)} 小时前`;
+      return d.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
+    };
+    const zhName = (item) => {
+      const v = String(item?.displayName || "").trim();
+      if (!v || v === item?.name || v === "自定义技能") return "";
+      return v;
+    };
+    const zhDescription = (item) => {
+      const v = String(item?.displayDescription || "").trim();
+      if (!v || v === "暂无中文简介，可在详情中补充。") return "";
+      return v;
+    };
+    const stripFrontmatter = (text) => String(text || "").replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---\r?\n?/, "");
+    const sourceType = (type) => ({
+      local: "本机目录", adopted: "已收录", git: "Git 仓库", archive: "压缩包",
+      market: "技能市场", manual: "手动添加",
+    }[type] || "本机目录");
+    const sourceIcon = (type) => (type === "git" || type === "archive" || type === "market" ? "link" : "folder");
+    const libraryStatusText = (s) => ({ ok: "可用", missing: "文件缺失", modified: "已修改" }[s] || "未知");
+    const presentationText = (s) => ({
+      custom: "当前 Profile 覆盖", catalog: "本地词目", source: "源文件提供", untranslated: "缺少中文资料",
+    }[s] || "缺少中文资料");
+    const deployText = (s) => ({
+      absent: "未部署", linked: "已链接", copied: "已复制", different: "内容不同", external: "外部目录", unreadable: "不可读",
+    }[s] || "未部署");
+    const upstreamText = (s) => ({
+      unknown: "未检查", current: "已是最新", behind: "落后上游", "local-changes": "本地已修改",
+      diverged: "已分叉", unavailable: "上游不可用",
+    }[s] || "未检查");
+    const deployedAgents = (s) => (s?.agents || []).filter((a) => a.deployed);
+    const agentName = (id) => (state.agents.find((a) => a.id === id) || {}).name || id || "Agent";
+    const agentTone = { shared: "indigo", codex: "zinc", claude: "orange", cursor: "blue", gemini: "sky", dsh: "green" };
+    const agentTile = (a, size = 36) => {
+      const tone = agentTone[a?.id] || "violet";
+      const label = a?.id === "shared" ? "SH" : String(a?.id || a?.name || "?").slice(0, 2);
+      return `<span class="skm-agent-tile skm-tone-${tone}${size <= 28 ? " is-sm" : ""}" aria-hidden="true">${esc(label)}</span>`;
+    };
+
+    function statusPills(skill) {
+      const out = [];
+      if (skill.libraryStatus && skill.libraryStatus !== "ok") {
+        out.push(`<span class="skm-mini-pill is-${skill.libraryStatus === "missing" ? "danger" : "warn"}">${libraryStatusText(skill.libraryStatus)}</span>`);
+      }
+      if (skill.presentationSource === "untranslated") {
+        out.push('<span class="skm-mini-pill">缺少中文资料</span>');
+      }
+      if (skill.warning) out.push('<span class="skm-mini-pill is-warn" title="' + esc(skill.warning) + '">需检查</span>');
+      return out.join("");
+    }
+
+    function skillCard(skill) {
+      const zh = zhName(skill);
+      const desc = zhDescription(skill) || String(skill.description || "").trim();
+      const agents = deployedAgents(skill);
+      const tags = (skill.tags || []).slice(0, 5);
+      const title = String(skill.name || skill.displayName || "未命名技能");
+      return `<article class="skm-card" data-open-skill="${esc(skill.id)}" role="button" tabindex="0" aria-label="打开技能 ${esc(title)}">
+        <div class="skm-card-head">
+          <span class="skm-dot${agents.length ? " is-on" : ""}" title="${agents.length ? "已部署到 " + esc(agents.map((a) => a.name).join("、")) : "尚未部署到 Agent"}"></span>
+          <div class="skm-card-titles">
+            <h3 class="skm-card-title" title="${esc(title)}">${esc(title)}</h3>
+            ${zh ? `<p class="skm-card-zh" title="${esc(zh)}">${esc(zh)}</p>` : ""}
+          </div>
+          <span class="skm-card-pills">${statusPills(skill)}</span>
+        </div>
+        <p class="skm-card-desc">${desc ? esc(desc) : "暂无简介"}</p>
+        <div class="skm-card-tags">${tags.map((t) => `<span class="skm-tag">${esc(t)}</span>`).join("")}${(skill.tags || []).length > 5 ? `<span class="skm-tag is-more">+${skill.tags.length - 5}</span>` : ""}</div>
+        <div class="skm-card-foot">
+          <span class="skm-card-source">${icon(sourceIcon(skill.source?.type), 14)}<span>${esc(sourceType(skill.source?.type))}</span></span>
+          <span class="skm-agent-dots">
+            ${agents.slice(0, 6).map((a) => `<span class="skm-agent-dot" title="${esc(a.name)}">${agentTile(a, 20)}</span>`).join("")}
+            ${agents.length > 6 ? `<span class="skm-agent-more">+${agents.length - 6}</span>` : ""}
+            ${agents.length ? "" : '<span class="skm-agent-none">未部署</span>'}
+          </span>
+        </div>
+      </article>`;
+    }
+
+    function skillRow(skill) {
+      const zh = zhName(skill);
+      const desc = zhDescription(skill) || String(skill.description || "").trim();
+      const agents = deployedAgents(skill);
+      return `<article class="skm-row" data-open-skill="${esc(skill.id)}" role="button" tabindex="0" aria-label="打开技能 ${esc(skill.name)}">
+        <span class="skm-dot${agents.length ? " is-on" : ""}"></span>
+        <div class="skm-row-main">
+          <div class="skm-row-title">${esc(skill.name)}${zh ? `<span class="skm-row-zh">${esc(zh)}</span>` : ""}</div>
+          <p class="skm-row-desc">${desc ? esc(desc) : "暂无简介"}</p>
+        </div>
+        <div class="skm-row-tags">${(skill.tags || []).slice(0, 3).map((t) => `<span class="skm-tag">${esc(t)}</span>`).join("")}</div>
+        <div class="skm-row-source">${icon(sourceIcon(skill.source?.type), 14)}${esc(sourceType(skill.source?.type))}</div>
+        <div class="skm-agent-dots">${agents.slice(0, 4).map((a) => `<span class="skm-agent-dot" title="${esc(a.name)}">${agentTile(a, 20)}</span>`).join("")}${agents.length ? "" : '<span class="skm-agent-none">未部署</span>'}</div>
+      </article>`;
+    }
+
+    function emptyState({ title, hint, action = "", extra = "" } = {}) {
+      return `<div class="skm-empty">
+        <span class="skm-empty-icon">${icon("layers", 48)}</span>
+        <h3>${esc(title)}</h3>
+        <p>${esc(hint)}</p>
+        ${extra ? `<div class="skm-empty-extra">${extra}</div>` : ""}
+        ${action || ""}
+      </div>`;
+    }
+
+    function pageHead(title, { badge = "", sub = "", actions = "" } = {}) {
+      return `<header class="skm-page-head">
+        <div class="skm-page-head-main">
+          <h1 class="skm-page-title">${esc(title)}${badge ? `<span class="skm-badge">${badge}</span>` : ""}</h1>
+          ${sub ? `<p class="skm-page-sub">${sub}</p>` : ""}
+        </div>
+        ${actions ? `<div class="skm-page-actions">${actions}</div>` : ""}
+      </header>`;
+    }
+
+    function alertBox(message, retry = true) {
+      return `<div class="skm-alert" role="alert">${icon("alert", 16)}<span>${esc(message)}</span>${retry ? '<button class="skm-link" data-act="retry">重试</button>' : ""}</div>`;
+    }
+
+    function coverCount() {
+      const total = state.overview?.libraryTotal ?? state.library.total;
+      const items = state.library.items || [];
+      const synced = items.filter((s) => deployedAgents(s).length > 0).length;
+      return { total, synced };
+    }
+
+    function sideHTML() {
+      const navItem = (view, label, ico, count, extra = "") => {
+        const active = state.view === view || (view === "agents" && state.view.startsWith("agent:")) || (view === "workspaces" && state.view.startsWith("workspace:"));
+        return `<button class="skm-nav${active ? " is-active" : ""}" data-act="nav" data-view="${view}">
+          ${icon(ico, 16, "skm-nav-ico")}<span class="skm-nav-label">${esc(label)}</span>${count != null ? `<span class="skm-nav-count">${nf(count)}</span>` : ""}${extra}</button>`;
+      };
+      const groupHead = (label, open, key) =>
+        `<button class="skm-group-head" data-act="group" data-group="${key}" aria-expanded="${open ? "true" : "false"}">${icon(open ? "chevronDown" : "chevronRight", 12, "skm-chev")}<span>${esc(label)}</span></button>`;
+      const open = state.groups || (state.groups = { presets: true, agents: true, workspaces: true });
+      const presets = state.presets || [];
+      const linked = state.workspaces.filter((w) => w.kind === "linked");
+      const project = state.workspaces.find((w) => w.kind === "project");
+      return `<div class="skm-brand">
+          <span class="skm-brand-mark" aria-hidden="true">${icon("layers", 16)}</span>
+          <span class="skm-brand-name">技能管理</span>
+          <button class="skm-mobile-settings${state.view === "settings" ? " is-active" : ""}" data-act="nav" data-view="settings" aria-label="设置" title="设置">${icon("settings", 16)}</button>
+        </div>
+        <nav class="skm-mobile-nav" aria-label="技能管理导航（窄屏）">
+          ${navItem("overview", "概览", "dashboard")}
+          ${navItem("library", "技能库", "layers", state.overview?.libraryTotal ?? state.library.total)}
+          ${navItem("agents", "Agents", "bot")}
+          ${navItem("workspaces", "工作区", "folderOpen")}
+        </nav>
+        <nav class="skm-nav-primary" aria-label="技能管理导航">
+          ${navItem("overview", "概览", "dashboard")}
+          ${navItem("library", "技能库", "layers", state.overview?.libraryTotal ?? state.library.total)}
+        </nav>
+        <div class="skm-side-scroll">
+          <div class="skm-group">
+            ${groupHead("预设", open.presets, "presets")}
+            ${open.presets ? `<div class="skm-group-body">
+              ${presets.map((p) => `<button class="skm-nav skm-nav-sub${state.library.preset === p.id ? " is-active" : ""}" data-act="preset" data-preset="${esc(p.id)}" title="${esc(p.description || p.name)}">
+                <span class="skm-nav-ico skm-preset-mark" aria-hidden="true">${icon("spark", 12)}</span><span class="skm-nav-label">${esc(p.name)}</span><span class="skm-nav-count">${nf((p.skillIds || []).length)}</span></button>`).join("")}
+              <button class="skm-nav skm-nav-sub is-muted" data-act="new-preset">${icon("plus", 13, "skm-nav-ico")}<span class="skm-nav-label">新建预设</span></button>
+            </div>` : ""}
+          </div>
+          <div class="skm-group">
+            ${groupHead("全局工作区", open.agents, "agents")}
+            ${open.agents ? `<div class="skm-group-body">
+              ${navItem("agents", "全部 Agents", "globe")}
+              ${state.agents.map((a) => `<button class="skm-nav skm-nav-sub${state.view === "agent:" + a.id ? " is-active" : ""}" data-act="nav" data-view="agent:${esc(a.id)}" title="${esc(a.globalPath)}">
+                ${agentTile(a, 20)}<span class="skm-nav-label">${esc(a.name)}</span>
+                <span class="skm-nav-count">${state.agentCounts[a.id] == null ? "…" : nf(state.agentCounts[a.id])}</span>
+                <span class="skm-dot sm${a.exists ? " is-on" : ""}" title="${a.exists ? "目录已创建" : "目录未创建"}"></span>
+              </button>`).join("")}
+            </div>` : ""}
+          </div>
+          <div class="skm-group">
+            ${groupHead("项目工作区", open.workspaces, "workspaces")}
+            ${open.workspaces ? `<div class="skm-group-body">
+              ${navItem("workspaces", "所有工作区", "folderOpen")}
+              ${project ? `<button class="skm-nav skm-nav-sub" data-act="nav" data-view="workspace:${esc(project.id)}" title="${esc(project.root)}">
+                ${icon("folder", 14, "skm-nav-ico")}<span class="skm-nav-label">${esc(project.name)}</span><span class="skm-dot sm${project.exists ? " is-on" : ""}"></span>
+              </button>` : ""}
+              ${linked.map((w) => `<button class="skm-nav skm-nav-sub${state.view === "workspace:" + w.id ? " is-active" : ""}" data-act="nav" data-view="workspace:${esc(w.id)}" title="${esc(w.root)}">
+                ${icon("link", 14, "skm-nav-ico")}<span class="skm-nav-label">${esc(w.name)}</span><span class="skm-dot sm${w.exists ? " is-on" : ""}"></span>
+              </button>`).join("")}
+            </div>` : ""}
+          </div>
+        </div>
+        <div class="skm-side-foot">
+          ${navItem("settings", "设置", "settings")}
+        </div>`;
+    }
+
+    function overviewHTML() {
+      const o = state.overview;
+      if (!o) {
+        return `<div class="skm-page is-narrow">${pageHead("概览")}${alertBox(state.error || "正在读取技能管理数据…", false)}</div>`;
+      }
+      const agents = o.agents || [];
+      const workspaces = o.workspaces || [];
+      const missingAgents = agents.filter((a) => !a.exists);
+      const connected = agents.filter((a) => a.exists && a.enabled);
+      const { total, synced } = coverCount();
+      const coverage = total ? `${synced}/${total}` : "0";
+      const recent = (state.activity && state.activity.length ? state.activity : (o.activity || [])).slice(0, 6);
+      const dirRows = [
+        { name: "中央技能库", path: o.library?.root, ok: true, tag: "中央库" },
+        ...agents.map((a) => ({ name: a.name, path: a.globalPath, ok: a.exists, tag: a.origin === "builtin" ? "内置 Agent" : "自定义 Agent", agent: a.id })),
+        ...workspaces.filter((w) => w.kind !== "global").map((w) => ({ name: w.name, path: w.root, ok: w.exists, tag: w.kind === "project" ? "项目工作区" : "关联目录", ws: w.id })),
+      ];
+      const recentHTML = recent.length
+        ? `<section class="skm-section">
+            <h2 class="skm-section-title">近期活动</h2>
+            <div class="skm-panel skm-activity">
+              ${recent.map((ev) => `<div class="skm-activity-row">
+                <span class="skm-activity-mark">${esc(String(ev.skillName || ev.action || "·").charAt(0).toUpperCase())}</span>
+                <div class="skm-activity-main"><b>${esc(ev.skillName || ev.action || "操作")}</b><span>${esc(ev.detail || ev.action || "")}</span></div>
+                <span class="skm-activity-time">${esc(fmtTime(ev.at))}${ev.ok === false ? " · 失败" : ""}</span>
+              </div>`).join("")}
+            </div>
+          </section>`
+        : "";
+      return `<div class="skm-page is-narrow">
+        ${pageHead("你好！", { sub: `技能库中 ${nf(total)} 个技能 · 已接入 ${nf(connected.length)} 个 Agent · ${nf(workspaces.length)} 个工作区` })}
+        ${state.error ? alertBox(state.error) : ""}
+        ${missingAgents.length ? `<div class="skm-setup-card">
+          <span class="skm-setup-ico">${icon("alert", 18)}</span>
+          <div class="skm-setup-main"><h2>${nf(missingAgents.length)} 个 Agent 目录尚未创建</h2><p>扫描只读取已登记的目录，不会自行创建或修改任何 Agent 目录。可先在「全部 Agents」中确认路径，再扫描本机。</p></div>
+          <button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="nav" data-view="agents">查看 Agents</button>
+        </div>` : ""}
+        <div class="skm-stats">
+          <div class="skm-stat"><div><p class="skm-section-title">技能库技能</p><strong>${nf(total)}</strong></div><span class="skm-stat-ico is-accent">${icon("layers", 16)}</span></div>
+          <div class="skm-stat"><div><p class="skm-section-title">同步覆盖</p><strong>${coverage}</strong></div><span class="skm-stat-ico is-ok">${icon("check", 16)}</span></div>
+          <div class="skm-stat"><div><p class="skm-section-title">连接 Agent</p><strong>${nf(connected.length)}<span class="skm-stat-total">/${nf(agents.length)}</span></strong></div><span class="skm-stat-ico is-sky">${icon("bot", 16)}</span></div>
+        </div>
+        <div class="skm-actions">
+          <button class="skm-btn skm-btn-primary" data-act="scan">${icon("scan", 16)}扫描本机目录</button>
+          <button class="skm-btn skm-btn-secondary" data-act="new-workspace">${icon("plus", 16)}关联工作区目录</button>
+        </div>
+        <section class="skm-section">
+          <h2 class="skm-section-title">登记目录</h2>
+          <div class="skm-panel skm-dir-list">
+            ${dirRows.map((row) => `<div class="skm-dir-row">
+              <span class="skm-dir-ico">${icon(row.agent ? "bot" : row.ws ? "folder" : "layers", 15)}</span>
+              <div class="skm-dir-main"><div class="skm-dir-name">${esc(row.name)}<span class="skm-mini-pill">${esc(row.tag)}</span></div><code class="skm-path" title="${esc(row.path)}">${esc(row.path || "—")}</code></div>
+              <span class="skm-status ${row.ok ? "is-ok" : "is-muted"}"><span class="skm-dot sm${row.ok ? " is-on" : ""}"></span>${row.ok ? "已创建" : "目录未创建"}</span>
+              ${row.agent ? `<button class="skm-icon-btn" data-act="nav" data-view="agent:${esc(row.agent)}" title="查看 Agent">${icon("chevronRight", 15)}</button>` : row.ws ? `<button class="skm-icon-btn" data-act="nav" data-view="workspace:${esc(row.ws)}" title="查看工作区">${icon("chevronRight", 15)}</button>` : ""}
+            </div>`).join("")}
+          </div>
+        </section>
+        <section class="skm-section">
+          <h2 class="skm-section-title">索引与只读边界</h2>
+          <div class="skm-panel skm-readonly">
+            <div class="skm-readonly-row">${icon("lock", 16)}<div><b>不会执行技能内容</b><span>预览只读取 SKILL.md 文本；不会运行其中的脚本、命令或任何安装步骤。</span></div></div>
+            <div class="skm-readonly-row">${icon("folder", 16)}<div><b>只扫描已登记目录</b><span>中央库、Agent 目录与项目工作区；不会遍历整块磁盘。</span></div></div>
+            <div class="skm-readonly-row">${icon("fileText", 16)}<div><b>索引状态</b><span>${o.scan ? `上次索引 ${esc(fmtTime(o.scan.at))} · 收录 ${nf(o.scan.count)} 项 · 新吸收 ${nf(o.scan.absorbed)} 项` : "尚未建立索引。首次扫描会生成只读快照。"}</span></div></div>
+          </div>
+        </section>
+        ${recentHTML}
+      </div>`;
+    }
+
+    function libraryFiltered() {
+      const l = state.library;
+      let items = (l.items || []).slice();
+      if (l.status === "deployed") items = items.filter((s) => deployedAgents(s).length > 0);
+      if (l.status === "available") items = items.filter((s) => deployedAgents(s).length === 0);
+      if (l.source) items = items.filter((s) => (s.source?.type || "local") === l.source);
+      if (l.preset) {
+        const preset = state.presets.find((p) => p.id === l.preset);
+        const ids = new Set((preset?.skillIds) || []);
+        items = items.filter((s) => ids.has(s.id));
+      }
+      return items;
+    }
+
+    function libraryResultsHTML() {
+      const l = state.library;
+      if (l.loading && !l.loaded) {
+        return `<div class="skm-skeleton">${Array.from({ length: 6 }).map(() => '<div class="skm-skeleton-card"></div>').join("")}</div>`;
+      }
+      if (l.error) return alertBox(l.error);
+      const items = libraryFiltered();
+      const start = l.offset;
+      const page = items.slice(start, start + l.limit);
+      if (!items.length) {
+        const filtered = l.q || l.tag || l.agent || l.status !== "all" || l.source || l.preset;
+        const totalZero = !filtered && l.total === 0;
+        return emptyState({
+          title: totalZero ? "技能库还没有技能" : "没有可显示的 Skills",
+          hint: totalZero
+            ? "中央技能库为空。可以扫描本机已登记的 Agent 目录，或先把已有技能目录登记为工作区。"
+            : "当前筛选条件下没有匹配的技能。可以清除筛选，或换一个关键词。",
+          action: filtered
+            ? '<button class="skm-btn skm-btn-secondary" data-act="clear-filters">清除筛选</button>'
+            : '<div class="skm-empty-actions"><button class="skm-btn skm-btn-primary" data-act="scan">扫描本机目录</button><button class="skm-btn skm-btn-secondary" data-act="new-workspace">关联工作区</button></div>',
+        });
+      }
+      const body = l.view === "grid"
+        ? `<div class="skm-card-grid">${page.map(skillCard).join("")}</div>`
+        : `<div class="skm-rows">${page.map(skillRow).join("")}</div>`;
+      const loadedNote = l.total > l.items.length ? `<span class="skm-meta-note">已载入前 ${nf(l.items.length)} / ${nf(l.total)} 项</span>` : "";
+      const pages = Math.max(1, Math.ceil(items.length / l.limit));
+      const pageNo = Math.floor(start / l.limit) + 1;
+      const pager = `<div class="skm-pager">
+        <span class="skm-pager-meta">第 ${nf(start + 1)}–${nf(Math.min(start + l.limit, items.length))} 项，共 ${nf(items.length)} 项 ${loadedNote}</span>
+        <div class="skm-pager-actions">
+          <button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="lib-page" data-dir="-1" ${pageNo <= 1 ? "disabled" : ""}>${icon("chevronRight", 14, "skm-flip")}上一页</button>
+          <span class="skm-pager-no">第 ${pageNo} / ${pages} 页</span>
+          <button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="lib-page" data-dir="1" ${pageNo >= pages ? "disabled" : ""}>下一页${icon("chevronRight", 14)}</button>
+        </div>
+      </div>`;
+      return body + pager;
+    }
+
+    function libraryHTML() {
+      const l = state.library;
+      const sourceTypes = [...new Set((l.items || []).map((s) => s.source?.type || "local"))];
+      const tags = (state.overview?.tags || state.tags || []).slice(0, 10);
+      const seg = [["all", "全部"], ["deployed", "已部署"], ["available", "未部署"]]
+        .map(([v, label]) => `<button class="skm-seg${l.status === v ? " is-active" : ""}" data-act="lib-status" data-status="${v}" aria-pressed="${l.status === v}">${label}</button>`).join("");
+      const sources = [["", "全部来源"], ...sourceTypes.map((t) => [t, sourceType(t)])]
+        .map(([v, label]) => `<button class="skm-chip${l.source === v ? " is-active" : ""}" data-act="lib-source" data-source="${esc(v)}" aria-pressed="${l.source === v}">${esc(label)}</button>`).join("");
+      const tagChips = tags.map((t) => `<button class="skm-chip${l.tag === t.name ? " is-active" : ""}" data-act="tag" data-tag="${esc(t.name)}" aria-pressed="${l.tag === t.name}">${esc(t.name)}<span>${nf(t.count)}</span></button>`).join("");
+      const preset = l.preset ? state.presets.find((p) => p.id === l.preset) : null;
+      return `<div class="skm-page">
+        ${pageHead("技能库", { badge: nf(l.total), sub: "浏览中央库中的技能快照。搜索与预览只读取文本，不会执行技能内容。", actions: `<button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="refresh" title="刷新数据">${icon("refresh", 15)}刷新</button><button class="skm-btn skm-btn-primary skm-btn-sm" data-act="scan">${icon("scan", 15)}扫描本机</button>` })}
+        ${preset ? `<div class="skm-filter-banner">正在查看预设「${esc(preset.name)}」<button class="skm-link" data-act="clear-preset">退出预设</button></div>` : ""}
+        <div class="skm-toolbar-wrap">
+        <div class="skm-toolbar">
+          <div class="skm-toolbar-main">
+            <label class="skm-search">${icon("search", 16)}<input class="skm-input" type="search" data-lib-search placeholder="搜索技能名称或简介" value="${esc(l.q)}" aria-label="搜索技能" autocomplete="off" spellcheck="false"></label>
+            <div class="skm-segmented" role="group" aria-label="按部署状态筛选">${seg}</div>
+          </div>
+          <div class="skm-toolbar-actions">
+            <div class="skm-segmented is-icon" role="group" aria-label="视图">
+              <button class="skm-seg skm-seg-icon${l.view === "grid" ? " is-active" : ""}" data-act="lib-view" data-view="grid" aria-pressed="${l.view === "grid"}" title="网格视图">${icon("grid", 15)}</button>
+              <button class="skm-seg skm-seg-icon${l.view === "list" ? " is-active" : ""}" data-act="lib-view" data-view="list" aria-pressed="${l.view === "list"}" title="列表视图">${icon("list", 15)}</button>
+            </div>
+          </div>
+        </div>
+        <div class="skm-chip-row">${sources}${tags.length ? '<span class="skm-chip-sep" aria-hidden="true"></span>' : ""}${tagChips}</div>
+        </div>
+        <div data-lib-results>${libraryResultsHTML()}</div>
+      </div>`;
+    }
+
+    function agentsHTML() {
+      if (!state.overview) return `<div class="skm-page">${pageHead("Agents")}${alertBox(state.error || "正在读取…", false)}</div>`;
+      const agents = state.agents || [];
+      const detected = agents.filter((a) => a.exists).length;
+      return `<div class="skm-page">
+        ${pageHead("Agents", { badge: `${detected}/${agents.length}`, sub: "已登记的 Agent 技能目录。目录存在与否、启用状态与实际部署分别判断。", actions: `<button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="new-agent">${icon("plus", 15)}自定义 Agent</button>` })}
+        ${state.error ? alertBox(state.error) : ""}
+        <div class="skm-agent-grid">
+          ${agents.map((a) => `<button class="skm-agent-card" data-act="nav" data-view="agent:${esc(a.id)}">
+            ${agentTile(a, 36)}
+            <div class="skm-agent-main">
+              <div class="skm-agent-name">${esc(a.name)}<span class="skm-mini-pill">${a.origin === "builtin" ? "内置" : "自定义"}</span>${a.enabled ? "" : '<span class="skm-mini-pill is-warn">已停用</span>'}</div>
+              <p class="skm-agent-sub">${state.agentCounts[a.id] == null ? "正在读取技能数…" : `${nf(state.agentCounts[a.id])} 个 Skills`} · ${a.exists ? "目录已创建" : "目录未创建"}</p>
+            </div>
+            ${icon("chevronRight", 16, "skm-agent-chev")}
+          </button>`).join("")}
+        </div>
+        <section class="skm-section">
+          <h2 class="skm-section-title">只读边界</h2>
+          <div class="skm-panel skm-readonly">
+            <div class="skm-readonly-row">${icon("lock", 16)}<div><b>目录未创建 ≠ 未启用</b><span>路径不存在时仅表示本机还没有这个目录；启用状态与文件存在性分别展示，不会自动创建目录。</span></div></div>
+            <div class="skm-readonly-row">${icon("folderOpen", 16)}<div><b>只读扫描</b><span>扫描只读取各 Agent 目录中的 SKILL.md，不会写入 Agent 配置或执行技能脚本。</span></div></div>
+          </div>
+        </section>
+      </div>`;
+    }
+
+    function agentDetailHTML(id) {
+      const a = state.agents.find((x) => x.id === id);
+      if (!a) return `<div class="skm-page">${pageHead("Agent 未找到")}${emptyState({ title: "没有这个 Agent", hint: "它可能已被移除，或链接已失效。", action: '<button class="skm-btn skm-btn-secondary" data-act="nav" data-view="agents">返回 Agents</button>' })}</div>`;
+      const skills = state.agentSkills[id];
+      const bindings = state.workspaces.filter((w) => (w.agentIds || []).includes(id));
+      return `<div class="skm-page">
+        <header class="skm-page-head">
+          <div class="skm-page-head-main">
+            <h1 class="skm-page-title skm-title-with-tile">${agentTile(a, 28)}${esc(a.name)}<span class="skm-badge">${skills ? nf(skills.total) : "…"}</span></h1>
+            <p class="skm-page-sub skm-path-line">${icon("folder", 13)}<code class="skm-path" title="${esc(a.globalPath)}">${esc(a.globalPath || "未设置目录")}</code></p>
+          </div>
+          <div class="skm-page-actions">
+            <button class="skm-switch${a.enabled ? " is-on" : ""}" role="switch" aria-checked="${a.enabled}" data-act="agent-toggle" data-id="${esc(a.id)}" title="${a.enabled ? "停用" : "启用"}" aria-label="${a.enabled ? "停用" : "启用"} ${esc(a.name)}"><span></span></button>
+            <button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="edit-agent" data-id="${esc(a.id)}">${icon("edit", 14)}编辑目录</button>
+            ${a.origin === "builtin" ? `<button class="skm-btn skm-btn-ghost skm-btn-sm" data-act="agent-restore" data-id="${esc(a.id)}">恢复默认</button>` : `<button class="skm-btn skm-btn-ghost skm-btn-sm is-danger" data-act="agent-delete" data-id="${esc(a.id)}">${icon("trash", 14)}删除</button>`}
+          </div>
+        </header>
+        ${state.error ? alertBox(state.error) : ""}
+        <div class="skm-meta-grid">
+          <div class="skm-kv"><span>目录状态</span><b class="${a.exists ? "is-ok" : "is-muted"}">${a.exists ? "已创建" : "目录未创建"}</b></div>
+          <div class="skm-kv"><span>启用状态</span><b>${a.enabled ? "已启用" : "已停用"}</b></div>
+          <div class="skm-kv"><span>来源</span><b>${a.origin === "builtin" ? "内置" : "自定义"}</b></div>
+          <div class="skm-kv"><span>项目相对目录</span><b class="skm-mono">${esc(a.projectRelative || "无")}</b></div>
+        </div>
+        <section class="skm-section">
+          <h2 class="skm-section-title">工作区绑定</h2>
+          <div class="skm-panel skm-bind-list">
+            ${bindings.length ? bindings.map((w) => `<button class="skm-bind-row" data-act="nav" data-view="workspace:${esc(w.id)}"><span class="skm-dir-ico">${icon(w.kind === "linked" ? "link" : "globe", 15)}</span><span>${esc(w.name)}</span><span class="skm-mini-pill">${w.kind === "global" ? "全局" : w.kind === "project" ? "项目" : "关联"}</span>${icon("chevronRight", 14)}</button>`).join("") : '<p class="skm-inline-note">尚未绑定到任何工作区。</p>'}
+          </div>
+        </section>
+        <section class="skm-section">
+          <div class="skm-section-head"><h2 class="skm-section-title">此 Agent 的技能</h2><button class="skm-btn skm-btn-ghost skm-btn-sm" data-act="refresh-agent" data-id="${esc(a.id)}">${icon("refresh", 14)}刷新</button></div>
+          ${skills
+            ? (skills.items.length
+              ? `<div class="skm-card-grid">${skills.items.map(skillCard).join("")}</div>`
+              : emptyState({ title: "这个 Agent 目录还没有技能", hint: a.exists ? "目录存在，但其中没有检测到 SKILL.md。" : "目录尚未创建，因此没有任何技能可读取。", action: `<button class="skm-btn skm-btn-secondary" data-act="edit-agent" data-id="${esc(a.id)}">检查目录路径</button>` }))
+            : `<div class="skm-skeleton">${Array.from({ length: 3 }).map(() => '<div class="skm-skeleton-card"></div>').join("")}</div>`}
+        </section>
+      </div>`;
+    }
+
+    function workspaceCard(w) {
+      const kindLabel = w.kind === "global" ? "全局" : w.kind === "project" ? "项目" : "关联";
+      const ico = w.kind === "global" ? "globe" : w.kind === "project" ? "folder" : "link";
+      return `<button class="skm-ws-card" data-act="nav" data-view="workspace:${esc(w.id)}">
+        <span class="skm-ws-ico">${icon(ico, 18)}</span>
+        <div class="skm-ws-main">
+          <div class="skm-ws-name">${esc(w.name)}<span class="skm-mini-pill">${kindLabel}</span><span class="skm-status ${w.exists ? "is-ok" : "is-muted"}"><span class="skm-dot sm${w.exists ? " is-on" : ""}"></span>${w.exists ? "目录已创建" : "目录未创建"}</span></div>
+          <code class="skm-path" title="${esc(w.root || "由各 Agent 的全局目录组成")}">${esc(w.root || "由各 Agent 的全局目录组成")}</code>
+          <p class="skm-ws-meta">${nf((w.agentIds || []).length)} 个 Agent${w.kind === "global" ? ` · 中央库 ${nf(state.overview?.libraryTotal ?? 0)} 个技能` : ""}</p>
+        </div>
+        ${icon("chevronRight", 16, "skm-ws-chev")}
+      </button>`;
+    }
+
+    function workspacesHTML() {
+      const linked = state.workspaces.filter((w) => w.kind === "linked");
+      const project = state.workspaces.filter((w) => w.kind === "project");
+      return `<div class="skm-page">
+        ${pageHead("工作区", { badge: nf(state.workspaces.length), sub: "技能在中央库与各 Agent 目录之间的映射。关联目录只读取已存在的绝对路径。", actions: `<button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="refresh-workspaces">${icon("refresh", 15)}刷新</button><button class="skm-btn skm-btn-primary skm-btn-sm" data-act="new-workspace">${icon("plus", 15)}关联目录</button>` })}
+        ${state.error ? alertBox(state.error) : ""}
+        <section class="skm-section">
+          <h2 class="skm-section-title">全局工作区</h2>
+          <div class="skm-ws-grid">${state.workspaces.filter((w) => w.kind === "global").map(workspaceCard).join("")}</div>
+        </section>
+        <section class="skm-section">
+          <h2 class="skm-section-title">项目工作区</h2>
+          ${project.length ? `<div class="skm-ws-grid">${project.map(workspaceCard).join("")}</div>` : emptyState({ title: "没有项目工作区", hint: "项目工作区来自当前工作目录，目录不存在时也会如实显示。" })}
+        </section>
+        <section class="skm-section">
+          <div class="skm-section-head"><h2 class="skm-section-title">关联目录（${nf(linked.length)}）</h2><button class="skm-btn skm-btn-ghost skm-btn-sm" data-act="new-workspace">${icon("plus", 14)}关联目录</button></div>
+          ${linked.length ? `<div class="skm-ws-grid">${linked.map(workspaceCard).join("")}</div>` : `<div class="skm-panel skm-empty-inline"><span>${icon("link", 18)}</span><p>尚未关联任何目录。关联后可浏览其中的技能条目，并与中央库对照。</p><button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="new-workspace">关联目录</button></div>`}
+        </section>
+      </div>`;
+    }
+
+    function entryHTML(item) {
+      const zh = zhName(item);
+      const desc = zhDescription(item) || String(item.description || "").trim();
+      const missing = item.missingLocalization;
+      return `<div class="skm-entry">
+        <span class="skm-entry-ico">${icon("fileText", 16)}</span>
+        <div class="skm-entry-main">
+          <div class="skm-entry-name">${esc(item.name)}${zh ? `<span class="skm-row-zh">${esc(zh)}</span>` : ""}${missing ? '<span class="skm-mini-pill is-warn">缺少中文资料</span>' : ""}</div>
+          ${desc ? `<p class="skm-entry-desc">${esc(desc)}</p>` : ""}
+          <code class="skm-path" title="${esc(item.path)}">${esc(item.path)}</code>
+          <div class="skm-entry-pills">
+            <span class="skm-mini-pill ${item.inLibrary ? "is-ok" : ""}">${item.inLibrary ? "已在技能库" : "未收录"}</span>
+            <span class="skm-mini-pill">${deployText(item.deployStatus)}</span>
+            ${(item.tags || []).map((t) => `<span class="skm-tag">${esc(t)}</span>`).join("")}
+          </div>
+        </div>
+        <span class="skm-entry-agent" title="${esc(agentName(item.agentId))}">${agentTile({ id: item.agentId }, 24)}<span>${esc(agentName(item.agentId))}</span></span>
+      </div>`;
+    }
+
+    function workspaceDetailHTML(id) {
+      const w = state.workspaces.find((x) => x.id === id);
+      if (!w) return `<div class="skm-page">${pageHead("工作区未找到")}${emptyState({ title: "没有这个工作区", hint: "它可能已被移除。", action: '<button class="skm-btn skm-btn-secondary" data-act="nav" data-view="workspaces">返回工作区</button>' })}</div>`;
+      const cache = state.entries[id];
+      const data = cache?.data;
+      const items = data?.items || [];
+      const rows = data?.rows || [];
+      const actionLabel = { "add-to-workspace": "待加入工作区", "add-to-library": "待收录到库", "in-sync": "已同步", "differs": "内容不同", external: "外部目录" };
+      return `<div class="skm-page">
+        <header class="skm-page-head">
+          <div class="skm-page-head-main">
+            <h1 class="skm-page-title skm-title-with-tile">${icon(w.kind === "linked" ? "link" : w.kind === "global" ? "globe" : "folder", 20)}${esc(w.name)}<span class="skm-badge">${data ? nf(items.length) : "…"}</span><span class="skm-mini-pill">${w.kind === "global" ? "全局" : w.kind === "project" ? "项目" : "关联"}</span></h1>
+            <p class="skm-page-sub skm-path-line">${icon("folder", 13)}<code class="skm-path" title="${esc(w.root || "由各 Agent 的全局目录组成")}">${esc(w.root || "由各 Agent 的全局目录组成")}</code><span class="skm-status ${w.exists ? "is-ok" : "is-muted"}"><span class="skm-dot sm${w.exists ? " is-on" : ""}"></span>${w.exists ? "目录已创建" : "目录未创建"}</span></p>
+          </div>
+          <div class="skm-page-actions">
+            <button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="ws-refresh" data-id="${esc(w.id)}">${icon("refresh", 14)}重新读取</button>
+            ${w.kind === "linked" ? `<button class="skm-btn skm-btn-ghost skm-btn-sm is-danger" data-act="ws-delete" data-id="${esc(w.id)}">${icon("trash", 14)}移除</button>` : ""}
+          </div>
+        </header>
+        ${state.error ? alertBox(state.error) : ""}
+        <div class="skm-agent-chips">${(w.agentIds || []).map((aid) => `<span class="skm-agent-chip">${agentTile({ id: aid }, 20)}${esc(agentName(aid))}</span>`).join("") || '<span class="skm-inline-note">没有绑定 Agent</span>'}</div>
+        <section class="skm-section">
+          <h2 class="skm-section-title">工作区目录条目</h2>
+          ${!cache || cache.loading ? `<div class="skm-skeleton">${Array.from({ length: 3 }).map(() => '<div class="skm-skeleton-card"></div>').join("")}</div>`
+            : cache.error ? alertBox(cache.error)
+            : items.length ? `<div class="skm-panel skm-entry-list">${items.map(entryHTML).join("")}</div>`
+            : emptyState({ title: w.exists ? "目录中没有技能" : "目录尚未创建", hint: w.exists ? "已读取该工作区，但没有在已登记的 Agent 目录中发现 SKILL.md。" : "工作区路径尚不存在。关联目录只读取本机已存在的绝对路径，不会创建目录。", action: w.kind === "linked" ? "" : `<button class="skm-btn skm-btn-secondary" data-act="nav" data-view="agents">检查 Agent 目录</button>` })}
+        </section>
+        ${data && rows.length ? `<section class="skm-section">
+          <h2 class="skm-section-title">库与工作区对照</h2>
+          <div class="skm-panel skm-table-wrap"><table class="skm-table"><thead><tr><th>技能</th><th>技能库</th><th>工作区</th><th>部署状态</th><th>建议动作</th></tr></thead><tbody>
+            ${rows.map((r) => `<tr><td>${esc(r.name)}${zhName(r) ? `<span class="skm-row-zh">${esc(zhName(r))}</span>` : ""}</td><td>${r.library ? "已收录" : "未收录"}</td><td>${r.workspace ? "存在" : "缺失"}</td><td>${esc(deployText(r.deployStatus))}</td><td><span class="skm-mini-pill">${esc(actionLabel[r.action] || r.action)}</span></td></tr>`).join("")}
+          </tbody></table></div>
+        </section>` : ""}
+      </div>`;
+    }
+
+    function agentSettingsRows() {
+      return state.agents.map((a) => `<div class="skm-set-row">
+        <div class="skm-set-label"><div class="skm-set-name">${agentTile(a, 24)}<b>${esc(a.name)}</b><span class="skm-mini-pill">${a.origin === "builtin" ? "内置" : "自定义"}</span><span class="skm-status ${a.exists ? "is-ok" : "is-muted"}"><span class="skm-dot sm${a.exists ? " is-on" : ""}"></span>${a.exists ? "已创建" : "未创建"}</span></div>
+          <code class="skm-path" title="${esc(a.globalPath)}">${esc(a.globalPath || "未设置")}</code></div>
+        <div class="skm-set-control"><button class="skm-switch${a.enabled ? " is-on" : ""}" role="switch" aria-checked="${a.enabled}" data-act="agent-toggle" data-id="${esc(a.id)}" aria-label="${a.enabled ? "停用" : "启用"} ${esc(a.name)}"><span></span></button><button class="skm-icon-btn" data-act="edit-agent" data-id="${esc(a.id)}" title="编辑目录">${icon("edit", 15)}</button></div>
+      </div>`).join("");
+    }
+
+    function settingsHTML() {
+      const s = state.settings;
+      const o = state.overview;
+      const scan = o?.scan;
+      return `<div class="skm-page is-narrow">
+        ${pageHead("设置", { sub: "中央技能库、同步方式与只读边界。所有修改只写入当前 Profile，不改动源技能文件。" })}
+        ${state.error ? alertBox(state.error) : ""}
+        <section class="skm-section">
+          <div class="skm-section-head"><h2 class="skm-section-title">支持的 Agents（${nf(state.agents.filter((a) => a.exists).length)}/${nf(state.agents.length)}）</h2><button class="skm-btn skm-btn-ghost skm-btn-sm" data-act="new-agent">${icon("plus", 14)}自定义 Agent</button></div>
+          <div class="skm-panel skm-set-list">${agentSettingsRows()}</div>
+        </section>
+        <section class="skm-section">
+          <h2 class="skm-section-title">全局配置</h2>
+          <div class="skm-panel skm-set-list">
+            <div class="skm-set-row">
+              <div class="skm-set-label"><b>中央技能库路径</b><p>所有技能的中央副本与索引快照都保存在这里。</p><code class="skm-path" title="${esc(s?.libraryRoot || o?.library?.root || "")}">${esc(s?.libraryRoot || o?.library?.root || "读取中…")}</code></div>
+              <div class="skm-set-control"><button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="edit-library">${icon("folderOpen", 14)}更改目录</button></div>
+            </div>
+            <div class="skm-set-row">
+              <div class="skm-set-label"><b>默认同步方式</b><p>符号链接占用空间更小，复制则在目标目录保留独立副本。</p></div>
+              <div class="skm-set-control"><div class="skm-segmented" role="group" aria-label="默认同步方式">
+                <button class="skm-seg${s?.defaultMode === "symlink" ? " is-active" : ""}" data-act="set-mode" data-mode="symlink">符号链接</button>
+                <button class="skm-seg${s?.defaultMode === "copy" ? " is-active" : ""}" data-act="set-mode" data-mode="copy">复制</button>
+              </div></div>
+            </div>
+            <div class="skm-set-row">
+              <div class="skm-set-label"><b>项目工作区路径</b><p>项目工作区中的技能目录会按 Agent 的项目相对目录解析。</p><code class="skm-path" title="${esc(s?.workspacePath || "")}">${esc(s?.workspacePath || "读取中…")}</code></div>
+            </div>
+            <div class="skm-set-row">
+              <div class="skm-set-label"><b>索引状态</b><p>${scan ? `上次索引 ${esc(fmtTime(scan.at))}，读取 ${nf(scan.visited)} 个目录，收录 ${nf(scan.count)} 项。` : "尚未建立索引。扫描只读取已登记目录，不会执行技能内容。"}</p>${scan ? `<span class="skm-mini-pill ${scan.limited ? "is-warn" : "is-ok"}">${scan.limited ? "达到扫描上限" : "只读索引完成"}</span>` : ""}</div>
+              <div class="skm-set-control"><button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="scan">${icon("scan", 14)}重建索引</button></div>
+            </div>
+          </div>
+        </section>
+        <section class="skm-section">
+          <h2 class="skm-section-title">只读与安全边界</h2>
+          <div class="skm-panel skm-readonly">
+            <div class="skm-readonly-row">${icon("lock", 16)}<div><b>不执行任何技能内容</b><span>SKILL.md 只作为文本预览；不会运行脚本、命令、安装器或 MCP 服务。</span></div></div>
+            <div class="skm-readonly-row">${icon("folder", 16)}<div><b>只扫描已登记目录</b><span>中央技能库、已登记的 Agent 目录与项目工作区；不会遍历整盘。</span></div></div>
+            <div class="skm-readonly-row">${icon("fileText", 16)}<div><b>中文展示不改源文件</b><span>中文名称与简介来自本地词目或当前 Profile 覆盖，不会上传或改写 SKILL.md。</span></div></div>
+          </div>
+        </section>
+        <section class="skm-section">
+          <h2 class="skm-section-title">维护</h2>
+          <div class="skm-actions">
+            <button class="skm-btn skm-btn-secondary" data-act="refresh">${icon("refresh", 15)}刷新全部数据</button>
+            <button class="skm-btn skm-btn-ghost" data-act="nav" data-view="library">前往技能库</button>
+          </div>
+        </section>
+      </div>`;
+    }
+
+    function pageHTML() {
+      if (state.view === "overview") return overviewHTML();
+      if (state.view === "library") return libraryHTML();
+      if (state.view === "agents") return agentsHTML();
+      if (state.view.startsWith("agent:")) return agentDetailHTML(state.view.slice(6));
+      if (state.view === "workspaces") return workspacesHTML();
+      if (state.view.startsWith("workspace:")) return workspaceDetailHTML(state.view.slice(10));
+      if (state.view === "settings") return settingsHTML();
+      return overviewHTML();
+    }
+
+    function sheetHTML() {
+      return `<div class="skm-sheet-backdrop" data-act="close-sheet"></div>
+        <section class="skm-sheet-panel" role="dialog" aria-modal="true" aria-label="技能详情">
+          <button class="skm-sheet-close" data-act="close-sheet" aria-label="关闭详情">${icon("x", 18)}</button>
+          <div class="skm-sheet-scroll"><div class="skm-sheet-body" data-sheet-body></div></div>
+        </section>`;
+    }
+
+    function docSection(d) {
+      const zh = zhName(d);
+      const desc = zhDescription(d) || String(d.description || "").trim();
+      const agents = state.agents || [];
+      const badges = d.agents || [];
+      const deployed = agents.filter((a) => badges.some((b) => b.agentId === a.id && b.deployed));
+      const metadata = [
+        ["路径", d.path],
+        ["来源类型", sourceType(d.source?.type)],
+        ["来源地址", d.source?.url],
+        ["来源引用", d.source?.ref],
+        ["来源修订", d.source?.revision],
+        ["快照摘要", d.digest],
+        ["文件数", d.files ? String(d.files) : ""],
+        ["占用空间", d.bytes != null ? fmtBytes(d.bytes) : ""],
+        ["更新时间", d.updatedAt ? new Date(d.updatedAt).toLocaleString("zh-CN") : ""],
+        ["上游状态", d.upstream ? upstreamText(d.upstream.status) : ""],
+        ["内容与快照", d.contentMatchesSnapshot == null ? "" : d.contentMatchesSnapshot ? "一致" : d.source?.revision ? "不一致" : "无修订记录"],
+      ].filter(([, v]) => v);
+      const entries = d.entries || [];
+      const deployRows = agents.map((a) => {
+        const badge = badges.find((b) => b.agentId === a.id && b.deployed);
+        return `<div class="skm-deploy-row">
+          ${agentTile(a, 28)}
+          <div class="skm-deploy-main"><b>${esc(a.name)}</b><span class="skm-deploy-path">${badge ? esc(badge.path || "") : esc(a.globalPath || "")}</span></div>
+          ${badge ? `<span class="skm-mini-pill is-ok">${esc(deployText(badge.status))}</span><button class="skm-btn skm-btn-ghost skm-btn-sm" data-act="undeploy" data-skill="${esc(d.id)}" data-agent="${esc(a.id)}">移除</button>` : `<button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="deploy" data-skill="${esc(d.id)}" data-agent="${esc(a.id)}" ${a.exists ? "" : "disabled title=" + JSON.stringify("Agent 目录未创建")}>部署</button>`}
+        </div>`;
+      }).join("");
+      const content = stripFrontmatter(d.content || "");
+      return `<div class="skm-doc">
+        <header class="skm-doc-head">
+          <div class="skm-doc-titles">
+            <h2>${esc(d.name)}</h2>
+            ${zh ? `<p class="skm-doc-zh">${esc(zh)}</p>` : ""}
+            <p class="skm-doc-desc">${desc ? esc(desc) : "源文件未提供简介。"}</p>
+          </div>
+        </header>
+        <div class="skm-doc-meta">
+          <span class="skm-mini-pill ${d.libraryStatus === "ok" ? "is-ok" : d.libraryStatus === "missing" ? "is-danger" : "is-warn"}">${libraryStatusText(d.libraryStatus)}</span>
+          <span class="skm-mini-pill">${presentationText(d.presentationSource)}</span>
+          <span class="skm-mini-pill">${sourceType(d.source?.type)}</span>
+          ${(d.tags || []).map((t) => `<span class="skm-tag">${esc(t)}</span>`).join("")}
+          <span class="skm-doc-meta-time">${icon("clock", 13)}${esc(fmtTime(d.updatedAt))}</span>
+        </div>
+        <div class="skm-doc-path">${icon("folder", 14)}<code class="skm-path" title="${esc(d.path)}">${esc(d.path || "—")}</code><button class="skm-icon-btn" data-act="copy" data-copy="${esc(d.path || "")}" title="复制路径">${icon("copy", 14)}</button></div>
+        <div class="skm-doc-actions">
+          <button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="edit-zh" data-id="${esc(d.id)}">${icon("edit", 14)}编辑中文展示</button>
+          <button class="skm-btn skm-btn-ghost skm-btn-sm" data-act="open-dir" data-path="${esc(d.path || "")}">${icon("folderOpen", 14)}复制目录路径</button>
+        </div>
+        <section class="skm-doc-section">
+          <h3 class="skm-section-title">部署到 Agent</h3>
+          <div class="skm-panel skm-deploy-list">${deployRows}</div>
+          <p class="skm-inline-note">部署只复制或链接当前技能目录，不会执行其中脚本。</p>
+        </section>
+        ${metadata.length ? `<section class="skm-doc-section">
+          <button class="skm-meta-toggle" data-act="toggle-meta" aria-expanded="false">${icon("chevronDown", 14, "skm-meta-chev")}<span>来源与索引元信息</span></button>
+          <div class="skm-panel skm-meta-card" data-meta hidden><div class="skm-meta-grid">${metadata.map(([k, v]) => `<div class="skm-kv"><span>${esc(k)}</span><b class="skm-mono" title="${esc(v)}">${esc(v)}</b></div>`).join("")}</div></div>
+        </section>` : ""}
+        ${entries.length ? `<section class="skm-doc-section">
+          <details class="skm-files"><summary>技能目录文件（${nf(entries.length)}）</summary><div class="skm-file-list">${entries.map((f) => `<code>${esc(f)}</code>`).join("")}</div></details>
+        </section>` : ""}
+        <section class="skm-doc-section">
+          <h3 class="skm-section-title">SKILL.md</h3>
+          ${content ? `<div class="skm-markdown" data-doc-md></div>` : `<p class="skm-inline-note">没有可用的 SKILL.md 正文。${d.fileExists === "no" ? "源文件当前不可读，也不会执行其中的内容。" : ""}</p>`}
+        </section>
+        <footer class="skm-doc-foot">${icon("lock", 13)}只读预览 · 不执行技能内容 · 中文展示只写入当前 Profile</footer>
+      </div>`;
+    }
+
+    async function openSheet(id) {
+      state.lastFocus = document.activeElement;
+      const sheet = q("[data-skm-sheet]", root);
+      sheet.hidden = false;
+      requestAnimationFrame(() => sheet.classList.add("is-open"));
+      const body = q("[data-sheet-body]", sheet);
+      body.innerHTML = `<div class="skm-sheet-loading">${icon("refresh", 18, "skm-spin")}正在读取技能详情…</div>`;
+      const ticket = (state.sheetTicket = (state.sheetTicket || 0) + 1);
+      try {
+        const d = await api("GET", "/skill?id=" + encodeURIComponent(id));
+        if (ticket !== state.sheetTicket || !root.isConnected) return;
+        state.detail = d;
+        body.innerHTML = docSection(d);
+        const md = q("[data-doc-md]", body);
+        if (md) U().markdown(md, stripFrontmatter(d.content || ""));
+        q(".skm-sheet-close", sheet)?.focus();
+        syncUnsaved();
+      } catch (err) {
+        if (signal?.aborted) return;
+        body.innerHTML = `<div class="skm-sheet-error">${alertBox(err.message || "读取技能详情失败")}</div>`;
+      }
+    }
+
+    function closeSheet(force) {
+      const sheet = q("[data-skm-sheet]", root);
+      if (!sheet || sheet.hidden) return;
+      sheet.classList.remove("is-open");
+      state.sheetTicket = (state.sheetTicket || 0) + 1;
+      const done = () => {
+        if (!sheet.isConnected) return;
+        sheet.hidden = true;
+        q("[data-sheet-body]", sheet).innerHTML = "";
+        state.detail = null;
+        root._wbUnsaved = false;
+        try { state.lastFocus?.focus?.(); } catch {}
+      };
+      if (force) done();
+      else setTimeout(done, 160);
+    }
+
+    function syncUnsaved() {
+      root._wbUnsaved = false;
+    }
+
+    function paintSide() {
+      const side = q("[data-skm-side]", root);
+      if (!side) return;
+      side.innerHTML = sideHTML();
+    }
+
+    function paintPage() {
+      const host = q("[data-skm-page]", root);
+      if (!host) return;
+      host.innerHTML = pageHTML();
+      const active = q("[data-skm-side] .skm-nav.is-active", root);
+      if (active && !active.contains(document.activeElement)) {
+        // 仅在导航后把焦点交给页面标题，避免打断正在输入的搜索框。
+        if (state.focusPage) {
+          state.focusPage = false;
+          const title = q(".skm-page-title", host);
+          if (title) { title.tabIndex = -1; title.focus({ preventScroll: true }); }
+        }
+      }
+    }
+
+    function paint() {
+      paintSide();
+      paintPage();
+    }
+
+    async function loadOverview(force) {
+      try {
+        const d = await api("GET", "/overview");
+        if (signal?.aborted) return;
+        state.overview = d;
+        state.agents = d.agents || [];
+        state.workspaces = d.workspaces || [];
+        state.presets = d.presets || [];
+        state.tags = d.tags || [];
+        state.activity = d.activity || [];
+        state.scan = d.scan || null;
+        state.error = "";
+      } catch (err) {
+        if (signal?.aborted) return;
+        state.error = err.message || "读取概览失败";
+      }
+    }
+
+    async function loadSettings() {
+      try {
+        state.settings = await api("GET", "/settings");
+      } catch (err) {
+        if (!signal?.aborted) state.settings = null;
+      }
+    }
+
+    async function loadAgentCounts() {
+      await Promise.all(state.agents.map(async (a) => {
+        try {
+          const d = await api("GET", `/library?agent=${encodeURIComponent(a.id)}&limit=1`);
+          state.agentCounts[a.id] = d.total || 0;
+        } catch {
+          state.agentCounts[a.id] = null;
+        }
+      }));
+      if (root.isConnected && state.view !== "library") paintSide();
+    }
+
+    async function loadLibrary() {
+      const l = state.library;
+      l.loading = true;
+      l.error = "";
+      paintLibraryResults();
+      try {
+        const params = new URLSearchParams({ limit: "100" });
+        if (l.q) params.set("q", l.q);
+        if (l.tag) params.set("tag", l.tag);
+        if (l.agent) params.set("agent", l.agent);
+        const d = await api("GET", "/library?" + params.toString());
+        if (signal?.aborted) return;
+        l.items = d.items || [];
+        l.total = d.total || 0;
+        l.loaded = true;
+        if (l.offset >= libraryFiltered().length) l.offset = 0;
+      } catch (err) {
+        if (signal?.aborted) return;
+        l.error = err.message || "读取技能库失败";
+        if (!l.loaded) { l.items = []; l.total = 0; }
+      } finally {
+        l.loading = false;
+        paintLibraryResults();
+        paintSide();
+      }
+    }
+
+    function paintLibraryResults() {
+      const host = q("[data-lib-results]", root);
+      if (!host) return;
+      host.innerHTML = libraryResultsHTML();
+      const total = q("[data-lib-total]", root);
+      if (total) total.textContent = nf(state.library.total);
+      const badge = q(".skm-page-title .skm-badge", root);
+      if (badge && state.view === "library") badge.textContent = nf(state.library.total);
+    }
+
+    async function loadAgentSkills(id, force) {
+      if (!force && state.agentSkills[id]) return;
+      state.agentSkills[id] = null;
+      paintPage();
+      try {
+        const d = await api("GET", `/library?agent=${encodeURIComponent(id)}&limit=100`);
+        if (signal?.aborted) return;
+        state.agentSkills[id] = { items: d.items || [], total: d.total || 0 };
+      } catch (err) {
+        if (signal?.aborted) return;
+        state.agentSkills[id] = { items: [], total: 0, error: err.message };
+      }
+      if (state.view === "agent:" + id) paintPage();
+    }
+
+    async function loadEntries(id, force) {
+      if (!force && state.entries[id]?.data) return;
+      state.entries[id] = { loading: true };
+      paintPage();
+      try {
+        const d = await api("POST", "/workspace/entries", { id });
+        if (signal?.aborted) return;
+        state.entries[id] = { data: d };
+      } catch (err) {
+        if (signal?.aborted) return;
+        state.entries[id] = { error: err.message || "读取工作区失败" };
+      }
+      if (state.view === "workspace:" + id) paintPage();
+    }
+
+    async function go(view) {
+      if (state.view !== view) closeSheet(true);
+      state.view = view;
+      state.error = "";
+      state.focusPage = true;
+      paintSide();
+      paintPage();
+      if (view === "overview" || view === "settings" || view === "agents" || view === "workspaces") {
+        if (!state.overview) { await loadOverview(); paint(); }
+        if (view === "settings" && !state.settings) { await loadSettings(); paintPage(); }
+        if (view === "overview" && !state.library.loaded && (state.overview?.libraryTotal || 0) > 0) {
+          await loadLibrary();
+          paintPage();
+        }
+      }
+      if (view === "library" && !state.library.loaded) await loadLibrary();
+      if (view.startsWith("agent:")) await loadAgentSkills(view.slice(6));
+      if (view.startsWith("workspace:")) await loadEntries(view.slice(10));
+      paintSide();
+    }
+
+    function notify(msg, kind) { U().notify(msg, { kind: kind || "success" }); }
+
+    async function refreshAll() {
+      await Promise.all([loadOverview(true), loadSettings()]);
+      state.library.loaded = false;
+      state.agentSkills = {};
+      state.entries = {};
+      paint();
+      if (state.view === "library") await loadLibrary();
+      if (state.view.startsWith("agent:")) await loadAgentSkills(state.view.slice(6), true);
+      if (state.view.startsWith("workspace:")) await loadEntries(state.view.slice(10), true);
+      notify("数据已刷新");
+    }
+
+    async function scanLibrary(button) {
+      if (button) { button.disabled = true; }
+      try {
+        const task = await U().request("POST", "/api/skills/scan", {}, { signal });
+        await U().job(task, { signal });
+        await loadOverview(true);
+        state.library.loaded = false;
+        state.agentSkills = {};
+        state.entries = {};
+        state.library.offset = 0;
+        paint();
+        if (state.view === "library") await loadLibrary();
+        notify("只读索引已更新", "success");
+      } catch (err) {
+        if (!signal?.aborted) notify(err.message || "扫描失败", "error");
+      } finally {
+        if (button?.isConnected) button.disabled = false;
+      }
+    }
+
+    function dialogForm(fields) {
+      return `<form class="skm-form" data-form>${fields.map((f) => f.type === "checkbox"
+        ? `<label class="skm-check"><input type="checkbox" name="${esc(f.name)}" ${f.checked ? "checked" : ""}><span>${esc(f.label)}</span></label>`
+        : `<label class="skm-field"><span>${esc(f.label)}</span>${f.multiline
+          ? `<textarea class="skm-input" name="${esc(f.name)}" rows="3" maxlength="${f.max || 320}" placeholder="${esc(f.placeholder || "")}">${esc(f.value || "")}</textarea>`
+          : `<input class="skm-input" type="text" name="${esc(f.name)}" value="${esc(f.value || "")}" maxlength="${f.max || 200}" placeholder="${esc(f.placeholder || "")}" autocomplete="off" spellcheck="false">`}</label>`).join("")}${fields.note ? `<p class="skm-inline-note">${esc(fields.note)}</p>` : ""}</form>`;
+    }
+
+    function openAgentEditor(agent) {
+      const isNew = !agent;
+      const a = agent || { id: "", name: "", globalPath: "", projectRelative: "", enabled: true, origin: "custom" };
+      const body = `<div class="skm-dialog">
+        ${dialogForm([
+          { name: "id", label: "Agent 标识（字母、数字、_ . -）", value: a.id, max: 48 },
+          { name: "name", label: "显示名称", value: a.name, max: 60 },
+          { name: "path", label: "全局技能目录（本机绝对路径）", value: a.globalPath || "", max: 400 },
+          { name: "projectRelative", label: "项目相对目录（可选）", value: a.projectRelative || "", max: 200 },
+          { type: "checkbox", name: "enabled", label: "启用此 Agent", checked: a.enabled !== false },
+        ])}
+        <p class="skm-inline-note">只读取这个目录，不会创建、改写或执行目录中的任何内容。</p>
+        <div class="skm-dialog-actions"><button class="skm-btn skm-btn-secondary" data-dlg-cancel>取消</button><button class="skm-btn skm-btn-primary" data-dlg-save>${isNew ? "添加 Agent" : "保存"}</button></div>
+      </div>`;
+      const dlg = U().dialog(isNew ? "添加自定义 Agent" : "编辑 Agent 目录", body);
+      q("[data-dlg-cancel]", dlg.body).onclick = () => dlg.close(true);
+      q("[data-dlg-save]", dlg.body).onclick = async () => {
+        const form = q("[data-form]", dlg.body);
+        const data = Object.fromEntries(new FormData(form).entries());
+        const payload = { id: String(data.id || "").trim(), name: String(data.name || "").trim(), path: String(data.path || "").trim(), projectRelative: String(data.projectRelative || "").trim(), enabled: !!form.querySelector('[name="enabled"]').checked };
+        if (!payload.id || !payload.name) return notify("请填写 Agent 标识与名称", "error");
+        if (!/^[A-Za-z0-9_.-]{1,48}$/.test(payload.id)) return notify("Agent 标识只能包含字母、数字、_ . -", "error");
+        if (payload.path && !/^[A-Za-z]:[\\/]|^\//.test(payload.path)) return notify("请填写本机绝对路径", "error");
+        try {
+          await api("POST", "/agents", payload);
+          dlg.close(true);
+          await loadOverview(true);
+          paint();
+          if (state.view.startsWith("agent:")) await loadAgentSkills(state.view.slice(6), true);
+          notify(isNew ? "已添加 Agent" : "Agent 目录已保存");
+        } catch (err) { notify(err.message || "保存失败", "error"); }
+      };
+    }
+
+    function openWorkspaceDialog() {
+      const agents = state.agents.filter((a) => a.projectRelative || a.id);
+      const body = `<div class="skm-dialog">
+        <p class="skm-inline-note">关联目录必须是本机已存在的绝对路径。登记后只读取其中的 SKILL.md，不会创建目录或执行技能。</p>
+        ${dialogForm([
+          { name: "name", label: "工作区名称（可选，最多 80 字）", value: "", max: 80 },
+          { name: "root", label: "目录绝对路径", value: "", max: 400, placeholder: "D:\\path\\to\\workspace" },
+        ])}
+        <div class="skm-field"><span>绑定 Agent</span><div class="skm-checks">${agents.map((a) => `<label class="skm-check"><input type="checkbox" name="agent" value="${esc(a.id)}" ${a.projectRelative ? "checked" : ""}><span>${esc(a.name)}</span></label>`).join("")}</div></div>
+        <div class="skm-dialog-actions"><button class="skm-btn skm-btn-secondary" data-dlg-cancel>取消</button><button class="skm-btn skm-btn-primary" data-dlg-save>关联目录</button></div>
+      </div>`;
+      const dlg = U().dialog("关联工作区目录", body);
+      q("[data-dlg-cancel]", dlg.body).onclick = () => dlg.close(true);
+      q("[data-dlg-save]", dlg.body).onclick = async () => {
+        const form = q("[data-form]", dlg.body);
+        const name = String(q('[name="name"]', form).value || "").trim();
+        const dir = String(q('[name="root"]', form).value || "").trim();
+        const agentIds = [...form.querySelectorAll('[name="agent"]:checked')].map((x) => x.value);
+        if (!dir || !/^[A-Za-z]:[\\/]|^\//.test(dir)) return notify("请填写本机绝对路径", "error");
+        try {
+          await api("POST", "/workspaces", { name: name || undefined, root: dir, agentIds });
+          dlg.close(true);
+          await loadOverview(true);
+          paint();
+          notify("工作区已关联");
+        } catch (err) { notify(err.message || "关联失败", "error"); }
+      };
+    }
+
+    async function openPresetDialog() {
+      if (!state.library.loaded) await loadLibrary();
+      const items = (state.library.items || []).slice(0, 40);
+      const body = `<div class="skm-dialog">
+        ${dialogForm([
+          { name: "name", label: "预设名称", value: "", max: 80 },
+          { name: "description", label: "说明（可选）", value: "", max: 240, multiline: true },
+        ])}
+        <div class="skm-field"><span>选择技能（当前已载入 ${nf(items.length)} 项）</span><div class="skm-checks is-scroll">${items.map((s) => `<label class="skm-check"><input type="checkbox" name="skill" value="${esc(s.id)}"><span>${esc(s.name)}${zhName(s) ? ` <em>${esc(zhName(s))}</em>` : ""}</span></label>`).join("") || '<p class="skm-inline-note">技能库为空，尚不能创建预设。</p>'}</div></div>
+        <div class="skm-dialog-actions"><button class="skm-btn skm-btn-secondary" data-dlg-cancel>取消</button><button class="skm-btn skm-btn-primary" data-dlg-save>创建预设</button></div>
+      </div>`;
+      const dlg = U().dialog("新建预设", body);
+      q("[data-dlg-cancel]", dlg.body).onclick = () => dlg.close(true);
+      q("[data-dlg-save]", dlg.body).onclick = async () => {
+        const form = q("[data-form]", dlg.body);
+        const name = String(q('[name="name"]', form).value || "").trim();
+        const description = String(q('[name="description"]', form).value || "").trim();
+        const skillIds = [...form.querySelectorAll('[name="skill"]:checked')].map((x) => x.value);
+        if (!name) return notify("请填写预设名称", "error");
+        try {
+          await api("POST", "/preset", { name, description, skillIds });
+          dlg.close(true);
+          await loadOverview(true);
+          paint();
+          notify("预设已创建");
+        } catch (err) { notify(err.message || "创建失败", "error"); }
+      };
+    }
+
+    function confirmDialog(title, message, onConfirm, confirmLabel) {
+      const body = `<div class="skm-dialog"><p class="skm-confirm-text">${esc(message)}</p><div class="skm-dialog-actions"><button class="skm-btn skm-btn-secondary" data-dlg-cancel>取消</button><button class="skm-btn skm-btn-danger" data-dlg-save>${esc(confirmLabel || "确认")}</button></div></div>`;
+      const dlg = U().dialog(title, body);
+      q("[data-dlg-cancel]", dlg.body).onclick = () => dlg.close(true);
+      q("[data-dlg-save]", dlg.body).onclick = async () => {
+        try { await onConfirm(); dlg.close(true); } catch (err) { notify(err.message || "操作失败", "error"); }
+      };
+    }
+
+    function editPresentation(id) {
+      const d = state.detail;
+      if (!d) return;
+      const body = `<div class="skm-dialog">
+        <p class="skm-inline-note">中文展示来自本地词目或当前 Profile 覆盖，不会修改 SKILL.md，也不会上传正文。标题与简介都必须包含中文。</p>
+        ${dialogForm([
+          { name: "title", label: "中文名称（最多 80 字）", value: zhName(d), max: 80 },
+          { name: "description", label: "中文简介（最多 320 字）", value: zhDescription(d), max: 320, multiline: true },
+        ])}
+        <div class="skm-dialog-actions"><button class="skm-btn skm-btn-ghost" data-dlg-clear>清除覆盖</button><button class="skm-btn skm-btn-secondary" data-dlg-cancel>取消</button><button class="skm-btn skm-btn-primary" data-dlg-save>保存到当前 Profile</button></div>
+      </div>`;
+      const dlg = U().dialog("编辑中文展示", body);
+      q("[data-dlg-cancel]", dlg.body).onclick = () => dlg.close(true);
+      q("[data-dlg-clear]", dlg.body).onclick = async () => {
+        try {
+          await api("POST", "/presentation", { id, title: "清除中文展示", description: "清除当前 Profile 中的中文覆盖", clear: true });
+          dlg.close(true);
+          await reloadDetail(id);
+          notify("已清除中文覆盖");
+        } catch (err) { notify(err.message || "清除失败", "error"); }
+      };
+      q("[data-dlg-save]", dlg.body).onclick = async () => {
+        const form = q("[data-form]", dlg.body);
+        const title = String(q('[name="title"]', form).value || "").trim();
+        const description = String(q('[name="description"]', form).value || "").trim();
+        if (!title || !/[\u3400-\u9fff]/.test(title)) return notify("中文名称必须包含中文", "error");
+        if (!description || !/[\u3400-\u9fff]/.test(description)) return notify("中文简介必须包含中文", "error");
+        try {
+          const d2 = await api("POST", "/presentation", { id, title, description });
+          dlg.close(true);
+          state.detail = d2;
+          const bodyHost = q("[data-sheet-body]", root);
+          if (bodyHost) {
+            bodyHost.innerHTML = docSection(d2);
+            const md = q("[data-doc-md]", bodyHost);
+            if (md) U().markdown(md, stripFrontmatter(d2.content || ""));
+          }
+          notify("中文展示已保存");
+        } catch (err) { notify(err.message || "保存失败", "error"); }
+      };
+    }
+
+    async function reloadDetail(id) {
+      const d = await api("GET", "/skill?id=" + encodeURIComponent(id));
+      state.detail = d;
+      const host = q("[data-sheet-body]", root);
+      if (host) {
+        host.innerHTML = docSection(d);
+        const md = q("[data-doc-md]", host);
+        if (md) U().markdown(md, stripFrontmatter(d.content || ""));
+      }
+    }
+
+    async function deployAction(skillId, agentId, deploy) {
+      try {
+        const payload = { skillId, agentId };
+        if (deploy) payload.mode = state.settings?.defaultMode || "symlink";
+        await api("POST", deploy ? "/deploy" : "/undeploy", payload);
+        notify(deploy ? "已部署到 Agent" : "已从 Agent 移除");
+        await reloadDetail(skillId);
+        await loadOverview(true);
+        paintSide();
+      } catch (err) { notify(err.message || "操作失败", "error"); }
+    }
+
+    function bindEvents(app) {
+      app.addEventListener("click", async (ev) => {
+        const card = ev.target.closest("[data-open-skill]");
+        if (card && app.contains(card)) { await openSheet(card.dataset.openSkill); return; }
+        const target = ev.target.closest("[data-act]");
+        if (!target || !app.contains(target)) return;
+        const act = target.dataset.act;
+        if (act === "nav") { closeSheet(true); await go(target.dataset.view); return; }
+        if (act === "group") {
+          const key = target.dataset.group;
+          state.groups[key] = !state.groups[key];
+          paintSide();
+          return;
+        }
+        if (act === "preset") {
+          state.library.preset = target.dataset.preset || "";
+          state.library.offset = 0;
+          if (state.view !== "library") await go("library");
+          else { paintPage(); paintLibraryResults(); }
+          return;
+        }
+        if (act === "lib-status") { state.library.status = target.dataset.status; state.library.offset = 0; paintPage(); return; }
+        if (act === "lib-source") { state.library.source = target.dataset.source; state.library.offset = 0; paintPage(); return; }
+        if (act === "lib-view") { state.library.view = target.dataset.view === "list" ? "list" : "grid"; paintPage(); return; }
+        if (act === "lib-page") {
+          const dir = Number(target.dataset.dir || 0);
+          const max = Math.max(1, Math.ceil(libraryFiltered().length / state.library.limit));
+          const page = Math.min(max, Math.max(1, Math.floor(state.library.offset / state.library.limit) + 1 + dir));
+          state.library.offset = (page - 1) * state.library.limit;
+          paintLibraryResults();
+          q("[data-lib-results]", root)?.scrollIntoView({ block: "nearest" });
+          return;
+        }
+        if (act === "tag") { state.library.tag = state.library.tag === target.dataset.tag ? "" : target.dataset.tag; state.library.offset = 0; await loadLibrary(); paintPage(); return; }
+        if (act === "clear-filters") {
+          Object.assign(state.library, { q: "", tag: "", agent: "", status: "all", source: "", preset: "", offset: 0 });
+          await loadLibrary();
+          paintPage();
+          return;
+        }
+        if (act === "clear-preset") { state.library.preset = ""; state.library.offset = 0; paintPage(); return; }
+        if (act === "refresh") { await refreshAll(); return; }
+        if (act === "scan") { await scanLibrary(target); return; }
+        if (act === "new-workspace") { openWorkspaceDialog(); return; }
+        if (act === "new-preset") { await openPresetDialog(); return; }
+        if (act === "new-agent") { openAgentEditor(null); return; }
+        if (act === "edit-agent") { openAgentEditor(state.agents.find((a) => a.id === target.dataset.id)); return; }
+        if (act === "agent-toggle") {
+          const a = state.agents.find((x) => x.id === target.dataset.id);
+          if (!a) return;
+          target.disabled = true;
+          try {
+            const d = await api("POST", "/agents", { id: a.id, enabled: !a.enabled });
+            state.agents = d.items || state.agents;
+            if (state.overview) state.overview.agents = state.agents;
+            paint();
+            notify(!a.enabled ? "Agent 已启用" : "Agent 已停用");
+          } catch (err) { notify(err.message || "操作失败", "error"); target.disabled = false; }
+          return;
+        }
+        if (act === "agent-restore") {
+          const id = target.dataset.id;
+          confirmDialog("恢复默认目录", `确定将「${agentName(id)}」的全局目录恢复为默认路径吗？`, async () => {
+            await api("POST", "/agents", { id, restore: true });
+            await loadOverview(true);
+            paint();
+            notify("已恢复默认目录");
+          }, "恢复默认");
+          return;
+        }
+        if (act === "agent-delete") {
+          const id = target.dataset.id;
+          confirmDialog("移除自定义 Agent", `确定移除「${agentName(id)}」吗？只会移除登记，不会删除本机目录。`, async () => {
+            await api("POST", "/agents", { id, delete: true });
+            await loadOverview(true);
+            await go("agents");
+            notify("已移除 Agent");
+          }, "移除");
+          return;
+        }
+        if (act === "refresh-agent") { await loadAgentSkills(target.dataset.id, true); notify("已刷新"); return; }
+        if (act === "refresh-workspaces") { await loadOverview(true); paint(); notify("已刷新"); return; }
+        if (act === "ws-refresh") { await loadEntries(target.dataset.id, true); return; }
+        if (act === "ws-delete") {
+          const w = state.workspaces.find((x) => x.id === target.dataset.id);
+          confirmDialog("移除关联工作区", `确定移除「${w?.name || "该工作区"}」吗？只会移除登记，不会删除本机目录。`, async () => {
+            await api("POST", "/workspaces/delete", { id: target.dataset.id });
+            await loadOverview(true);
+            await go("workspaces");
+            notify("已移除工作区");
+          }, "移除");
+          return;
+        }
+        if (act === "edit-library") {
+          const current = state.settings?.libraryRoot || state.overview?.library?.root || "";
+          const body = `<div class="skm-dialog"><p class="skm-inline-note">中央技能库路径必须是本机绝对路径。修改后不会移动或删除已有文件。</p>${dialogForm([{ name: "root", label: "中央技能库绝对路径", value: current, max: 400 }])}<div class="skm-dialog-actions"><button class="skm-btn skm-btn-secondary" data-dlg-cancel>取消</button><button class="skm-btn skm-btn-primary" data-dlg-save>保存</button></div></div>`;
+          const dlg = U().dialog("更改中央技能库目录", body);
+          q("[data-dlg-cancel]", dlg.body).onclick = () => dlg.close(true);
+          q("[data-dlg-save]", dlg.body).onclick = async () => {
+            const dir = String(q('[name="root"]', dlg.body).value || "").trim();
+            if (!dir || !/^[A-Za-z]:[\\/]|^\//.test(dir)) return notify("请填写本机绝对路径", "error");
+            try {
+              await api("POST", "/settings", { libraryRoot: dir });
+              dlg.close(true);
+              await Promise.all([loadOverview(true), loadSettings()]);
+              paint();
+              notify("中央技能库路径已保存");
+            } catch (err) { notify(err.message || "保存失败", "error"); }
+          };
+          return;
+        }
+        if (act === "set-mode") {
+          try {
+            await api("POST", "/settings", { defaultMode: target.dataset.mode });
+            await loadSettings();
+            paintPage();
+            notify("默认同步方式已更新");
+          } catch (err) { notify(err.message || "保存失败", "error"); }
+          return;
+        }
+        if (act === "open-skill") { await openSheet(target.dataset.openSkill); return; }
+        if (act === "close-sheet") { closeSheet(); return; }
+        if (act === "copy" || act === "open-dir") {
+          const value = target.dataset.copy || target.dataset.path || "";
+          if (!value) return;
+          try { await navigator.clipboard.writeText(value); notify("路径已复制"); }
+          catch { notify("无法访问剪贴板", "error"); }
+          return;
+        }
+        if (act === "deploy") { await deployAction(target.dataset.skill, target.dataset.agent, true); return; }
+        if (act === "undeploy") { await deployAction(target.dataset.skill, target.dataset.agent, false); return; }
+        if (act === "toggle-meta") {
+          const expanded = target.getAttribute("aria-expanded") === "true";
+          target.setAttribute("aria-expanded", expanded ? "false" : "true");
+          const card = q("[data-meta]", target.parentElement);
+          if (card) card.hidden = expanded;
+          return;
+        }
+        if (act === "edit-zh") { editPresentation(state.detail?.id); return; }
+        if (act === "retry") { await refreshAll(); return; }
+      });
+
+      app.addEventListener("input", (ev) => {
+        const input = ev.target.closest("[data-lib-search]");
+        if (!input) return;
+        state.library.q = input.value;
+        state.library.offset = 0;
+        clearTimeout(state.searchTimer);
+        state.searchTimer = setTimeout(() => loadLibrary(), 220);
+      });
+
+      app.addEventListener("keydown", async (ev) => {
+        const card = ev.target.closest?.("[data-open-skill]");
+        if (card && (ev.key === "Enter" || ev.key === " ")) {
+          ev.preventDefault();
+          await openSheet(card.dataset.openSkill);
+          return;
+        }
+        const sheet = q("[data-skm-sheet]", root);
+        if (sheet && !sheet.hidden) {
+          if (ev.key === "Escape") { ev.preventDefault(); closeSheet(); return; }
+          if (ev.key === "Tab") {
+            const focusables = [...sheet.querySelectorAll("button, [href], input, textarea, [tabindex]:not([tabindex='-1'])")].filter((el) => !el.disabled && el.offsetParent !== null);
+            if (!focusables.length) return;
+            const first = focusables[0], last = focusables[focusables.length - 1];
+            if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+            else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+          }
+        }
+      });
+    }
+
+    function injectCss() {
+      if (document.querySelector("link[data-skill-manager-css]")) return;
       const link = document.createElement("link");
       link.rel = "stylesheet";
       link.href = "/skill-manager.css";
@@ -1379,1720 +2692,34 @@
       document.head.append(link);
     }
 
-    /* ------------------------------------------------------------ 图标与格式化 */
-    const ICONS = {
-      overview:
-        '<rect x="3" y="3" width="7" height="7" rx="1.6"/><rect x="14" y="3" width="7" height="7" rx="1.6"/><rect x="3" y="14" width="7" height="7" rx="1.6"/><rect x="14" y="14" width="7" height="7" rx="1.6"/>',
-      library:
-        '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>',
-      agents:
-        '<rect x="4" y="7" width="16" height="12" rx="3"/><path d="M9 12h.01M15 12h.01M9 16h6M12 7V4"/>',
-      workspaces:
-        '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/>',
-      settings:
-        '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h10M18 18h2"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="16" cy="18" r="2"/>',
-      search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/>',
-      refresh: '<path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 5v6h-6"/>',
-      scan:
-        '<path d="M3 8V4h4M21 8V4h-4M3 16v4h4M21 16v4h-4"/><circle cx="12" cy="12" r="4"/>',
-      plus: '<path d="M12 5v14M5 12h14"/>',
-      shield:
-        '<path d="M12 3 5 6v6c0 4.4 3 7.3 7 9 4-1.7 7-4.6 7-9V6l-7-3Z"/><path d="m9 12 2 2 4-4"/>',
-      alert:
-        '<path d="M10.3 4.3 2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/>',
-      info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
-      copy:
-        '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>',
-      edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
-      trash: '<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>',
-      back: '<path d="m15 18-6-6 6-6"/>',
-      chevron: '<path d="m9 6 6 6-6 6"/>',
-      close: '<path d="M6 6l12 12M18 6 6 18"/>',
-      check: '<path d="m5 12 5 5L20 7"/>',
-      link:
-        '<path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/>',
-      folder:
-        '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/>',
-    };
-    const icon = (name, size = 16) =>
-      `<svg class="sm-ico" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ""}</svg>`;
-    const SOURCE_LABEL = {
-      local: "本机目录",
-      adopted: "工作区收编",
-      git: "Git 仓库",
-      archive: "归档导入",
-      market: "市场安装",
-      manual: "手工安装",
-      url: "链接导入",
-    };
-    const sourceText = (source) =>
-      (source && SOURCE_LABEL[source.type]) || (source?.type ? String(source.type) : "来源未知");
-    const P10N_LABEL = {
-      custom: ["当前 Profile 覆盖", "accent"],
-      catalog: ["本地词目", "ok"],
-      source: ["源文件为中文", "quiet"],
-      untranslated: ["缺少中文资料", "warn"],
-    };
-    const p10n = (card) => P10N_LABEL[card.presentationSource] || ["中文状态未知", "quiet"];
-    const UPSTREAM_LABEL = {
-      unknown: "未检查",
-      current: "与上游一致",
-      behind: "落后上游",
-      "local-changes": "本地有改动",
-      diverged: "已分叉",
-      unavailable: "无法比较",
-    };
-    const upstreamText = (upstream) => UPSTREAM_LABEL[upstream?.status] || "未检查";
-    const LIB_LABEL = {
-      ok: ["可用", "ok"],
-      missing: ["文件缺失", "danger"],
-      modified: ["内容已变更", "warn"],
-    };
-    const libState = (card) => LIB_LABEL[card.libraryStatus] || ["状态未知", "quiet"];
-    const DEPLOY_LABEL = {
-      absent: "未部署",
-      linked: "符号链接",
-      copied: "副本一致",
-      different: "内容不同",
-      external: "外部来源",
-      unreadable: "不可读",
-    };
-    const deployText = (status) => DEPLOY_LABEL[status] || "未知";
-    const deployTone = (status) =>
-      status === "linked" || status === "copied"
-        ? "ok"
-        : status === "different"
-          ? "warn"
-          : status === "unreadable"
-            ? "danger"
-            : status === "external"
-              ? "quiet"
-              : "";
-    const MODE_LABEL = {
-      symlink: "符号链接",
-      junction: "目录联接",
-      copy: "复制",
-      "symlink-fallback-copy": "链接失败后复制",
-      "": "",
-    };
-    const ACTION_LABEL = {
-      scan: "重建索引",
-      deploy: "部署技能",
-      undeploy: "撤下技能",
-      "sync-to-workspace": "同步到工作区",
-      "add-to-library": "收进中央库",
-      "remove-from-library": "移出中央库",
-      presentation: "更新中文展示",
-      tags: "更新标签",
-      "workspace-save": "关联工作区",
-      "workspace-delete": "移除工作区",
-      "agent-save": "更新 Agent",
-    };
-    const actionText = (action) => ACTION_LABEL[action] || action || "操作";
-    const SYNC_ACTION = {
-      "in-sync": ["已同步", "ok"],
-      "add-to-workspace": ["待加入工作区", "warn"],
-      "add-to-library": ["待收进中央库", "warn"],
-      differs: ["内容不同", "danger"],
-      external: ["外部来源", "quiet"],
-    };
-    const KIND_LABEL = { global: "全局", project: "项目", linked: "自定义关联" };
-    const num = (value) => (Number.isFinite(Number(value)) ? Number(value) : 0);
-    const pad2 = (value) => String(value).padStart(2, "0");
-    const asDate = (value) => {
-      if (value === undefined || value === null || value === "") return null;
-      if (typeof value === "number") return new Date(value < 1e12 ? value * 1000 : value);
-      const date = new Date(value);
-      return Number.isNaN(date.getTime()) ? null : date;
-    };
-    const fmtTime = (value) => {
-      const date = asDate(value);
-      if (!date) return "未知";
-      const diff = Date.now() - date.getTime();
-      if (diff >= 0) {
-        if (diff < 60e3) return "刚刚";
-        if (diff < 3600e3) return Math.floor(diff / 60e3) + " 分钟前";
-        if (diff < 86400e3) return Math.floor(diff / 3600e3) + " 小时前";
-        if (diff < 7 * 86400e3) return Math.floor(diff / 86400e3) + " 天前";
-      }
-      return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
-    };
-    const fullTime = (value) => {
-      const date = asDate(value);
-      return date ? date.toLocaleString("zh-CN", { hour12: false }) : "未知";
-    };
-    const fmtBytes = (value) => {
-      let size = num(value);
-      if (size <= 0) return "0 B";
-      const units = ["B", "KB", "MB", "GB"];
-      let index = 0;
-      while (size >= 1024 && index < units.length - 1) {
-        size /= 1024;
-        index++;
-      }
-      return `${size >= 10 || index === 0 ? Math.round(size) : size.toFixed(1)} ${units[index]}`;
-    };
-    const compactPath = (value) => {
-      if (!value) return "—";
-      const parts = String(value).split(/[\\/]/).filter(Boolean);
-      return parts.length <= 3 ? String(value) : "…\\" + parts.slice(-2).join("\\");
-    };
-    const coverageTone = (status) =>
-      status === "complete" || status === "ok"
-        ? "ok"
-        : status === "limited" || status === "partial"
-          ? "warn"
-          : status === "error" || status === "missing"
-            ? "danger"
-            : "quiet";
-    const coverageText = (status) =>
-      ({ complete: "完整", ok: "完整", limited: "受限", partial: "部分", error: "失败", missing: "缺失", skipped: "跳过" })[
-        status
-      ] ||
-      status ||
-      "未知";
-    const loadingBlock = (label) =>
-      `<div class="sm-loading" role="status"><span class="sm-spinner" aria-hidden="true"></span><span>${e(label)}</span></div>`;
-    const errorBlock = (message) =>
-      `<div class="sm-error-banner" role="alert">${icon("alert", 16)}<div><strong>读取失败</strong><span>${e(message)}</span><div><button class="btn ghost small" type="button" data-retry>重试</button></div></div></div>`;
-    const emptyBlock = (title, text, action = "") =>
-      `<div class="sm-empty"><strong>${e(title)}</strong><p>${e(text)}</p>${action}</div>`;
-    const skeletonCards = (count = 6) =>
-      Array.from({ length: count }, () => '<div class="sm-skeleton sm-skeleton-card"></div>').join("");
-
-    const api = (method, path, body, options) =>
-      U().request(method, "/api/skill-manager" + path, body, { signal: options?.signal || signal });
-    const copyText = async (value) => {
-      try {
-        await navigator.clipboard.writeText(value);
-        U().notify("路径已复制", { kind: "success" });
-      } catch {
-        U().notify(value, { kind: "info" });
-      }
-    };
-
-    /* ------------------------------------------------------------ 状态与页签 */
-    const state = {
-      tab: "overview",
-      overview: null,
-      overviewError: "",
-      attentionItems: [],
-      attentionTotal: 0,
-      agents: null,
-      agentsError: "",
-      workspaces: null,
-      workspacesError: "",
-      settings: null,
-      settingsError: "",
-      entriesFor: "",
-      entriesName: "",
-      entries: null,
-      entriesError: "",
-      entriesLoading: false,
-      library: { q: "", tag: "", agent: "", offset: 0, limit: 12, data: null, error: "", loading: false },
-      detail: null,
-      scanBusy: false,
-      disposed: false,
-    };
-    let searchTimer = 0,
-      libraryToken = 0,
-      overviewToken = 0,
-      agentsToken = 0,
-      workspacesToken = 0,
-      settingsToken = 0,
-      entriesToken = 0,
-      detailAbort = null;
-
-    const TABS = [
-      ["overview", "概览", "overview"],
-      ["library", "技能库", "library"],
-      ["agents", "Agent", "agents"],
-      ["workspaces", "工作区", "workspaces"],
-      ["settings", "设置", "settings"],
-    ];
-    const tabsHost = q(".wb-library-tabs", root);
-    tabsHost.classList.add("sm-tabs");
-    tabsHost.setAttribute("role", "tablist");
-    tabsHost.setAttribute("aria-label", "技能管理页面");
-    tabsHost.innerHTML = TABS.map(
-      ([id, label, ico]) =>
-        `<button class="sm-tab" type="button" role="tab" id="sm-tab-${id}" aria-controls="sm-view" aria-selected="false" tabindex="-1" data-tab="${id}">${icon(ico)}<span>${label}</span><span class="sm-tab-count" data-count="${id}" hidden></span></button>`,
-    ).join("");
-
-    function tabCounts() {
-      const overview = state.overview;
-      return {
-        library: overview ? overview.libraryTotal : "",
-        agents: overview ? (overview.agents || []).length : "",
-        workspaces: overview ? (overview.workspaces || []).length : "",
-      };
-    }
-    function syncTabCounts() {
-      const counts = tabCounts();
-      qa("[data-count]", tabsHost).forEach((node) => {
-        const value = counts[node.dataset.count];
-        node.hidden = value === "" || value === undefined;
-        node.textContent = value === "" || value === undefined ? "" : value;
-      });
-    }
-    function selectTab(id, focus = false) {
-      if (!TABS.some((tab) => tab[0] === id)) id = "overview";
-      state.tab = id;
-      if (id !== "workspaces") {
-        state.entriesFor = "";
-        state.entries = null;
-        state.entriesError = "";
-      }
-      qa(".sm-tab", tabsHost).forEach((button) => {
-        const on = button.dataset.tab === id;
-        button.setAttribute("aria-selected", on ? "true" : "false");
-        button.tabIndex = on ? 0 : -1;
-        if (on && focus) button.focus();
-      });
-      content.setAttribute("aria-labelledby", "sm-tab-" + id);
-      if (id === "overview") {
-        paintOverview();
-        void loadOverview();
-      } else if (id === "library") {
-        paintLibraryShell();
-        paintLibrary();
-        void loadLibrary();
-      } else if (id === "agents") {
-        paintAgents();
-        void loadAgents();
-      } else if (id === "workspaces") {
-        paintWorkspaces();
-        if (state.entriesFor) {
-          if (!state.entries && !state.entriesLoading) void loadEntries(state.entriesFor);
-        } else void loadWorkspaces({ force: true });
-      } else {
-        paintSettings();
-        void loadSettings();
-      }
-    }
-    tabsHost.addEventListener("click", (event) => {
-      const button = event.target.closest(".sm-tab");
-      if (button) selectTab(button.dataset.tab);
-    });
-    tabsHost.addEventListener("keydown", (event) => {
-      const keys = ["ArrowRight", "ArrowLeft", "Home", "End"];
-      if (!keys.includes(event.key)) return;
-      const buttons = qa(".sm-tab", tabsHost);
-      const index = buttons.indexOf(document.activeElement);
-      if (index < 0) return;
-      event.preventDefault();
-      const next =
-        event.key === "Home"
-          ? 0
-          : event.key === "End"
-            ? buttons.length - 1
-            : (index + (event.key === "ArrowRight" ? 1 : -1) + buttons.length) % buttons.length;
-      selectTab(buttons[next].dataset.tab, true);
-    });
-
-    content.addEventListener("click", (event) => {
-      const target = event.target;
-      const stat = target.closest("[data-stat]");
-      if (stat) {
-        selectTab(stat.dataset.stat);
-        return;
-      }
-      const openSkill = target.closest("[data-open-skill]");
-      if (openSkill) {
-        void openDetail(openSkill.dataset.openSkill);
-        return;
-      }
-      const openWorkspaceButton = target.closest("[data-open-workspace]");
-      if (openWorkspaceButton) {
-        openWorkspace(openWorkspaceButton.dataset.openWorkspace);
-        return;
-      }
-      const goto = target.closest("[data-goto]");
-      if (goto) {
-        selectTab(goto.dataset.goto);
-        return;
-      }
-      const copy = target.closest("[data-copy]");
-      if (copy) {
-        void copyText(copy.dataset.copy);
-        return;
-      }
-      const retry = target.closest("[data-retry]");
-      if (retry) {
-        selectTab(state.tab);
-        return;
-      }
-      const scanButton = target.closest("[data-scan-inline]");
-      if (scanButton) void rescan();
-    });
-    content.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      const card = event.target.closest("[data-open-skill]");
-      if (!card || event.target.closest("button")) return;
-      event.preventDefault();
-      void openDetail(card.dataset.openSkill);
-    });
-
-    /* ------------------------------------------------------------ 概览 */
-    function attentionData() {
-      const items = state.attentionItems || [];
-      const missing = items.filter((item) => item.libraryStatus === "missing");
-      const modified = items.filter((item) => item.libraryStatus === "modified");
-      const groups = new Map();
-      for (const item of items) {
-        if (!item.digest) continue;
-        if (!groups.has(item.digest)) groups.set(item.digest, []);
-        groups.get(item.digest).push(item);
-      }
-      const dupGroups = [...groups.values()].filter((group) => group.length > 1);
-      const dupExtra = dupGroups.reduce((sum, group) => sum + group.length - 1, 0);
-      return {
-        items,
-        missing,
-        modified,
-        dupGroups,
-        dupExtra,
-        total: missing.length + modified.length + dupExtra,
-        totalKnown: state.attentionTotal,
-      };
-    }
-    function paintOverview() {
-      if (state.disposed) return;
-      const overview = state.overview;
-      if (!overview) {
-        content.innerHTML = `<div class="sm-view">${
-          state.overviewError ? errorBlock(state.overviewError) : loadingBlock("正在读取技能管理概览…")
-        }</div>`;
-        return;
-      }
-      const library = overview.library || {};
-      const agents = overview.agents || [];
-      const workspaces = overview.workspaces || [];
-      const exists = agents.filter((agent) => agent.exists).length;
-      const enabled = agents.filter((agent) => agent.enabled).length;
-      const kindCount = (kind) => workspaces.filter((workspace) => workspace.kind === kind).length;
-      const attention = attentionData();
-      const scan = overview.scan || null;
-      const coverage = Array.isArray(scan?.coverage) ? scan.coverage : [];
-      const activity = (overview.activity || []).slice(0, 6);
-      const stat = (label, iconName, value, sub, action, warn) =>
-        `<button class="sm-stat${warn ? " warn" : ""}" type="button" data-stat="${action}"><span class="sm-stat-label">${icon(iconName, 14)}${e(label)}</span><strong class="sm-stat-value">${e(value)}</strong><span class="sm-stat-sub">${e(sub)}</span></button>`;
-      const attentionRows = [];
-      for (const item of attention.missing.slice(0, 2))
-        attentionRows.push(
-          `<div class="sm-source-row"><span class="sm-dot danger"></span><div class="sm-source-main"><div class="sm-source-title"><strong>${e(item.name)}</strong><span class="sm-pill danger">文件缺失</span></div><p class="sm-path">${e(item.path || "")}</p></div><button class="sm-link" type="button" data-open-skill="${e(item.id)}">查看</button></div>`,
-        );
-      for (const item of attention.modified.slice(0, 2))
-        attentionRows.push(
-          `<div class="sm-source-row"><span class="sm-dot warn"></span><div class="sm-source-main"><div class="sm-source-title"><strong>${e(item.name)}</strong><span class="sm-pill warn">内容已变更</span></div><p class="sm-path">${e(item.path || "")}</p></div><button class="sm-link" type="button" data-open-skill="${e(item.id)}">查看</button></div>`,
-        );
-      for (const group of attention.dupGroups.slice(0, 2))
-        attentionRows.push(
-          `<div class="sm-source-row"><span class="sm-dot warn"></span><div class="sm-source-main"><div class="sm-source-title"><strong>${group
-            .slice(0, 3)
-            .map((item) => e(item.name))
-            .join("、")}</strong><span class="sm-pill warn">内容重复 ${group.length} 份</span></div><p class="sm-path">按正文摘要识别；不会自动合并或删除。</p></div><button class="sm-link" type="button" data-open-skill="${e(group[0].id)}">查看</button></div>`,
-        );
-      const sourceRows = [
-        {
-          key: "library",
-          name: "中央技能库",
-          path: library.root || "",
-          exists: true,
-          kind: "中央库",
-          meta: `${overview.libraryTotal} 项 · ${fmtBytes(library.bytes)}`,
-          iconName: "library",
-        },
-        ...agents.map((agent) => ({
-          key: "agent-" + agent.id,
-          name: agent.name,
-          path: agent.globalPath,
-          exists: agent.exists,
-          kind: agent.origin === "builtin" ? "内置 Agent" : "自定义 Agent",
-          enabled: agent.enabled,
-          meta: agent.enabled ? "参与扫描" : "已停用",
-          iconName: "agents",
-        })),
-        ...workspaces
-          .filter((workspace) => workspace.kind !== "global")
-          .map((workspace) => ({
-            key: "ws-" + workspace.id,
-            name: workspace.name,
-            path: workspace.root,
-            exists: workspace.exists,
-            kind: KIND_LABEL[workspace.kind] || workspace.kind,
-            meta: `${(workspace.agentIds || []).length} 个 Agent`,
-            iconName: "workspaces",
-          })),
-      ];
-      const coverageByPath = new Map(
-        coverage.map((row) => [String(row.path || "").toLowerCase(), row]),
-      );
-      const indexScope =
-        attention.totalKnown > attention.items.length
-          ? `基于前 ${attention.items.length} / ${attention.totalKnown} 项计算`
-          : "";
-      content.innerHTML = `<div class="sm-view">
-        <div class="sm-stats">
-          ${stat(
-            "中央技能库",
-            "library",
-            String(overview.libraryTotal),
-            `${fmtBytes(library.bytes)} · ${library.defaultMode === "copy" ? "默认复制" : "默认符号链接"}`,
-            "library",
-            false,
-          )}
-          ${stat(
-            "Agent 目录",
-            "agents",
-            `${exists} / ${agents.length}`,
-            `已启用 ${enabled} · 目录未创建 ${agents.length - exists}`,
-            "agents",
-            false,
-          )}
-          ${stat(
-            "工作区",
-            "workspaces",
-            String(workspaces.length),
-            `全局 ${kindCount("global")} · 项目 ${kindCount("project")} · 关联 ${kindCount("linked")}`,
-            "workspaces",
-            false,
-          )}
-          ${stat(
-            "需关注",
-            "alert",
-            String(attention.total),
-            `缺失 ${attention.missing.length} · 变更 ${attention.modified.length} · 重复 ${attention.dupExtra}`,
-            "library",
-            attention.total > 0,
-          )}
-        </div>
-        <div class="sm-split">
-          <div class="sm-stack">
-            <section class="sm-section">
-              <div class="sm-section-head"><div><h2>${icon("alert", 16)}资料状态 <span class="sm-count">${attention.total}</span></h2><p>只读核验中央库文件是否存在、内容是否与索引快照一致，并按正文摘要检查重复。${indexScope ? " " + indexScope + "。" : ""}</p></div><div class="sm-section-tools"><button class="btn ghost small" type="button" data-goto="library">打开技能库</button></div></div>
-              ${
-                overview.libraryTotal === 0
-                  ? emptyBlock(
-                      "中央库还没有技能",
-                      "重建索引会从已登记目录只读吸收技能资料，不会修改或执行任何文件。",
-                      `<button class="btn ghost" type="button" data-scan-inline>重建索引</button>`,
-                    )
-                  : attentionRows.length
-                    ? `<div class="sm-source-list">${attentionRows.join("")}</div>${attention.total > attentionRows.length ? `<p class="sm-muted">另有 ${attention.total - attentionRows.length} 项需关注，可在技能库中逐项查看。</p>` : ""}`
-                    : `<p class="sm-muted">资料状态正常，未发现缺失、变更或重复内容。</p>`
-              }
-            </section>
-            <section class="sm-section">
-              <div class="sm-section-head"><div><h2>${icon("folder", 16)}登记目录</h2><p>只扫描下列已登记目录；不存在的目录会跳过，不会扫描整盘。</p></div></div>
-              <div class="sm-source-list">${sourceRows
-                .map((row) => {
-                  const cov = coverageByPath.get(String(row.path || "").toLowerCase());
-                  return `<div class="sm-source-row"><span class="sm-avatar">${icon(row.iconName, 15)}</span><div class="sm-source-main"><div class="sm-source-title"><strong>${e(row.name)}</strong><span class="sm-pill quiet">${e(row.kind)}</span>${row.enabled === false ? '<span class="sm-pill quiet">已停用</span>' : ""}</div><p class="sm-path" title="${e(row.path || "")}">${e(row.path || "—")}</p></div><div class="sm-source-side"><span class="sm-pill ${row.exists ? "ok" : "warn"}">${row.exists ? "目录存在" : "目录未创建"}</span><span>${e(row.meta)}${cov ? ` · 索引 ${num(cov.count)} 项` : ""}</span></div></div>`;
-                })
-                .join("")}</div>
-            </section>
-          </div>
-          <div class="sm-stack">
-            <section class="sm-section">
-              <div class="sm-section-head"><div><h2>${icon("workspaces", 16)}工作区</h2><p>全局、项目与自定义关联目录。管理入口在工作区页签。</p></div><div class="sm-section-tools"><button class="btn ghost small" type="button" data-goto="workspaces">管理</button></div></div>
-              <div class="sm-source-list">${workspaces
-                .map(
-                  (workspace) =>
-                    `<div class="sm-source-row"><span class="sm-avatar">${icon(workspace.kind === "global" ? "agents" : "workspaces", 15)}</span><div class="sm-source-main"><div class="sm-source-title"><strong>${e(workspace.name)}</strong><span class="sm-pill quiet">${e(KIND_LABEL[workspace.kind] || workspace.kind)}</span></div><p class="sm-path">${e(workspace.kind === "global" ? "由各 Agent 的全局技能目录组成" : workspace.root)}</p></div><span class="sm-pill ${workspace.exists ? "ok" : "warn"}">${workspace.exists ? "存在" : "未创建"}</span></div>`,
-                )
-                .join("")}</div>
-            </section>
-            <div class="sm-callout">${icon("shield", 14)}<h3>只读边界</h3><ul><li>只读取中央库、已登记 Agent 目录与工作区目录，不扫描整盘。</li><li>不会执行 SKILL.md、脚本或安装过程；详情预览是安全快照，并重新核验文件是否存在。</li><li>中文展示只写入当前 Profile，不修改源文件、不上传正文。</li><li>目录存在、来源启用、技能已部署是不同状态，分别展示。</li></ul></div>
-            <section class="sm-section">
-              <div class="sm-section-head"><div><h2>${icon("scan", 16)}索引状态</h2></div></div>
-              ${
-                scan
-                  ? `<p class="sm-muted">上次索引 ${fullTime(scan.at)} · 检查 ${num(scan.visited)} 个目录 · 收录 ${num(scan.absorbed)} 项${scan.limited ? " · 已达数量上限" : ""}</p>${coverage.length ? `<div class="sm-coverage">${coverage
-                      .map(
-                        (row) =>
-                          `<span class="sm-pill ${coverageTone(row.status)}" title="${e((row.errors || []).join("；") || "无错误")}">${e(compactPath(row.path))} · ${num(row.count)} 项 · ${e(coverageText(row.status))}</span>`,
-                      )
-                      .join("")}</div>` : ""}`
-                  : `<p class="sm-muted" data-scan-status>尚未建立本机索引。索引只读取已登记目录，不会执行技能。</p>`
-              }
-            </section>
-            <section class="sm-section">
-              <div class="sm-section-head"><div><h2>${icon("scan", 16)}最近活动</h2></div></div>
-              ${
-                activity.length
-                  ? `<ul class="sm-activity">${activity
-                      .map(
-                        (event) =>
-                          `<li><time title="${e(fullTime(event.at))}">${e(fmtTime(event.at))}</time><span class="sm-dot ${event.ok ? "ok" : "danger"}"></span><span>${e(actionText(event.action))}${event.skillName ? ` · ${e(event.skillName)}` : ""}${event.detail ? ` · <span class="sm-muted">${e(event.detail)}</span>` : ""}</span></li>`,
-                      )
-                      .join("")}</ul>`
-                  : `<p class="sm-muted">还没有技能操作记录。扫描、部署或更新中文展示后会记录在这里。</p>`
-              }
-            </section>
-          </div>
-        </div>
-      </div>`;
-    }
-
-    /* ------------------------------------------------------------ 技能库 */
-    function tagChips(tags) {
-      if (!tags.length) return "";
-      return [`<button class="sm-chip" type="button" data-lib-tag="" aria-pressed="${!state.library.tag}">全部标签</button>`]
-        .concat(
-          tags
-            .slice(0, 16)
-            .map(
-              (tag) =>
-                `<button class="sm-chip" type="button" data-lib-tag="${e(tag.name)}" aria-pressed="${state.library.tag === tag.name}">${e(tag.name)}<em>${num(tag.count)}</em></button>`,
-            ),
-        )
-        .join("");
-    }
-    // 后端的未收录占位词不是真正的译名，界面不把它当作中文名展示。
-    function zhName(item) {
-      const value = String(item.displayName || "").trim();
-      return value && value !== item.name && value !== "自定义技能" ? value : "";
-    }
-    function zhDescription(item, short = false) {
-      const value = String(item.displayDescription || "").trim();
-      if (value && value !== "暂无中文简介，可在详情中补充。") return value;
-      return short ? "暂无中文简介" : "";
-    }
-    // 详情预览不展示 frontmatter 元数据；它属于文件结构，不是技能正文。
-    function stripFrontmatter(text) {
-      return String(text || "").replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---\r?\n?/, "");
-    }
-    function agentName(id) {
-      const found = (state.overview?.agents || []).find((agent) => agent.id === id);
-      return found ? found.name : id;
-    }
-    function detailIntro(item) {
-      const hasContent = !!(item.content && item.content.trim());
-      if (item.libraryStatus === "missing" && !hasContent)
-        return "技能目录已不在登记位置，也没有可用的索引快照正文。";
-      return hasContent ? "源文件未提供中文简介，可在右侧补充。" : "源文件未提供简介。";
-    }
-    function skillCard(item) {
-      const status = libState(item);
-      const zh = zhName(item);
-      const description = zhDescription(item, true) || "暂无中文简介";
-      const tags = (item.tags || []).slice(0, 3);
-      const deployed = (item.agents || []).filter((agent) => agent.deployed);
-      const shownAgents = deployed.slice(0, 3);
-      return `<article class="sm-skill-card" role="button" tabindex="0" data-open-skill="${e(item.id)}" aria-label="${e(
-        `${item.name}${zh ? "，" + zh : ""}，${status[0]}`,
-      )}">
-        <div class="sm-skill-head"><span class="sm-dot ${status[1]}"></span><div class="sm-skill-title"><h3>${e(item.name)}</h3>${zh ? `<span class="sm-skill-cn">${e(zh)}</span>` : ""}</div></div>
-        ${item.libraryStatus !== "ok" ? `<span class="sm-pill ${status[1]}">${status[0]}</span>` : ""}
-        <p class="sm-skill-desc">${e(description)}</p>
-        ${tags.length ? `<div class="sm-skill-tags">${tags.map((tag) => `<span class="sm-tag">${e(tag)}</span>`).join("")}${(item.tags || []).length > 3 ? `<span class="sm-tag">+${item.tags.length - 3}</span>` : ""}</div>` : ""}
-        <div class="sm-agent-chips">${
-          shownAgents.length
-            ? shownAgents
-                .map(
-                  (agent) =>
-                    `<span class="sm-agent-chip"><span class="sm-dot ${deployTone(agent.status)}"></span>${e(agent.name)}</span>`,
-                )
-                .join("") + (deployed.length > 3 ? `<span class="sm-agent-chip off">+${deployed.length - 3}</span>` : "")
-            : '<span class="sm-agent-chip off">尚未部署到 Agent</span>'
-        }</div>
-        <div class="sm-card-foot">${icon("link", 13)}<span>${e(sourceText(item.source))}</span><span aria-hidden="true">·</span><span>${num(item.files)} 个文件 · ${fmtBytes(item.bytes)}</span><span class="sm-spacer"></span><span title="${e(fullTime(item.updatedAt))}">${e(fmtTime(item.updatedAt))}</span></div>
-      </article>`;
-    }
-    function paintLibraryShell() {
-      if (state.disposed) return;
-      const overview = state.overview;
-      const agents = overview?.agents || [];
-      const tags = overview?.tags || [];
-      const lib = state.library;
-      content.innerHTML = `<div class="sm-view"><section class="sm-section">
-        <div class="sm-section-head"><div><h2>${icon("library", 16)}技能库 <span class="sm-count" data-lib-total>${overview ? overview.libraryTotal : ""}</span></h2><p>中央库技能的安全快照。筛选与分页只读取已提交的索引结果；搜索不会触发扫描。</p></div></div>
-        <div class="sm-lib-toolbar">
-          <div class="sm-search">${icon("search", 16)}<input type="search" data-lib-q placeholder="搜索中文名、原名或简介" aria-label="搜索技能" maxlength="200" autocomplete="off"></div>
-          <label class="sm-select"><select data-lib-agent aria-label="按 Agent 筛选"><option value="">全部 Agent</option>${agents
-            .map(
-              (agent) =>
-                `<option value="${e(agent.id)}">${e(agent.name)}${agent.enabled ? "" : "（已停用）"}</option>`,
-            )
-            .join("")}</select></label>
-        </div>
-        <div class="sm-chips" data-lib-tags role="group" aria-label="按标签筛选">${tagChips(tags)}</div>
-        <div class="sm-lib-meta"><span data-lib-meta>尚未读取</span><span role="status" data-lib-state></span></div>
-        <div data-lib-error></div>
-        <div class="sm-library-grid" data-lib-grid aria-busy="false"></div>
-        <div class="sm-pager"><span class="sm-pager-info" data-lib-page></span><div class="sm-pager-actions"><button class="btn ghost" type="button" data-lib-prev>上一页</button><button class="btn ghost" type="button" data-lib-next>下一页</button></div></div>
-      </section></div>`;
-      const qInput = q("[data-lib-q]", content);
-      qInput.value = lib.q;
-      q("[data-lib-agent]", content).value = lib.agent;
-      qInput.addEventListener("input", () => {
-        lib.q = qInput.value;
-        lib.offset = 0;
-        clearTimeout(searchTimer);
-        searchTimer = setTimeout(() => void loadLibrary({ quiet: true }), 220);
-      });
-      qInput.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
-          clearTimeout(searchTimer);
-          lib.q = qInput.value;
-          lib.offset = 0;
-          void loadLibrary();
-        } else if (event.key === "Escape" && qInput.value) {
-          qInput.value = "";
-          lib.q = "";
-          lib.offset = 0;
-          void loadLibrary();
-        }
-      });
-      q("[data-lib-agent]", content).addEventListener("change", (event) => {
-        lib.agent = event.target.value;
-        lib.offset = 0;
-        void loadLibrary();
-      });
-      q("[data-lib-tags]", content).addEventListener("click", (event) => {
-        const chip = event.target.closest("[data-lib-tag]");
-        if (!chip) return;
-        lib.tag = chip.dataset.libTag;
-        lib.offset = 0;
-        qa("[data-lib-tag]", content).forEach((node) =>
-          node.setAttribute("aria-pressed", node === chip ? "true" : "false"),
-        );
-        void loadLibrary();
-      });
-      q("[data-lib-prev]", content).addEventListener("click", () => {
-        lib.offset = Math.max(0, lib.offset - lib.limit);
-        void loadLibrary();
-      });
-      q("[data-lib-next]", content).addEventListener("click", () => {
-        const data = lib.data;
-        lib.offset = data
-          ? Math.min(lib.offset + lib.limit, Math.max(0, Math.floor((data.total - 1) / lib.limit) * lib.limit))
-          : lib.offset + lib.limit;
-        void loadLibrary();
-      });
-    }
-    function paintLibrary() {
-      if (state.disposed) return;
-      const lib = state.library;
-      const grid = q("[data-lib-grid]", content);
-      if (!grid) return;
-      const meta = q("[data-lib-meta]", content),
-        stateNode = q("[data-lib-state]", content),
-        pageNode = q("[data-lib-page]", content),
-        errorNode = q("[data-lib-error]", content),
-        totalNode = q("[data-lib-total]", content);
-      if (totalNode && state.overview) totalNode.textContent = state.overview.libraryTotal;
-      errorNode.innerHTML = lib.error
-        ? `<div class="sm-error-banner" role="alert">${icon("alert", 16)}<div><strong>${lib.data ? "已保留上次结果" : "无法读取技能库"}</strong><span>${e(lib.error)}</span>${
-            lib.data ? "" : '<div><button class="btn ghost small" type="button" data-retry>重试</button></div>'
-          }</div></div>`
-        : "";
-      const data = lib.data;
-      if (!data) {
-        grid.innerHTML = skeletonCards();
-        meta.textContent = "正在读取…";
-        pageNode.textContent = "";
-        q("[data-lib-prev]", content).disabled = true;
-        q("[data-lib-next]", content).disabled = true;
-        return;
-      }
-      const total = num(data.total);
-      const start = data.items.length ? num(data.offset) + 1 : 0;
-      const end = num(data.offset) + data.items.length;
-      const filters = [lib.q ? `搜索“${lib.q}”` : "", lib.tag ? `标签“${lib.tag}”` : "", lib.agent ? "指定 Agent" : ""].filter(Boolean);
-      meta.textContent = total
-        ? `第 ${start}–${end} 项，共 ${total} 项${filters.length ? " · " + filters.join(" · ") : ""}`
-        : "0 项" + (filters.length ? " · " + filters.join(" · ") : "");
-      pageNode.textContent = total
-        ? `第 ${Math.floor(num(data.offset) / lib.limit) + 1} / ${Math.ceil(total / lib.limit)} 页`
-        : "";
-      grid.innerHTML = data.items.length
-        ? data.items.map(skillCard).join("")
-        : emptyBlock(
-            filters.length ? "没有匹配的技能" : "中央库还没有技能",
-            filters.length
-              ? "调整关键词或清除筛选后再试。"
-              : "点击右上角「重建索引」，从已登记目录只读吸收技能资料。",
-            filters.length ? "" : '<button class="btn ghost" type="button" data-scan-inline>重建索引</button>',
-          );
-      q("[data-lib-prev]", content).disabled = num(data.offset) <= 0;
-      q("[data-lib-next]", content).disabled = num(data.offset) + data.items.length >= total;
-      if (stateNode) stateNode.textContent = "";
-    }
-    async function loadLibrary({ quiet = false } = {}) {
-      if (state.disposed || signal?.aborted) return;
-      const lib = state.library;
-      const seq = ++libraryToken;
-      lib.loading = true;
-      const grid = q("[data-lib-grid]", content);
-      if (grid) grid.setAttribute("aria-busy", "true");
-      const stateNode = q("[data-lib-state]", content);
-      if (stateNode && !lib.data) stateNode.textContent = "正在读取…";
-      const params = new URLSearchParams({ offset: String(lib.offset), limit: String(lib.limit) });
-      if (lib.q) params.set("q", lib.q);
-      if (lib.tag) params.set("tag", lib.tag);
-      if (lib.agent) params.set("agent", lib.agent);
-      try {
-        const data = await api("GET", "/library?" + params.toString());
-        if (state.disposed || seq !== libraryToken || state.tab !== "library") return;
-        if (num(data.offset) > 0 && num(data.offset) >= num(data.total)) {
-          lib.offset = data.total ? Math.floor((data.total - 1) / lib.limit) * lib.limit : 0;
-          lib.loading = false;
-          if (grid) grid.setAttribute("aria-busy", "false");
-          void loadLibrary({ quiet: true });
-          return;
-        }
-        lib.data = data;
-        lib.error = "";
-        paintLibrary();
-      } catch (error) {
-        if (state.disposed || seq !== libraryToken || error.name === "AbortError") return;
-        lib.error = error.message || "读取失败";
-        paintLibrary();
-      } finally {
-        if (seq === libraryToken) {
-          lib.loading = false;
-          const node = q("[data-lib-grid]", content);
-          if (node) node.setAttribute("aria-busy", "false");
-        }
-      }
-    }
-
-    /* ------------------------------------------------------------ 详情 */
-    async function openDetail(id) {
-      if (!id || state.disposed) return;
-      detailAbort?.abort();
-      const own = new AbortController();
-      detailAbort = own;
-      const stop = U().busy(content, "正在核验技能详情…", 0);
-      try {
-        const data = await api("GET", "/skill?id=" + encodeURIComponent(id), undefined, { signal: own.signal });
-        if (state.disposed || own.signal.aborted) return;
-        showDetail(data);
-      } catch (error) {
-        if (!state.disposed && error.name !== "AbortError")
-          U().notify("读取详情失败：" + error.message, { kind: "error" });
-      } finally {
-        stop();
-      }
-    }
-    function shortRevision(value) {
-      return value.length > 18 ? value.slice(0, 12) + "…" : value;
-    }
-    function detailBody(data) {
-      const status = libState(data);
-      const presentation = p10n(data);
-      const zh = zhName(data);
-      const zhDesc = zhDescription(data);
-      const agents = data.agents || [];
-      const upstream = data.upstream || {};
-      const source = data.source || {};
-      const entries = data.entries || [];
-      const hasContent = !!(data.content && data.content.trim());
-      const fileFlag =
-        data.fileExists === "yes"
-          ? '<span class="sm-pill ok">SKILL.md 可读</span>'
-          : data.fileExists === "no"
-            ? hasContent
-              ? '<span class="sm-pill quiet" title="正文已只读读取；后端未返回源文件核验结果">内容已读取</span>'
-              : '<span class="sm-pill danger">SKILL.md 不存在</span>'
-            : '<span class="sm-pill quiet">SKILL.md 未核验</span>';
-      return `<div class="sm-detail">
-        <div class="sm-detail-main">
-          <div class="sm-detail-title">
-            <h2>${e(data.name)}</h2>
-            <p class="sm-detail-cn" data-detail-cn ${zh ? "" : "hidden"}>${e(zh)}</p>
-            <p class="sm-detail-desc" data-detail-desc>${e(zhDesc || detailIntro(data))}</p>
-            <div class="sm-detail-flags">
-              <span class="sm-pill ${status[1]}">${status[0]}</span>
-              <span class="sm-pill ${presentation[1]}" data-presentation-pill>${presentation[0]}</span>
-              <span class="sm-pill quiet">${e(sourceText(source))}</span>
-              ${fileFlag}
-            </div>
-          </div>
-          <div class="sm-detail-toolbar">${icon("folder", 14)}<p class="sm-path" title="${e(data.path || "")}">${e(data.path || "路径未知")}</p><button class="sm-link" type="button" data-copy="${e(
-            data.path || "",
-          )}">复制</button></div>
-          <div class="sm-md-scroll" data-detail-md></div>
-        </div>
-        <div class="sm-detail-side">
-          <section>
-            <h3>${icon("edit", 14)}中文展示</h3>
-            <p class="sm-hint">来自本地词目或当前 Profile 的覆盖，不会修改源文件。未收录时只补充已有资料，不猜测翻译。</p>
-            <form class="sm-form" data-presentation-form>
-              <label>中文名称<input name="title" maxlength="80" value="${e(zh)}" required></label>
-              <label>中文简介<textarea name="description" maxlength="320" rows="3" required>${e(zhDesc)}</textarea></label>
-              <div class="sm-form-foot"><button class="btn" type="submit" data-presentation-save>保存</button><button class="btn ghost" type="button" data-presentation-clear ${
-                data.presentationSource === "custom" ? "" : "hidden"
-              }>清除覆盖</button><span class="sm-form-status" data-presentation-status role="status"></span></div>
-            </form>
-          </section>
-          <section>
-            <h3>${icon("agents", 14)}部署到 Agent</h3>
-            ${
-              agents.length
-                ? `<ul class="sm-deploy-list">${agents
-                    .filter((agent) => agent.deployed)
-                    .map(
-                      (agent) =>
-                        `<li><span class="sm-dot ${deployTone(agent.status)}"></span><strong>${e(agent.name)}</strong><span class="sm-pill ${deployTone(agent.status)}">${e(deployText(agent.status))}</span>${agent.mode ? `<span class="sm-pill quiet">${e(MODE_LABEL[agent.mode] || agent.mode)}</span>` : ""}${agent.path ? `<p class="sm-path">${e(agent.path)}</p>` : ""}</li>`,
-                    )
-                    .join("")}</ul>${
-                    agents.some((agent) => !agent.deployed)
-                      ? `<p class="sm-hint">未部署：${agents.filter((agent) => !agent.deployed).map((agent) => e(agent.name)).join("、")}</p>`
-                      : ""
-                  }`
-                : '<p class="sm-muted">没有可展示的 Agent 核验结果。</p>'
-            }
-            <p class="sm-hint">文件存在不等于技能已启用；部署状态来自本次实时核验。</p>
-          </section>
-          <section>
-            <h3>${icon("link", 14)}来源与索引</h3>
-            <dl class="sm-kv">
-              <dt>来源</dt><dd>${e(sourceText(source))}</dd>
-              <dt>地址</dt><dd>${source.url ? `<span class="sm-path" title="${e(source.url)}">${e(compactPath(source.url))}</span>` : "—"}</dd>
-              <dt>版本</dt><dd>${e(shortRevision(source.ref || source.revision || "未知"))}</dd>
-              <dt>上游</dt><dd>${e(upstreamText(upstream))}${upstream.status === "unknown" && upstream.kind === "none" ? "（未跟踪）" : ""}${upstream.checkedAt ? ` · ${e(fmtTime(upstream.checkedAt))}` : ""}</dd>
-              <dt>内容</dt><dd>${num(data.files)} 个文件 · ${fmtBytes(data.bytes)}</dd>
-              <dt>快照一致</dt><dd>${data.contentMatchesSnapshot ? "是" : source.revision ? "否" : "无修订记录"}</dd>
-              <dt>目录修改</dt><dd>${e(fullTime(data.updatedAt))}</dd>
-            </dl>
-            ${upstream.error ? `<p class="sm-hint">${e(upstream.error)}</p>` : ""}
-          </section>
-          <section class="sm-files"><details><summary>目录内文件（${entries.length}）</summary><ul>${
-            entries.map((entry) => `<li>${e(entry)}</li>`).join("") || "<li>未返回文件清单</li>"
-          }</ul></details></section>
-          <p class="sm-dialog-note">${icon("shield", 13)} 只读打开：不会执行 SKILL.md、脚本或安装过程。${
-            data.fileExists === "no" && data.libraryStatus === "missing"
-              ? hasContent
-                ? " 源文件已不在登记目录内，正文来自上次索引的安全快照。"
-                : " 源文件已不在登记目录内，也没有可用的索引快照正文。"
-              : ""
-          }</p>
-        </div>
-      </div>`;
-    }
-    function showDetail(initial) {
-      state.detail?.close();
-      let latest = initial,
-        dirty = false,
-        saving = false;
-      const dialog = modal("技能详情", detailBody(latest), {
-        close: () => {
-          if (saving) return false;
-          if (dirty && !confirm("中文展示修改尚未保存，关闭详情？")) return false;
-          return true;
-        },
-      });
-      const dialogEl = dialog.d;
-      dialogEl.classList.add("sm-detail-dialog");
-      const body = dialog.body || q(".wb-dialog-body", dialogEl);
-      const footer = dialog.footer || q(".wb-dialog-foot", dialogEl);
-      const handle = {
-        d: dialogEl,
-        get dirty() {
-          return dirty || saving;
-        },
-        close() {
-          try {
-            dialog.close(true);
-          } catch {
-            /* 已关闭 */
-          }
-        },
-      };
-      state.detail = handle;
-      root._wbUnsaved = () => !!(state.detail && state.detail.dirty);
-      dialogEl.addEventListener(
-        "close",
-        () => {
-          if (state.detail === handle) {
-            state.detail = null;
-            root._wbUnsaved = () => false;
-          }
-        },
-        { once: true },
-      );
-      const md = q("[data-detail-md]", body);
-      if (md) {
-        const preview = stripFrontmatter(latest.content);
-        if (preview.trim()) U().markdown(md, preview);
-        else md.innerHTML = '<p class="sm-muted">源文件没有可预览的正文。</p>';
-      }
-      if (footer) {
-        footer.hidden = false;
-        footer.innerHTML = `<span class="sm-muted">只读预览 · 不执行技能内容</span><span class="sm-spacer"></span><button class="btn ghost" type="button" data-detail-copy>复制目录路径</button><button class="btn" type="button" data-detail-close>关闭</button>`;
-        q("[data-detail-copy]", footer).onclick = () => copyText(latest.path || "");
-        q("[data-detail-close]", footer).onclick = () => dialog.close(true);
-      }
-      const form = q("[data-presentation-form]", body);
-      if (!form) return;
-      const titleInput = form.elements.title,
-        descriptionInput = form.elements.description;
-      const statusNode = q("[data-presentation-status]", form);
-      const setStatus = (text, kind = "") => {
-        statusNode.textContent = text;
-        statusNode.className = "sm-form-status" + (kind ? " " + kind : "");
-      };
-      const applyDetail = (next) => {
-        latest = next;
-        const zhNode = q("[data-detail-cn]", body);
-        const zh = zhName(next);
-        if (zhNode) {
-          zhNode.textContent = zh;
-          zhNode.hidden = !zh;
-        }
-        const descNode = q("[data-detail-desc]", body);
-        if (descNode) {
-          descNode.textContent = zhDescription(next) || detailIntro(next);
-        }
-        const pill = q("[data-presentation-pill]", body);
-        if (pill) {
-          const presentation = p10n(next);
-          pill.className = "sm-pill " + presentation[1];
-          pill.textContent = presentation[0];
-        }
-        const clear = q("[data-presentation-clear]", form);
-        if (clear) clear.hidden = next.presentationSource !== "custom";
-      };
-      const markDirty = () => {
-        dirty = true;
-        setStatus("有未保存的修改");
-      };
-      titleInput.addEventListener("input", markDirty);
-      descriptionInput.addEventListener("input", markDirty);
-      form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        if (saving) return;
-        const title = titleInput.value.trim(),
-          description = descriptionInput.value.trim();
-        if (!title || !description) {
-          setStatus("中文名称和简介都需要填写。", "error");
-          return;
-        }
-        if (!/[\u3400-\u9fff]/.test(title) || !/[\u3400-\u9fff]/.test(description)) {
-          setStatus("中文展示需要包含中文，不能把英文原文当作翻译。", "error");
-          return;
-        }
-        if (title.length > 80 || description.length > 320) {
-          setStatus("中文名称最多 80 字，简介最多 320 字。", "error");
-          return;
-        }
-        saving = true;
-        const saveButton = q("[data-presentation-save]", form);
-        if (saveButton) saveButton.disabled = true;
-        setStatus("正在保存…");
-        try {
-          const next = await api("POST", "/presentation", { id: latest.id, title, description });
-          dirty = false;
-          applyDetail(next);
-          setStatus("已保存到当前 Profile。", "ok");
-          U().notify("中文展示已保存", { kind: "success" });
-          if (state.library.data) void loadLibrary({ quiet: true });
-        } catch (error) {
-          setStatus(error.message || "保存失败", "error");
-        } finally {
-          saving = false;
-          if (saveButton && saveButton.isConnected) saveButton.disabled = false;
-        }
-      });
-      const clearButton = q("[data-presentation-clear]", form);
-      if (clearButton)
-        clearButton.onclick = async () => {
-          if (saving) return;
-          if (!confirm("清除当前 Profile 的中文展示覆盖？不会修改源文件，也不会删除技能。")) return;
-          saving = true;
-          clearButton.disabled = true;
-          setStatus("正在清除…");
-          try {
-            const next = await api("POST", "/presentation", {
-              id: latest.id,
-              clear: true,
-              title: "已清除中文展示",
-              description: "当前使用本地词目或源文件中的中文信息",
-            });
-            dirty = false;
-            applyDetail(next);
-            titleInput.value = zhName(next);
-            descriptionInput.value = zhDescription(next);
-            setStatus("已清除中文覆盖。", "ok");
-            U().notify("已清除中文覆盖", { kind: "success" });
-            if (state.library.data) void loadLibrary({ quiet: true });
-          } catch (error) {
-            setStatus(error.message || "清除失败", "error");
-          } finally {
-            saving = false;
-            if (clearButton.isConnected) clearButton.disabled = false;
-          }
-        };
-    }
-
-    /* ------------------------------------------------------------ Agent */
-    function paintAgents() {
-      if (state.disposed) return;
-      const agents = state.agents;
-      const workspaces = state.overview?.workspaces || [];
-      const binding = (id) => workspaces.filter((workspace) => (workspace.agentIds || []).includes(id));
-      const body = !agents
-        ? state.agentsError
-          ? errorBlock(state.agentsError)
-          : loadingBlock("正在读取 Agent 列表…")
-        : `${state.agentsError ? `<div class="sm-error-banner" role="alert">${icon("alert", 16)}<div><strong>已保留上次结果</strong><span>${e(state.agentsError)}</span></div></div>` : ""}
-          <div class="sm-agent-grid">${agents
-            .map((agent) => {
-              const bound = binding(agent.id);
-              return `<article class="sm-agent-card${agent.enabled ? "" : " is-off"}" data-agent-id="${e(agent.id)}">
-                <div class="sm-agent-top">
-                  <span class="sm-avatar">${e(String(agent.name || agent.id).slice(0, 1).toUpperCase())}</span>
-                  <div class="sm-agent-name"><strong>${e(agent.name)}</strong><span>${e(agent.id)}</span></div>
-                  <button class="sm-switch" type="button" role="switch" aria-checked="${agent.enabled ? "true" : "false"}" aria-label="${agent.enabled ? "停用" : "启用"} ${e(agent.name)}" data-agent-toggle><span></span></button>
-                </div>
-                <div class="sm-agent-flags"><span class="sm-pill ${agent.origin === "builtin" ? "quiet" : "accent"}">${agent.origin === "builtin" ? "内置" : "自定义"}</span><span class="sm-pill ${agent.exists ? "ok" : "warn"}">${agent.exists ? "全局目录存在" : "全局目录未创建"}</span>${agent.enabled ? "" : '<span class="sm-pill quiet">已停用（不参与扫描）</span>'}</div>
-                <p class="sm-path" title="${e(agent.globalPath)}">${e(agent.globalPath)}</p>
-                <div class="sm-agent-meta"><span>项目目录 ${agent.projectRelative ? `<span class="sm-code">${e(agent.projectRelative)}</span>` : "不支持"}</span><span>${bound.length} 个工作区</span></div>
-                <div class="sm-agent-ws">${bound.map((workspace) => `<span class="sm-tag">${e(workspace.name)}</span>`).join("") || '<span class="sm-tag">未加入工作区</span>'}</div>
-                <div class="sm-ws-foot"><span class="sm-spacer"></span><button class="btn ghost" type="button" data-agent-edit>编辑目录</button></div>
-              </article>`;
-            })
-            .join("")}</div>`;
-      content.innerHTML = `<div class="sm-view">
-        <section class="sm-section">
-          <div class="sm-section-head"><div><h2>${icon("agents", 16)}Agent <span class="sm-count">${agents ? agents.length : ""}</span></h2><p>登记各 Agent 的全局技能目录与项目相对目录。启用状态只影响当前 Profile 的扫描，不代表技能已在该 Agent 中启用。</p></div><div class="sm-section-tools"><button class="btn" type="button" data-agent-add>＋ 添加 Agent</button></div></div>
-          ${body}
-        </section>
-        <div class="sm-callout">${icon("shield", 14)}<h3>只读与启用状态</h3><ul><li>只读取已登记的绝对路径，不创建或修改目录，不执行其中的技能。</li><li>“全局目录存在”“来源已启用”“技能已部署”分别是文件、扫描来源与实时部署状态。</li><li>内置 Agent 可恢复默认目录；自定义 Agent 可删除登记，不会删除磁盘文件。</li></ul></div>
-      </div>`;
-      if (!agents) return;
-      qa("[data-agent-id]", content).forEach((card) => {
-        const agent = agents.find((item) => item.id === card.dataset.agentId);
-        if (!agent) return;
-        const toggle = q("[data-agent-toggle]", card);
-        if (toggle)
-          toggle.onclick = async () => {
-            if (toggle.disabled) return;
-            const next = toggle.getAttribute("aria-checked") !== "true";
-            toggle.disabled = true;
-            toggle.setAttribute("aria-checked", String(next));
-            try {
-              const result = await api("POST", "/agents", { id: agent.id, enabled: next });
-              if (Array.isArray(result.items)) {
-                state.agents = result.items;
-                if (state.overview) state.overview.agents = result.items;
-              }
-              U().notify(next ? `已启用 ${agent.name}` : `已停用 ${agent.name}`, { kind: "success" });
-              paintAgents();
-              syncTabCounts();
-            } catch (error) {
-              toggle.setAttribute("aria-checked", String(!next));
-              U().notify(error.message, { kind: "error" });
-            } finally {
-              if (toggle.isConnected) toggle.disabled = false;
-            }
-          };
-        const edit = q("[data-agent-edit]", card);
-        if (edit) edit.onclick = () => agentDialog(agent);
-      });
-      const add = q("[data-agent-add]", content);
-      if (add) add.onclick = () => agentDialog(null);
-    }
-    async function loadAgents() {
-      if (state.disposed) return;
-      const seq = ++agentsToken;
-      try {
-        const result = await api("GET", "/agents");
-        if (state.disposed || seq !== agentsToken || state.tab !== "agents") return;
-        state.agents = result.items || [];
-        state.agentsError = "";
-        if (state.overview) state.overview.agents = state.agents;
-        paintAgents();
-        syncTabCounts();
-      } catch (error) {
-        if (state.disposed || seq !== agentsToken || error.name === "AbortError") return;
-        state.agentsError = error.message || "读取失败";
-        paintAgents();
-      }
-    }
-    function agentDialog(agent) {
-      const editing = !!agent;
-      const dialog = modal(
-        editing ? "编辑 Agent · " + agent.name : "添加 Agent",
-        `<form class="sm-form" data-agent-form>
-          ${
-            editing
-              ? ""
-              : '<label>标识<input name="id" maxlength="64" pattern="[A-Za-z0-9._-]+" required placeholder="例如 my-agent" autocomplete="off"></label>'
-          }
-          <label>显示名称<input name="name" maxlength="80" value="${e(agent?.name || "")}" required autocomplete="off"></label>
-          <label>全局技能目录（绝对路径）<input name="path" value="${e(agent?.globalPath || "")}" placeholder="C:\\Users\\…\\.agent\\skills" required autocomplete="off"></label>
-          <label>项目级目录（相对工作区根，可留空）<input name="projectRelative" value="${e(agent?.projectRelative || "")}" placeholder="例如 .agent/skills" autocomplete="off"></label>
-          <p class="sm-hint">只登记本机绝对路径；不会创建、修改或执行目录中的技能。</p>
-          <div class="sm-form-foot"><button class="btn" type="submit">${editing ? "保存" : "登记 Agent"}</button>${
-            editing && agent?.origin === "custom"
-              ? '<button class="btn ghost" type="button" data-agent-delete>删除</button>'
-              : ""
-          }${
-            editing && agent?.origin === "builtin"
-              ? '<button class="btn ghost" type="button" data-agent-restore>恢复默认目录</button>'
-              : ""
-          }<span class="sm-form-status" data-agent-status role="status"></span></div>
-        </form>`,
-      );
-      const dialogEl = dialog.d;
-      const form = q("[data-agent-form]", dialogEl);
-      const statusNode = q("[data-agent-status]", dialogEl);
-      const setStatus = (text, kind = "") => {
-        statusNode.textContent = text;
-        statusNode.className = "sm-form-status" + (kind ? " " + kind : "");
-      };
-      const submit = q('button[type="submit"]', form);
-      form.onsubmit = async (event) => {
-        event.preventDefault();
-        if (submit.disabled) return;
-        const values = Object.fromEntries(new FormData(form));
-        const path = String(values.path || "").trim();
-        const name = String(values.name || "").trim();
-        const projectRelative = String(values.projectRelative || "").trim();
-        if (!name) {
-          setStatus("显示名称不能为空。", "error");
-          return;
-        }
-        if (!/^[A-Za-z]:[\\/]/.test(path) || /^\\\\/.test(path)) {
-          setStatus("请输入本机绝对路径，例如 C:\\Users\\…\\skills。", "error");
-          return;
-        }
-        const body = { name, path, projectRelative };
-        if (editing) body.id = agent.id;
-        else body.id = String(values.id || "").trim();
-        if (!editing && !/^[A-Za-z0-9._-]{1,64}$/.test(body.id)) {
-          setStatus("标识只允许字母、数字、点、下划线和短横线。", "error");
-          return;
-        }
-        submit.disabled = true;
-        setStatus("正在保存…");
-        try {
-          const result = await api("POST", "/agents", body);
-          if (Array.isArray(result.items)) {
-            state.agents = result.items;
-            if (state.overview) state.overview.agents = result.items;
-          }
-          dialog.close(true);
-          U().notify(editing ? "Agent 已更新" : "Agent 已登记", { kind: "success" });
-          paintAgents();
-          syncTabCounts();
-        } catch (error) {
-          setStatus(error.message || "保存失败", "error");
-        } finally {
-          if (submit.isConnected) submit.disabled = false;
-        }
-      };
-      const remove = q("[data-agent-delete]", dialogEl);
-      if (remove)
-        remove.onclick = async () => {
-          if (!confirm(`删除 Agent 登记「${agent.name}」？不会删除磁盘目录或已部署的技能。`)) return;
-          remove.disabled = true;
-          setStatus("正在删除…");
-          try {
-            const result = await api("POST", "/agents", { id: agent.id, delete: true });
-            if (Array.isArray(result.items)) {
-              state.agents = result.items;
-              if (state.overview) state.overview.agents = result.items;
-            }
-            dialog.close(true);
-            U().notify("Agent 登记已删除", { kind: "success" });
-            paintAgents();
-            syncTabCounts();
-          } catch (error) {
-            setStatus(error.message || "删除失败", "error");
-          } finally {
-            if (remove.isConnected) remove.disabled = false;
-          }
-        };
-      const restore = q("[data-agent-restore]", dialogEl);
-      if (restore)
-        restore.onclick = async () => {
-          if (!confirm(`恢复 ${agent.name} 的默认全局目录？`)) return;
-          restore.disabled = true;
-          setStatus("正在恢复…");
-          try {
-            const result = await api("POST", "/agents", { id: agent.id, restore: true });
-            if (Array.isArray(result.items)) {
-              state.agents = result.items;
-              if (state.overview) state.overview.agents = result.items;
-            }
-            dialog.close(true);
-            U().notify("已恢复默认目录", { kind: "success" });
-            paintAgents();
-          } catch (error) {
-            setStatus(error.message || "恢复失败", "error");
-          } finally {
-            if (restore.isConnected) restore.disabled = false;
-          }
-        };
-    }
-
-    /* ------------------------------------------------------------ 工作区 */
-    function workspaceCard(workspace) {
-      const agents = (state.overview?.agents || []).filter((agent) =>
-        (workspace.agentIds || []).includes(agent.id),
-      );
-      const kind = KIND_LABEL[workspace.kind] || workspace.kind;
-      return `<article class="sm-ws-card">
-        <div class="sm-ws-top"><span class="sm-avatar">${icon(workspace.kind === "global" ? "agents" : "workspaces", 15)}</span><div class="sm-ws-name"><h3><span>${e(workspace.name)}</span><span class="sm-pill quiet">${e(kind)}</span></h3><p title="${e(workspace.root || "")}">${e(workspace.kind === "global" ? "由各 Agent 的全局技能目录组成" : workspace.root)}</p></div></div>
-        <div class="sm-ws-meta"><span>${agents.length} 个 Agent</span><span class="sm-pill ${workspace.exists ? "ok" : "warn"}">${workspace.exists ? "目录存在" : "目录未创建"}</span></div>
-        <div class="sm-ws-agents">${agents.slice(0, 6).map((agent) => `<span class="sm-tag">${e(agent.name)}</span>`).join("")}${agents.length > 6 ? `<span class="sm-tag">+${agents.length - 6}</span>` : ""}</div>
-        <div class="sm-ws-foot"><button class="btn ghost" type="button" data-open-workspace="${e(workspace.id)}">浏览条目</button><span class="sm-spacer"></span>${workspace.kind === "linked" ? `<button class="btn ghost sm-danger" type="button" data-workspace-delete="${e(workspace.id)}">移除</button>` : ""}</div>
-      </article>`;
-    }
-    function paintWorkspaces() {
-      if (state.disposed) return;
-      if (state.entriesFor) return paintEntries();
-      const workspaces = state.workspaces;
-      const body = !workspaces
-        ? state.workspacesError
-          ? errorBlock(state.workspacesError)
-          : `<div class="sm-ws-grid">${skeletonCards(3)}</div>`
-        : `<div class="sm-ws-grid">${workspaces.map(workspaceCard).join("")}</div>`;
-      content.innerHTML = `<div class="sm-view">
-        <section class="sm-section">
-          <div class="sm-section-head"><div><h2>${icon("workspaces", 16)}工作区 <span class="sm-count">${workspaces ? workspaces.length : ""}</span></h2><p>全局工作区聚合各 Agent 的全局目录；项目工作区位于 Profile 工作区；自定义关联目录需要本机绝对路径。</p></div><div class="sm-section-tools"><button class="btn" type="button" data-workspace-add>＋ 关联目录</button></div></div>
-          ${state.workspacesError && workspaces ? `<div class="sm-error-banner" role="alert">${icon("alert", 16)}<div><strong>已保留上次结果</strong><span>${e(state.workspacesError)}</span></div></div>` : ""}
-          ${body}
-        </section>
-        <div class="sm-callout">${icon("shield", 14)}<h3>只读边界</h3><ul><li>条目浏览只读取工作区目录与中央库的对照结果，不会部署、同步或删除技能。</li><li>关联目录只登记本机绝对路径；后端会核验目录存在，不会创建目录。</li><li>只有自定义关联工作区可以移除登记，不影响磁盘目录。</li></ul></div>
-      </div>`;
-      const add = q("[data-workspace-add]", content);
-      if (add) add.onclick = workspaceDialog;
-      qa("[data-workspace-delete]", content).forEach((button) => {
-        button.onclick = async () => {
-          const workspace = (state.workspaces || []).find((item) => item.id === button.dataset.workspaceDelete);
-          if (!workspace) return;
-          if (!confirm(`移除关联工作区「${workspace.name}」？只删除登记，不会删除磁盘目录或已部署的技能。`)) return;
-          button.disabled = true;
-          try {
-            await api("POST", "/workspaces/delete", { id: workspace.id });
-            U().notify("关联工作区已移除", { kind: "success" });
-            state.workspaces = null;
-            await loadWorkspaces({ force: true });
-            void loadOverview({ quiet: true });
-          } catch (error) {
-            U().notify(error.message, { kind: "error" });
-            if (button.isConnected) button.disabled = false;
-          }
-        };
-      });
-    }
-    async function loadWorkspaces({ force = false } = {}) {
-      if (state.disposed) return;
-      if (state.workspaces && !force) {
-        paintWorkspaces();
-        return;
-      }
-      const seq = ++workspacesToken;
-      try {
-        const result = await api("GET", "/workspaces");
-        if (state.disposed || seq !== workspacesToken) return;
-        state.workspaces = result.items || [];
-        state.workspacesError = "";
-        if (state.overview) state.overview.workspaces = state.workspaces;
-        paintWorkspaces();
-        syncTabCounts();
-      } catch (error) {
-        if (state.disposed || seq !== workspacesToken || error.name === "AbortError") return;
-        state.workspacesError = error.message || "读取失败";
-        paintWorkspaces();
-      }
-    }
-    function workspaceDialog() {
-      const agents = state.overview?.agents || [];
-      const dialog = modal(
-        "关联目录",
-        `<form class="sm-form" data-workspace-form>
-          <label>名称（可选）<input name="name" maxlength="80" placeholder="默认使用目录名" autocomplete="off"></label>
-          <label>本机绝对目录<input name="root" placeholder="D:\\path\\to\\workspace" required autocomplete="off"></label>
-          <p class="sm-hint">后端会核验目录真实存在；只登记路径，不会创建或修改目录。</p>
-          <fieldset class="sm-checks"><legend>参与的 Agent</legend>${agents
-            .map(
-              (agent) =>
-                `<label class="sm-check"><input type="checkbox" name="agent" value="${e(agent.id)}" ${
-                  agent.projectRelative ? "" : "disabled"
-                }> <span>${e(agent.name)}</span><span class="sm-muted">${agent.projectRelative ? e(agent.projectRelative) : "不支持项目目录"}</span></label>`,
-            )
-            .join("")}</fieldset>
-          <p class="sm-hint">不勾选时使用默认：所有支持项目相对目录的 Agent。</p>
-          <div class="sm-form-foot"><button class="btn" type="submit">登记关联目录</button><span class="sm-form-status" data-workspace-status role="status"></span></div>
-        </form>`,
-      );
-      const dialogEl = dialog.d;
-      const form = q("[data-workspace-form]", dialogEl);
-      const statusNode = q("[data-workspace-status]", dialogEl);
-      const submit = q('button[type="submit"]', form);
-      const setStatus = (text, kind = "") => {
-        statusNode.textContent = text;
-        statusNode.className = "sm-form-status" + (kind ? " " + kind : "");
-      };
-      form.onsubmit = async (event) => {
-        event.preventDefault();
-        if (submit.disabled) return;
-        const values = Object.fromEntries(new FormData(form));
-        const rootPath = String(values.root || "").trim();
-        if (!/^[A-Za-z]:[\\/]/.test(rootPath) || /^\\\\/.test(rootPath)) {
-          setStatus("请输入本机绝对路径，例如 D:\\work\\project。", "error");
-          return;
-        }
-        const body = { root: rootPath };
-        const name = String(values.name || "").trim();
-        if (name) body.name = name;
-        const checked = qa('input[name="agent"]:checked', form).map((input) => input.value);
-        if (checked.length) body.agentIds = checked;
-        submit.disabled = true;
-        setStatus("正在核验目录并登记…");
-        try {
-          await api("POST", "/workspaces", body);
-          dialog.close(true);
-          U().notify("已关联工作区", { kind: "success" });
-          state.workspaces = null;
-          await loadWorkspaces({ force: true });
-          void loadOverview({ quiet: true });
-        } catch (error) {
-          setStatus(error.message || "登记失败", "error");
-        } finally {
-          if (submit.isConnected) submit.disabled = false;
-        }
-      };
-    }
-    function openWorkspace(id) {
-      if (!id) return;
-      state.entriesFor = id;
-      state.entries = null;
-      state.entriesError = "";
-      const workspace = (state.workspaces || []).find((item) => item.id === id);
-      state.entriesName = workspace ? workspace.name : "";
-      selectTab("workspaces");
-    }
-    function paintEntries() {
-      if (state.disposed) return;
-      const data = state.entries;
-      const workspace = data?.workspace || null;
-      const name = workspace?.name || state.entriesName || "工作区";
-      const root = workspace ? workspace.root : "";
-      const kind = workspace ? KIND_LABEL[workspace.kind] || workspace.kind : "";
-      const items = data?.items || [];
-      const rows = data?.rows || [];
-      const inLibrary = items.filter((item) => item.inLibrary).length;
-      const missingChinese = items.filter((item) => item.missingLocalization).length;
-      const actionCount = (action) => rows.filter((row) => row.action === action).length;
-      const summary = [
-        `${items.length} 项技能`,
-        `中央库 ${inLibrary}`,
-        missingChinese ? `缺少中文 ${missingChinese}` : "",
-      ].filter(Boolean);
-      const body = state.entriesLoading && !data
-        ? `<div class="sm-entry-list">${skeletonCards(3)}</div>`
-        : state.entriesError && !data
-          ? errorBlock(state.entriesError)
-          : !data
-            ? loadingBlock("正在读取工作区条目…")
-            : `${
-                state.entriesError
-                  ? `<div class="sm-error-banner" role="alert">${icon("alert", 16)}<div><strong>已保留上次结果</strong><span>${e(state.entriesError)}</span></div></div>`
-                  : ""
-              }
-              ${
-                items.length
-                  ? `<ul class="sm-entry-list">${items
-                      .map((item) => {
-                        const zh = zhName(item);
-                        const description =
-                          zhDescription(item, true) || "暂无中文简介";
-                        return `<li class="sm-entry">
-                          <div class="sm-entry-main">
-                            <div class="sm-entry-title"><strong>${e(item.name)}</strong>${zh ? `<span class="sm-entry-cn">${e(zh)}</span>` : ""}${item.missingLocalization ? '<span class="sm-pill warn">缺少中文资料</span>' : ""}</div>
-                            <p class="sm-entry-desc">${e(description)}</p>
-                            <p class="sm-path">${e(item.path)}</p>
-                          </div>
-                          <div class="sm-entry-side">
-                            ${item.agentId ? `<span class="sm-pill quiet">${e(agentName(item.agentId))}</span>` : ""}
-                            <span class="sm-pill ${item.inLibrary ? "ok" : "quiet"}">${item.inLibrary ? "已在中央库" : "未收录到中央库"}</span>
-                            <span class="sm-pill ${deployTone(item.deployStatus)}">${e(deployText(item.deployStatus))}</span>
-                            ${(item.tags || []).slice(0, 2).map((tag) => `<span class="sm-tag">${e(tag)}</span>`).join("")}
-                          </div>
-                        </li>`;
-                      })
-                      .join("")}</ul>`
-                  : emptyBlock(
-                      "工作区目录中没有可读技能",
-                      root && workspace?.exists === false
-                        ? "工作区根目录尚未创建；创建目录并放入包含 SKILL.md 的技能后刷新即可。"
-                        : "只读取已登记目录的直接子目录，不会扫描整盘或执行技能。",
-                    )
-              }
-              ${rows.length ? `<div class="sm-callout"><h3>${icon("info", 14)}中央库对照</h3><div class="sm-coverage">${Object.keys(SYNC_ACTION)
-                .filter((action) => actionCount(action) > 0)
-                .map(
-                  (action) =>
-                    `<span class="sm-pill ${SYNC_ACTION[action][1]}">${SYNC_ACTION[action][0]} ${actionCount(action)}</span>`,
-                )
-                .join("")}</div><p class="sm-hint">只读对照，不会自动部署或收编技能。</p></div>` : ""}`;
-      content.innerHTML = `<div class="sm-view">
-        <button class="sm-back" type="button" data-workspace-back>${icon("back", 14)}返回工作区</button>
-        <section class="sm-section">
-          <div class="sm-entries-head">
-            <div><h2>${icon("workspaces", 16)}<span>${e(name)}</span>${kind ? `<span class="sm-pill quiet">${e(kind)}</span>` : ""}</h2><p class="sm-path" title="${e(root)}">${e(workspace?.kind === "global" ? "由各 Agent 的全局技能目录组成" : root || "—")}</p><div class="sm-entry-summary">${summary.map((text) => `<span class="sm-pill quiet">${e(text)}</span>`).join("")}</div></div>
-            <div class="sm-entries-tools"><button class="btn ghost" type="button" data-entries-refresh>刷新</button></div>
-          </div>
-          ${body}
-        </section>
-      </div>`;
-      q("[data-workspace-back]", content).onclick = () => {
-        state.entriesFor = "";
-        state.entries = null;
-        state.entriesError = "";
-        paintWorkspaces();
-        void loadWorkspaces({ force: true });
-      };
-      q("[data-entries-refresh]", content).onclick = () => void loadEntries(state.entriesFor, { force: true });
-    }
-    async function loadEntries(id, { force = false } = {}) {
-      if (!id || state.disposed) return;
-      if (state.entriesLoading && !force) return;
-      if (state.entries && !force && state.entriesFor === id) {
-        paintWorkspaces();
-        return;
-      }
-      const seq = ++entriesToken;
-      state.entriesFor = id;
-      state.entriesLoading = true;
-      state.entriesError = "";
-      paintWorkspaces();
-      try {
-        const data = await api("POST", "/workspace/entries", { id });
-        if (state.disposed || seq !== entriesToken || state.entriesFor !== id) return;
-        state.entries = data;
-        state.entriesError = "";
-        if (data.workspace) state.entriesName = data.workspace.name;
-      } catch (error) {
-        if (state.disposed || seq !== entriesToken || error.name === "AbortError") return;
-        state.entriesError = error.message || "读取失败";
-      } finally {
-        if (seq === entriesToken) {
-          state.entriesLoading = false;
-          paintWorkspaces();
-        }
-      }
-    }
-
-    /* ------------------------------------------------------------ 设置 */
-    function paintSettings() {
-      if (state.disposed) return;
-      const settings = state.settings;
-      const overview = state.overview;
-      const scan = overview?.scan || null;
-      const coverage = Array.isArray(scan?.coverage) ? scan.coverage : [];
-      const body = !settings
-        ? state.settingsError
-          ? errorBlock(state.settingsError)
-          : loadingBlock("正在读取设置…")
-        : `<div class="sm-setting-card">
-            <div class="sm-setting-row"><div class="sm-setting-text"><p class="sm-setting-label">中央技能库</p><p class="sm-setting-desc">当前 Profile 内的中央库目录。修改只改变指向，不移动已有文件；修改后需要重建索引。</p></div><div class="sm-setting-value"><p class="sm-path" title="${e(settings.libraryRoot)}">${e(settings.libraryRoot)}</p><button class="btn ghost" type="button" data-setting-library ${settings.libraryRootEditable === false ? "disabled" : ""}>修改</button></div></div>
-            <div class="sm-setting-row"><div class="sm-setting-text"><p class="sm-setting-label">默认同步方式</p><p class="sm-setting-desc">部署技能到 Agent 时优先使用符号链接；目标不支持时自动回退复制。此处只保存偏好，不会立即部署。</p></div><div class="sm-setting-value"><div class="sm-segment" role="group" aria-label="默认同步方式"><button type="button" data-mode="symlink" aria-pressed="${settings.defaultMode === "symlink"}">符号链接</button><button type="button" data-mode="copy" aria-pressed="${settings.defaultMode === "copy"}">复制</button></div></div></div>
-            <div class="sm-setting-row"><div class="sm-setting-text"><p class="sm-setting-label">工作区路径</p><p class="sm-setting-desc">项目工作区的根目录，由当前 Profile 决定，只读展示。</p></div><div class="sm-setting-value"><p class="sm-path" title="${e(settings.workspacePath)}">${e(settings.workspacePath)}</p></div></div>
-            <div class="sm-setting-row"><div class="sm-setting-text"><p class="sm-setting-label">中央库占用</p><p class="sm-setting-desc">只统计中央库内已登记目录的普通文件。</p></div><div class="sm-setting-value"><span>${overview ? `${overview.libraryTotal} 项 · ${fmtBytes(overview.library.bytes)}` : "未知"}</span></div></div>
-          </div>`;
-      content.innerHTML = `<div class="sm-view"><div class="sm-settings">
-        <section class="sm-section"><div class="sm-section-head"><div><h2>${icon("settings", 16)}设置</h2><p>中央库与扫描偏好。所有路径只在本机使用，不会上传技能正文。</p></div></div>${body}</section>
-        <section class="sm-section"><div class="sm-section-head"><div><h2>${icon("scan", 16)}索引</h2><p>索引只读取已登记目录，跳过不存在的目录与符号链接。</p></div><div class="sm-section-tools"><button class="btn ghost" type="button" data-scan-inline>重建索引</button></div></div>
-          <div class="sm-setting-card">
-            <div class="sm-setting-row"><div class="sm-setting-text"><p class="sm-setting-label">上次索引</p><p class="sm-setting-desc" data-scan-status>${scan ? `${fullTime(scan.at)} · 检查 ${num(scan.visited)} 个目录 · 收录 ${num(scan.absorbed)} 项${scan.limited ? " · 已达数量上限" : ""}` : "尚未建立本机索引。"}</p></div><div class="sm-setting-value"><span class="sm-pill ${scan ? "ok" : "quiet"}">${scan ? "已建立" : "未建立"}</span></div></div>
-            <div class="sm-setting-row"><div class="sm-setting-text"><p class="sm-setting-label">覆盖范围</p><p class="sm-setting-desc">每个来源的索引状态与收录数量；失败原因保留在上次索引记录中。</p></div><div class="sm-setting-value">${coverage.length ? `<div class="sm-coverage">${coverage.map((row) => `<span class="sm-pill ${coverageTone(row.status)}" title="${e((row.errors || []).join("；") || "无错误")}">${e(compactPath(row.path))} · ${num(row.count)} 项 · ${e(coverageText(row.status))}</span>`).join("")}</div>` : '<span class="sm-muted">尚无覆盖记录</span>'}</div></div>
-            <div class="sm-setting-row"><div class="sm-setting-text"><p class="sm-setting-label">只读扫描</p><p class="sm-setting-desc">不执行 SKILL.md 或脚本，不写入来源目录；只更新当前 Profile 的索引。</p></div><div class="sm-setting-value"><span class="sm-pill ok">始终只读</span></div></div>
-          </div>
-        </section>
-        <div class="sm-callout">${icon("shield", 14)}<h3>安全边界</h3><ul><li>技能正文只在详情中预览，来自安全快照；详情会重新核验 SKILL.md 是否仍在登记目录内。</li><li>中文展示保存到当前 Profile，不修改源文件、不上传正文。</li><li>来源启用、文件存在与技能实际部署分别说明，不相互替代。</li></ul></div>
-      </div></div>`;
-      if (!settings) return;
-      const libraryButton = q("[data-setting-library]", content);
-      if (libraryButton)
-        libraryButton.onclick = () => {
-          const dialog = modal(
-            "修改中央技能库",
-            `<form class="sm-form" data-library-form><label>中央库绝对路径<input name="libraryRoot" value="${e(settings.libraryRoot)}" required autocomplete="off"></label><p class="sm-hint">修改只改变指向，不移动已有文件；保存后需要重建索引。</p><div class="sm-form-foot"><button class="btn" type="submit">保存</button><span class="sm-form-status" data-library-status role="status"></span></div></form>`,
-          );
-          const form = q("[data-library-form]", dialog.d);
-          const statusNode = q("[data-library-status]", dialog.d);
-          const setStatus = (text, kind = "") => {
-            statusNode.textContent = text;
-            statusNode.className = "sm-form-status" + (kind ? " " + kind : "");
-          };
-          form.onsubmit = async (event) => {
-            event.preventDefault();
-            const value = String(form.elements.libraryRoot.value || "").trim();
-            if (!/^[A-Za-z]:[\\/]/.test(value) || /^\\\\/.test(value)) {
-              setStatus("请输入本机绝对路径。", "error");
-              return;
-            }
-            const submit = q('button[type="submit"]', form);
-            submit.disabled = true;
-            setStatus("正在保存…");
-            try {
-              await api("POST", "/settings", { libraryRoot: value });
-              dialog.close(true);
-              U().notify("中央库路径已更新", { kind: "success" });
-              state.overview = null;
-              void loadOverview({ quiet: true });
-              void loadSettings();
-            } catch (error) {
-              setStatus(error.message || "保存失败", "error");
-            } finally {
-              if (submit.isConnected) submit.disabled = false;
-            }
-          };
-        };
-      qa("[data-mode]", content).forEach((button) => {
-        button.onclick = async () => {
-          if (button.disabled || button.getAttribute("aria-pressed") === "true") return;
-          const mode = button.dataset.mode;
-          qa("[data-mode]", content).forEach((node) => (node.disabled = true));
-          try {
-            await api("POST", "/settings", { defaultMode: mode });
-            state.settings.defaultMode = mode;
-            if (state.overview) state.overview.library.defaultMode = mode;
-            U().notify("默认同步方式已更新", { kind: "success" });
-            paintSettings();
-          } catch (error) {
-            U().notify(error.message, { kind: "error" });
-            qa("[data-mode]", content).forEach((node) => (node.disabled = false));
-          }
-        };
-      });
-    }
-    async function loadSettings() {
-      if (state.disposed) return;
-      const seq = ++settingsToken;
-      try {
-        const data = await api("GET", "/settings");
-        if (state.disposed || seq !== settingsToken || state.tab !== "settings") return;
-        state.settings = data;
-        state.settingsError = "";
-        paintSettings();
-      } catch (error) {
-        if (state.disposed || seq !== settingsToken || error.name === "AbortError") return;
-        state.settingsError = error.message || "读取失败";
-        paintSettings();
-      }
-    }
-
-    /* ------------------------------------------------------------ 概览数据与索引 */
-    async function loadOverview({ quiet = false } = {}) {
-      if (state.disposed) return;
-      const seq = ++overviewToken;
-      try {
-        const data = await api("GET", "/overview");
-        if (state.disposed || seq !== overviewToken) return;
-        state.overview = data;
-        state.overviewError = "";
-        syncTabCounts();
-        if (num(data.libraryTotal) > 0) await loadAttention(seq);
-        else {
-          state.attentionItems = [];
-          state.attentionTotal = 0;
-        }
-        if (state.disposed || seq !== overviewToken) return;
-        if (state.tab === "overview") paintOverview();
-      } catch (error) {
-        if (state.disposed || seq !== overviewToken || error.name === "AbortError") return;
-        state.overviewError = error.message || "读取失败";
-        if (state.tab === "overview") paintOverview();
-      }
-    }
-    async function loadAttention(seq) {
-      try {
-        const data = await api("GET", "/library?offset=0&limit=100");
-        if (state.disposed || seq !== overviewToken) return;
-        state.attentionItems = data.items || [];
-        state.attentionTotal = num(data.total);
-      } catch {
-        if (seq === overviewToken) {
-          state.attentionItems = [];
-          state.attentionTotal = 0;
-        }
-      }
-    }
-    async function rescan() {
-      if (state.scanBusy || state.disposed) return;
-      state.scanBusy = true;
-      const headerButton = q("[data-rescan]", root);
-      const originalText = headerButton?.textContent;
-      if (headerButton) {
-        headerButton.disabled = true;
-        headerButton.textContent = "索引中…";
-      }
-      try {
-        const task = await U().request("POST", "/api/skills/scan", {}, { signal });
-        await U().job(task, {
-          signal,
-          onProgress: (progress) => {
-            if (!progress) return;
-            const node = q("[data-scan-status]", content);
-            if (node)
-              node.textContent = `已检查 ${num(progress.done)} / ${num(progress.total)} 个来源 · ${num(progress.skills)} 项技能`;
-          },
-        });
-        U().notify("索引已更新", { kind: "success" });
-        state.overview = null;
-        await loadOverview({ quiet: true });
-        if (state.tab === "library") void loadLibrary({ quiet: true });
-        if (state.tab === "workspaces") {
-          state.workspaces = null;
-          void loadWorkspaces({ force: true });
-        }
-        if (state.tab === "settings") void loadSettings();
-        if (state.tab === "agents") void loadAgents();
-      } catch (error) {
-        if (error.name !== "AbortError") U().notify("索引失败：" + error.message, { kind: "error" });
-      } finally {
-        state.scanBusy = false;
-        if (headerButton && headerButton.isConnected) {
-          headerButton.disabled = false;
-          headerButton.textContent = originalText || "重建索引";
-        }
-      }
-    }
-
-    /* ------------------------------------------------------------ 关闭与初始载入 */
-    root._wbUnsaved = () => !!(state.detail && state.detail.dirty);
+    injectCss();
+    root.classList.add("wb-fixed-layout");
+    root.innerHTML = `<div class="skm-app" data-skm>
+      <aside class="skm-side" data-skm-side aria-label="技能管理侧栏"></aside>
+      <main class="skm-main" data-skm-main><div class="skm-main-scroll"><div data-skm-page></div></div></main>
+      <div class="skm-sheet" data-skm-sheet hidden></div>
+      <div class="skm-live" aria-live="polite"></div>
+    </div>`;
+    const app = q("[data-skm]", root);
+    const sheet = q("[data-skm-sheet]", root);
+    sheet.innerHTML = sheetHTML();
+    bindEvents(app);
+    root._wbUnsaved = false;
+    const priorDispose = root._wbDispose;
     root._wbDispose = () => {
-      state.disposed = true;
-      clearTimeout(searchTimer);
-      detailAbort?.abort();
-      state.detail?.close();
-      state.detail = null;
-      root._wbUnsaved = () => false;
+      clearTimeout(state.searchTimer);
+      try { priorDispose?.(); } catch {}
     };
-
-    q("[data-refresh]", root).onclick = async () => {
-      const button = q("[data-refresh]", root);
-      if (button.disabled) return;
-      button.disabled = true;
-      try {
-        state.overview = null;
-        state.overviewError = "";
-        await loadOverview({ quiet: true });
-        if (state.tab === "library") await loadLibrary();
-        else if (state.tab === "agents") await loadAgents();
-        else if (state.tab === "workspaces") {
-          state.workspaces = null;
-          await loadWorkspaces({ force: true });
-        } else if (state.tab === "settings") await loadSettings();
-        U().notify("数据已刷新", { kind: "success" });
-      } finally {
-        if (button.isConnected) button.disabled = false;
-      }
-    };
-    q("[data-rescan]", root).onclick = () => void rescan();
-
-    syncTabCounts();
-    selectTab("overview");
+    state.groups = { presets: true, agents: true, workspaces: true };
+    paint();
+    await Promise.all([loadOverview(), loadSettings()]);
+    if (signal?.aborted || !root.isConnected) return;
+    if ((state.overview?.libraryTotal || 0) > 0) await loadLibrary();
+    paint();
+    void loadAgentCounts();
+    if (state.view === "library" && !state.library.loaded) await loadLibrary();
+    if (state.view.startsWith("agent:")) await loadAgentSkills(state.view.slice(6));
+    if (state.view.startsWith("workspace:")) await loadEntries(state.view.slice(10));
   }
 
   window.LibraryViews = { prompts, skills };

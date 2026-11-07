@@ -864,8 +864,8 @@
     clearInterval(usageTimer);
     const surface=root.closest('.module-surface'),restored=surface?._wbSaved?.custom?.usage;
     let valueCurrency =
-      window.wbLayoutStorage.getItem("wb-usage-value-currency") || "USD";
-    if (!["USD", "CNY"].includes(valueCurrency)) valueCurrency = "USD";
+      window.wbLayoutStorage.getItem("wb-usage-value-currency") || "CNY";
+    if (!["USD", "CNY"].includes(valueCurrency)) valueCurrency = "CNY";
     let scope = restored?.scope || window.wbLayoutStorage.getItem("wb-usage-scope") || "codex",
       connections = [],
       generation = 0,

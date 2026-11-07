@@ -120,7 +120,7 @@ function TimelineGraph({
   const lanes = Math.max(1, result.summary.lanes);
   const laneHeight = 28;
   // Tags and branch pills ride above the lane graph, so the top lane needs headroom.
-  const topPad = 40;
+  const topPad = 56;
   const scroller = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState(1200);
   // A horizontal rail that shows only a handful of nodes reads as broken, so the per-node

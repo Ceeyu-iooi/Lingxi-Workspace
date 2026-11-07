@@ -1,9 +1,9 @@
 {
-  "version": "0.1.33",
+  "version": "0.1.34",
   "files": [
     {
       "file": "README.md",
-      "sha256": "93fa9edeec31cd767951d5f628feaee810b9dbb3c25c8f67e09d7e25cf4073fd"
+      "sha256": "d876fc2184361e4d4e22f930de0b77daa089b5a7e680e3eb6b508c071be1e4f9"
     },
     {
       "file": "LICENSE",
@@ -19,7 +19,7 @@
     },
     {
       "file": "VERSION",
-      "sha256": "ff2f6790884758032578c21511c047d1f2730bca0530b9db47e8a1fbf49a3fda"
+      "sha256": "691087f859ce8399cb11902c2fb32ed9095a22d055f0bd7d8ff97274f5d6e650"
     },
     {
       "file": "design.md",
@@ -286,6 +286,10 @@
       "sha256": "dbd025380652900428805b7e0c67a0e7d03794d7cb982797b9bea2f565bffcf6"
     },
     {
+      "file": "src/shared/model-logo.ts",
+      "sha256": "19cdb43221ee514daefbdef58bc9805f6bf0aa84a2c862f0de51757e87068f02"
+    },
+    {
       "file": "src/shared/session-usage.ts",
       "sha256": "42862597c5ce80180c87a78283e5ea2ca12be80b076be5a690686cb540597fe0"
     },
@@ -343,7 +347,7 @@
     },
     {
       "file": "frontend/app/git-timeline.tsx",
-      "sha256": "c17af50d0600fb807f73e2ff9045925764ba004109dfb616f62b3c4679c01a0d"
+      "sha256": "3fab822f43a4e74d96f4966773fe04877447068894d1745d630c12073d190ba2"
     },
     {
       "file": "frontend/app/index.html",
@@ -447,7 +451,7 @@
     },
     {
       "file": "frontend/compat/control-center.ts",
-      "sha256": "987706852b5a3d0074638505f5a298d7e81672497ae4fcfafea71420ed2ea6d4"
+      "sha256": "05e73f6003b1481277015bb0f8308b3af180a9518fea1e3493a4320986c4a1ac"
     },
     {
       "file": "frontend/compat/dialogs.ts",
@@ -463,7 +467,7 @@
     },
     {
       "file": "frontend/compat/library-views.ts",
-      "sha256": "b13663d6ae8e7da46cb1b33e2f68269732e6a47bf857227492299117b337cb75"
+      "sha256": "9de50500c22283b7d80e3a28e4e46bd4363af2c5076c6385aa33aefce9c9ee33"
     },
     {
       "file": "frontend/compat/lingxi-design.ts",
@@ -723,7 +727,7 @@
     },
     {
       "file": "static/git-timeline.css",
-      "sha256": "04df59c69a4c834d25a546a5c06bf064acf7622fd0a17236b5182aff9229523d"
+      "sha256": "9893b51759dfe240ac14d696b65493511dde3440767449dd233a7a33fb25b1bd"
     },
     {
       "file": "static/index.html",
@@ -735,7 +739,7 @@
     },
     {
       "file": "static/lingxi-design.css",
-      "sha256": "1f3fa7be959a1bf667a9ef6e50d0bbcffcf189c77e6b8baee52d4a40e7666fdb"
+      "sha256": "c5e0b86cff1073dea8f515c1fe4f0a173cd6252bca582b4b726286bd06a9ad56"
     },
     {
       "file": "static/news-board.css",
@@ -787,7 +791,7 @@
     },
     {
       "file": "static/skill-manager.css",
-      "sha256": "6e7681b1c070805a10c70dec98b21bd39278ca41a72f6d81da74c54c680943c2"
+      "sha256": "899eb2fa8d48e0a683e0adad4c5e2ba1ef164022460da6352668d0195f9afcda"
     },
     {
       "file": "static/startup.css",
@@ -967,7 +971,7 @@
     },
     {
       "file": "docs/USAGE.md",
-      "sha256": "655bfa1c0347be95b29c4d80edaa53be249684a8968822980906219a743c1a28"
+      "sha256": "cdfb3d8ad5227fa60cfad4c052875aa202719d18cab482ecb733b4b363973fe2"
     },
     {
       "file": "scripts/build_app.cjs",
@@ -975,7 +979,15 @@
     },
     {
       "file": "scripts/build_server.cjs",
-      "sha256": "146326327bb9d71c1674039ed011bdb7a455fa2b501e4062a9293605122dfaf9"
+      "sha256": "fd3ab5bb1ae53cb5424dc099baf76707c51e175ea31db30300b4f3b50ba86fd1"
+    },
+    {
+      "file": "scripts/bundle_backend.cjs",
+      "sha256": "b55c1c4f46b9961ca9acfaeea1daaffc9c6b9b290f4be6ebabd753961e15b644"
+    },
+    {
+      "file": "scripts/package_manifest.cjs",
+      "sha256": "997ba5c19ac0c6001243db2fd5c72a09b8ffe3bef079af1befb4c78636398664"
     },
     {
       "file": "scripts/web_launcher.mjs",

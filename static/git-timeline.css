@@ -317,8 +317,8 @@ body[data-page="git-timeline"] {
   transform: translateX(-50%);
   display: flex;
   align-items: flex-end;
-  gap: 3px;
-  margin-bottom: 7px;
+  gap: 4px;
+  margin-bottom: 9px;
   white-space: nowrap;
   pointer-events: none;
   z-index: 2;
@@ -326,9 +326,9 @@ body[data-page="git-timeline"] {
 .gt-ref {
   display: inline-flex;
   align-items: center;
-  height: 16px;
-  padding: 0 7px;
-  font-size: 9.5px;
+  height: 19px;
+  padding: 0 9px;
+  font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.01em;
   border-radius: 999px;
@@ -338,12 +338,14 @@ body[data-page="git-timeline"] {
 }
 /* Tags read as small pennants: a notch on the left edge plus a slightly squarer body. */
 .gt-ref-tag {
-  padding-left: 11px;
-  border-radius: 3px 8px 8px 3px;
-  color: #7a4a00;
-  border-color: color-mix(in srgb, #f0a020 55%, transparent);
-  background: color-mix(in srgb, #ffd79a 72%, var(--surface, #fff));
-  clip-path: polygon(6px 0, 100% 0, 100% 100%, 6px 100%, 0 50%);
+  padding-left: 13px;
+  border-radius: 3px 9px 9px 3px;
+  color: #5c3600;
+  font-weight: 700;
+  border-color: color-mix(in srgb, #e08a05 62%, transparent);
+  background: linear-gradient(135deg, #ffe0a3, #ffc266);
+  box-shadow: 0 2px 7px -3px rgb(170 100 0 / 45%);
+  clip-path: polygon(7px 0, 100% 0, 100% 100%, 7px 100%, 0 50%);
 }
 .gt-ref-tag.is-annotated {
   color: #fff;
@@ -359,9 +361,9 @@ body[data-page="git-timeline"] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 104px;
+  max-width: 118px;
 }
-.gt-ref-tag .gt-ref-name { max-width: 88px; }
+.gt-ref-tag .gt-ref-name { max-width: 96px; font-variant-numeric: tabular-nums; }
 .gt-node.is-first .gt-node-refs {
   left: 0;
   transform: none;
@@ -370,6 +372,14 @@ body[data-page="git-timeline"] {
   left: auto;
   right: 0;
   transform: none;
+}
+/* 引用胶囊比节点宽，隐藏会被压住的短哈希，避免标签与哈希互相遮挡 */
+.gt-node.has-refs .gt-node-meta,
+.gt-node:has(+ .gt-node.has-refs) .gt-node-meta {
+  display: none;
+}
+.gt-node.has-refs .gt-node-dot {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gt-lane, var(--accent)) 14%, transparent);
 }
 .gt-ref-more {
   color: var(--ink-2, #63758a);
