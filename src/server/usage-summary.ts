@@ -215,7 +215,8 @@ export class Dataset {
       });
     }
     const activity: JsonObject[] = [],
-      activityStart = addDays(end, -365),
+      activityEnd = params.activity_today === "1" ? shanghaiDay(new Date()) : end,
+      activityStart = addDays(activityEnd, -365),
       older = summarize(
         picked.filter((r) => r.local_date < activityStart),
         this.currency,
@@ -229,7 +230,7 @@ export class Dataset {
     let
       unknownCost = older.costUnknown;
     for (let i = 0; i < 366; i++) {
-      const day = addDays(end, i - 365),
+      const day = addDays(activityEnd, i - 365),
         s = dayValues.get(day) || empty;
       for (const key of ["total", "requests", "unknown"] as const) {
         const value=BigInt(running[key])+BigInt(s[key]);

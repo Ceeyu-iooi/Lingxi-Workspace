@@ -25,7 +25,7 @@ import type { PriceSnapshot } from './price-source.ts';
  *   can be located but not converted into a token estimate.
  */
 
-export const OFFICIAL_POLICY = 'official-price-table-v2';
+export const OFFICIAL_POLICY = 'official-price-table-v3';
 
 export type OfficialSource = {
   vendor: string;
@@ -805,6 +805,9 @@ export function officialQuoteFor(rate: OfficialRate, day: string): OfficialAppli
   if (day >= rate.history.currentEffective)
     return { status: 'exact', effective: rate.history.currentEffective, gapDays: 0, estimatedFrom: null };
   const gapDays = Math.round((Date.parse(rate.history.currentEffective) - Date.parse(day)) / 86400000);
+  const beforeFirst = Math.round((Date.parse(rate.history.start) - Date.parse(day)) / 86400000);
+  if (beforeFirst > 0 && beforeFirst <= 14)
+    return {status:'estimated',effective:rate.history.start,gapDays:beforeFirst,estimatedFrom:rate.history.start};
   if (day > rate.history.start)
     return { status: 'estimated', effective: rate.history.start, gapDays, estimatedFrom: rate.history.start };
   return { status: 'unknown', effective: null, gapDays, estimatedFrom: null };

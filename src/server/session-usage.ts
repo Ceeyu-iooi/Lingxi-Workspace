@@ -197,7 +197,7 @@ export function aggregateSessions(
     now?: number;
     range?: [string, string];
     projectTree?: boolean;
-    metadata?: (session: string) => {title?: string; project?: string} | undefined;
+    metadata?: (session: string) => {title?: string; project?: string; parent?: string} | undefined;
   },
 ): SessionUsageResult {
   const params = options.params || {},
@@ -210,15 +210,31 @@ export function aggregateSessions(
   const dayTotals = new Map<string, { total: bigint | null; unknown: boolean; requests: number }>();
   const summary = summaryAccumulator(currency);
   const projects = new Map<string, Map<string, Bucket>>();
+  const parents = new Map<string,string>();
+  const rootSession = (session: string) => {
+    const cached = parents.get(session);
+    if (cached !== undefined) return cached;
+    let current = session;
+    const visited = new Set([current]);
+    while (options.projectTree) {
+      const parent = options.metadata?.(current)?.parent;
+      if (!parent) break;
+      if (visited.has(parent)) return session;
+      visited.add(parent);
+      current = parent;
+    }
+    parents.set(session,current);
+    return current;
+  };
   for (const row of rows) {
     if (typeof row.local_date !== "string" || row.local_date < start || row.local_date > end) continue;
     summary.add(row);
-    const session = typeof row.session === "string" ? row.session.trim() : "";
+    const session = rootSession(typeof row.session === "string" ? row.session.trim() : "");
     const requests = Number(row.platform_requests ?? 1);
     const b = buckets.get(session) || buckets.set(session, bucket(session)).get(session)!;
     addRow(b, row, currency, requests);
     if (options.projectTree) {
-      const project = session ? row.project || options.metadata?.(session)?.project || "" : "";
+      const project = session ? options.metadata?.(session)?.project || row.project || "" : "";
       const sessions = projects.get(project) || projects.set(project, new Map()).get(project)!;
       const entry = sessions.get(session) || sessions.set(session, bucket(session)).get(session)!;
       addRow(entry, row, currency, requests);
@@ -410,7 +426,7 @@ export function sessionUsage(
     dataVersion?: string;
     now?: number;
     projectTree?: boolean;
-    metadata?: (session: string) => {title?: string; project?: string} | undefined;
+    metadata?: (session: string) => {title?: string; project?: string; parent?: string} | undefined;
   },
 ): SessionUsageResult {
   const params = options.params || {};

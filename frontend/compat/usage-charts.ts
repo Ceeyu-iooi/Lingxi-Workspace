@@ -313,10 +313,11 @@ import {modelBrand} from "../../src/shared/model-brand";
       let text = valid(row)
         ? `${row.date}\n${row.provided === false ? "已知 " : ""}${value(host, row.total)}${unit(host)}${host.dataset.experimental === "true" ? " · API 等价值（实验）" : ""}`
         : `${row.date}\n${host.dataset.experimental === "true" ? "该日等价值未知" : "平台未返回该日" + (host.dataset.metric === "cost" ? "费用" : "用量")}`;
-      const detailRows = segment ? [{ label: segment.dataset.model, value: value(host, Number(segment.dataset.total)) + unit(host), color: segment.getAttribute("fill") || "#2563EB" }] : (row.models || []).slice().sort((a,b)=>b.total-a.total || modelKey(a).localeCompare(modelKey(b))).map(m=>({ label:m.model, value:m.total==null?"未知":(m.exactTotal?full(m.exactTotal):value(host,m.total))+unit(host), color:modelColor(modelKey(m)) }));
+      const suffix = host.dataset.axisInset === "fixed" ? "" : unit(host);
+      const detailRows = segment ? [{ label: segment.dataset.model, value: value(host, Number(segment.dataset.total)) + suffix, color: segment.getAttribute("fill") || "#2563EB" }] : (row.models || []).slice().sort((a,b)=>b.total-a.total || modelKey(a).localeCompare(modelKey(b))).map(m=>({ label:m.model, value:m.total==null?"未知":(m.exactTotal?full(m.exactTotal):value(host,m.total))+suffix, color:modelColor(modelKey(m)) }));
       const exact=row.exactTotal?full(row.exactTotal):value(host,row.total);
-      if(host.dataset.metric==='cost'&&row.provided===false)detailRows.push({label:'范围',value:'仅显示已知金额，缺价部分未计入',color:''});
-      tip.show({primary:valid(row)?(row.provided===false?'已知 ':'')+exact+unit(host):host.dataset.emptyLabel||"未返回",date:row.caption||row.date,rows:detailRows}, clientX ?? screen.x, clientY ?? screen.y);
+      if(host.dataset.axisInset!=='fixed'&&host.dataset.metric==='cost'&&row.provided===false)detailRows.push({label:'范围',value:'仅显示已知金额，缺价部分未计入',color:''});
+      tip.show({primary:valid(row)?(row.provided===false?'已知 ':'')+exact+suffix:host.dataset.emptyLabel||"未返回",date:row.caption||row.date,rows:detailRows}, clientX ?? screen.x, clientY ?? screen.y);
     };
     const clipId = "usage-reveal-" + ++sequence;
     const draw = () => {
@@ -354,7 +355,7 @@ import {modelBrand} from "../../src/shared/model-brand";
       if(['rate','decimal'].includes(host.dataset.format))({step,upper,lower}=decimalAxis(rows.filter(valid).map(r=>r.total),host.dataset.axisDomain==='extent'));
       const measure = document.createElement("canvas").getContext("2d");
       measure.font = "12px " + getComputedStyle(svg).fontFamily;
-      const left = Math.max(
+      const left = host.dataset.axisInset === "fixed" ? 68 : Math.max(
           host.dataset.axisInset === "compact" ? 38 : 96,
           Math.ceil(Math.max(measure.measureText(value(host, upper)).width,measure.measureText(value(host, lower)).width)) + (host.dataset.axisInset === "compact" ? 10 : 18),
         ),
@@ -408,7 +409,7 @@ import {modelBrand} from "../../src/shared/model-brand";
           ),
         ),
       ];
-      const tickLabel = (n) => host.dataset.format==='rate'?n.toFixed(Math.min(8,Math.max(4,-Math.floor(Math.log10(step))+1))):value(host,n);
+      const tickLabel = (n) => host.dataset.format==='rate'?n.toFixed(Math.min(8,Math.max(4,-Math.floor(Math.log10(step))+1))):host.dataset.axisInset === "fixed" && host.dataset.metric !== "cost" ? value(host,n).replace(/\.00(?=\s|$)/g,"") : value(host,n);
       const linePath=points=>host.dataset.interpolation==='step'&&points.length?'M '+points[0].join(' ')+points.slice(1).map(p=>' H '+p[0]+' V '+p[1]).join(''):smooth(points);
       const baseline=layout.y(Math.max(lower,Math.min(upper,0)));
       let chart = "";
@@ -490,7 +491,7 @@ import {modelBrand} from "../../src/shared/model-brand";
             part.push([layout.x(i), y]);
             dates.push(row.date);
             geometry.set(row.date, { y });
-          } else emit();
+          } else if (host.dataset.connectGaps !== "true") emit();
         });
         emit();
       }

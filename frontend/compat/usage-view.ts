@@ -90,11 +90,11 @@
       : '<path d="m6 15 4-6 4 3 6-7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>') +
     "</svg>";
   const heatStops = [
-    [0, [226, 231, 237]],
-    [0.25, [196, 214, 235]],
-    [0.5, [142, 175, 217]],
-    [0.75, [80, 126, 189]],
-    [1, [24, 69, 134]],
+    [0, [250, 250, 250]],
+    [0.25, [199, 193, 251]],
+    [0.5, [149, 135, 252]],
+    [0.75, [98, 78, 253]],
+    [1, [31, 1, 254]],
   ];
   function number(el, value, raw = false, suffix = "", replay = false) {
     if (!el) return;

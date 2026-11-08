@@ -470,6 +470,19 @@ export class UsageAccounts {
     p.saveCredentials(keys);
     this.write({...row,keyTrackingId:matched.tracking,historyEnabled:true,capabilities:{...row.capabilities,historyQuery:true},revision:uid()});
   }
+  async modelProviderDeepseekBalance() {
+    const state = this.control.state();
+    const keys = this.control.profile.credentials();
+    const official = state.providers.filter((provider: JsonObject) => {
+      if (!provider.enabled || !keys[provider.id]) return false;
+      try { return new URL(provider.baseUrl).origin === "https://api.deepseek.com"; }
+      catch { return false; }
+    });
+    const distinct = [...new Set<string>(official.map((provider: JsonObject) => String(keys[provider.id])))];
+    if (distinct.length !== 1) return {balances: [], multiple: distinct.length > 1};
+    const {balances} = await this.deepseek(distinct[0]);
+    return {balances, multiple: false};
+  }
   private async deepseek(key: string) {
     const get = (path: string) =>
         providerJSON("https://api.deepseek.com" + path, {

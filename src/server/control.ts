@@ -11,7 +11,7 @@ import {
 
 export const FEATURES = {
   codexValuationEnabled: false,
-  codexPricingAutoUpdate: false,
+  codexPricingAutoUpdate: true,
   promptAutosave: true,
   promptAIEnabled: true,
 };

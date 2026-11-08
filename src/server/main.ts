@@ -988,6 +988,9 @@ export async function startServer(
   app.get('/api/codex/local-authorization',()=>codexLogin.state());
   app.post('/api/codex/local-authorization',(request,reply)=>local(request)?codexLogin.authorize(body(request).authorized===true):reply.code(403).send({error:'本地凭据授权仅允许本机操作'}));
   app.get("/api/codex/account", () => codexLogin.account());
+  app.get("/api/usage/deepseek-balance", (request, reply) =>
+    desktopBridge(request) ? accounts.modelProviderDeepseekBalance() :
+      reply.code(403).send({error:"仅限本机任务栏查询"}));
   app.get("/api/usage/connections", () => accounts.list());
   app.post('/api/deepseek/authorization/start',(request,reply)=>local(request)?deepseekAuthorization.start(String(body(request).connectionId||''),body(request).allowLogin===true&&desktopBridge(request)):reply.code(403).send({error:'授权窗口仅允许在本机打开'}));
   app.get('/api/deepseek/authorization/status',(request,reply)=>local(request)?deepseekAuthorization.state():reply.code(403).send({error:'授权状态仅允许本机查看'}));

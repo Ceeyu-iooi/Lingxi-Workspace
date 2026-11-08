@@ -1,5 +1,5 @@
 {
-  "version": "0.1.35",
+  "version": "0.1.36",
   "files": [
     {
       "file": "README.md",
@@ -19,11 +19,11 @@
     },
     {
       "file": "VERSION",
-      "sha256": "ad293b715e631d84895611a4991dfa1d0f824c1ed575cf93edb6a51492ed9e69"
+      "sha256": "196fad5565a3093a857e884d66978883793c1b7a810547fa98759044c274e851"
     },
     {
       "file": "design.md",
-      "sha256": "aa0ed4a9c2527bba51702d7853d3f35c53c8b296a45e1d7037c296d293639065"
+      "sha256": "c271e3ced482202f41e640caf279ee5251b91a42ae44cfac7c70bd2a4ad2f35a"
     },
     {
       "file": "start.bat",
@@ -99,7 +99,7 @@
     },
     {
       "file": "src/server/control.ts",
-      "sha256": "87ed57123a069962f4eb9cf902b5cccc853f4b6cf8a0f6470424d40baf8a22f5"
+      "sha256": "da238bb42bbd0631e3086ab88e89b12a3315e2516a5226537cdd5e0d559e233c"
     },
     {
       "file": "src/server/deepseek-authorization.ts",
@@ -131,7 +131,7 @@
     },
     {
       "file": "src/server/main.ts",
-      "sha256": "8ee2b758555eb8d87af40e534a35d7e1bf2a28f026df4f3d0f231eaa0b626b7f"
+      "sha256": "e693171a5d372bbaeae88e26bf70851aedaa95293de482bc8ae6c201631109bb"
     },
     {
       "file": "src/server/maintain.ts",
@@ -155,7 +155,7 @@
     },
     {
       "file": "src/server/official-pricing.ts",
-      "sha256": "512cd1d69c5947780f5930d5484d514ec5ba25ecde415cfd82ca6fcc72e7d59a"
+      "sha256": "ec602a3501ab5517de5250623a29a11fa2f15beabbc30a5a7f4c99c10c57713b"
     },
     {
       "file": "src/server/package.json",
@@ -175,7 +175,7 @@
     },
     {
       "file": "src/server/pricing.ts",
-      "sha256": "94ed14bb76da964d2aa0cddc425b99b854dbb765d5ec100b8d270b2450863c31"
+      "sha256": "711c3bcbdef229d4197c9c1fe6b7ead72257919445280d246dced59facbd5adf"
     },
     {
       "file": "src/server/profile.ts",
@@ -211,11 +211,11 @@
     },
     {
       "file": "src/server/session-titles.ts",
-      "sha256": "d53c1bb784de32e5b78337cb211163825ad1fc8b1c4d8d01b2af8597b34f36aa"
+      "sha256": "765c19f00405d453cd4362fed5404f491f7fea83203848d66ffe376991445a30"
     },
     {
       "file": "src/server/session-usage.ts",
-      "sha256": "e0d823932ab24157148011d421bde77119bae5f34696b7aa8c4ed3f16f6ddb3c"
+      "sha256": "3eb2566ca841e11b13974af3a189d6f3fa70698578e739053dec2d6a7ee7925b"
     },
     {
       "file": "src/server/skill-manager.ts",
@@ -239,7 +239,7 @@
     },
     {
       "file": "src/server/usage-accounts.ts",
-      "sha256": "b05d96ecc1fe175843e46c33a116f33e81bc0216ec35e34672bd79a4551d5d0e"
+      "sha256": "669dc27d360493ec7270586149ca39e5aa2f18ca839eb7a4eb82a46f483e3b10"
     },
     {
       "file": "src/server/usage-cube.ts",
@@ -255,7 +255,7 @@
     },
     {
       "file": "src/server/usage-summary.ts",
-      "sha256": "7a599c9abc772c63aa9f7236e9ac790ffa56855c568642e8f589728f90e7a785"
+      "sha256": "0212674f2e95cf2d706822836fb1e97c823a293f3b32cd3f8745c1cd3d1805f6"
     },
     {
       "file": "src/server/web-updates.ts",
@@ -531,7 +531,7 @@
     },
     {
       "file": "frontend/compat/usage-charts.ts",
-      "sha256": "05809dfd0136d22d5dadd28f7f2d09572b19b25f44769c02bc686ab91eb58d3a"
+      "sha256": "dd7656316b4865379428fba248243ebdcbfd02142f79867ec1cfa8816900d470"
     },
     {
       "file": "frontend/compat/usage-filters.ts",
@@ -543,7 +543,7 @@
     },
     {
       "file": "frontend/compat/usage-view.ts",
-      "sha256": "79b4ed95a095d4ef1509f5e61a0664047701ba1d487a54660a320bc53e13e1dc"
+      "sha256": "408e07fb56dc4168d0ef807b4f5bbb34cc66908ccca0d08dcffeada3ae53eccd"
     },
     {
       "file": "frontend/compat/workbench-design.ts",
@@ -715,7 +715,7 @@
     },
     {
       "file": "static/control-center.css",
-      "sha256": "52117bae76b5a16e43bf9066783e89f0eb30838d9577be8f9db30853a7555d31"
+      "sha256": "b78d989de7ac8d1161779252d9bc239c0d4a4f882a9b20d5803140c3046927ed"
     },
     {
       "file": "static/design-preview.css",
@@ -827,7 +827,7 @@
     },
     {
       "file": "static/usage-stable.css",
-      "sha256": "3793e330240fad1fa1e4b0c32de0fdabaad9dbc170ddd834610a08ab84f45f44"
+      "sha256": "18936a9a9452f1b2e2c8e2e18a494757157f4be94948e4fc7c19d3480d17b773"
     },
     {
       "file": "static/usage-v23.css",

@@ -720,6 +720,12 @@ export class Pricing {
         valueParts: {},
         valueVersion: version,
       });
+    if ((row.total != null && String(row.total) === "0") ||
+        (!basePrice && row.source === "codex" && model.toLowerCase() === "codex-auto-review")) {
+      return {cost:"0",currency,valueReason:"priced",
+        valueProof:{model,priceDate:day,policy:row.total != null && String(row.total) === "0" ? "zero_usage" : "auto_review_zero_reference"},
+        valueParts:{},valueVersion:version};
+    }
     if (!basePrice) return fail("missing_historical_price", { model, priceDate: day, official: true });
     const price:JsonObject={...basePrice};
     if (price.unsupported) return fail("unsupported_pricing_rules", { model, priceDate: day, source: price.source, sourceUrl: price.source });
