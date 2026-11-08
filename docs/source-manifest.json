@@ -23,7 +23,7 @@
     },
     {
       "file": "design.md",
-      "sha256": "c271e3ced482202f41e640caf279ee5251b91a42ae44cfac7c70bd2a4ad2f35a"
+      "sha256": "7472565b3325299a0a151d685df15048bfd2ca8ffdbadbb9bd6d2f0429335e4e"
     },
     {
       "file": "start.bat",
@@ -211,11 +211,11 @@
     },
     {
       "file": "src/server/session-titles.ts",
-      "sha256": "765c19f00405d453cd4362fed5404f491f7fea83203848d66ffe376991445a30"
+      "sha256": "4ac0ccac3bc59f61c0d8fec419e02db603f3f788e3319e54c4db85bb374188b9"
     },
     {
       "file": "src/server/session-usage.ts",
-      "sha256": "3eb2566ca841e11b13974af3a189d6f3fa70698578e739053dec2d6a7ee7925b"
+      "sha256": "591ff3cedb59740cdd485a829ba7a9ba2ba4749028b5875aee88644e8a7d5ec1"
     },
     {
       "file": "src/server/skill-manager.ts",

@@ -226,15 +226,19 @@ export function aggregateSessions(
     parents.set(session,current);
     return current;
   };
+  const inheritedProjects = new Map<string,string>();
   for (const row of rows) {
     if (typeof row.local_date !== "string" || row.local_date < start || row.local_date > end) continue;
     summary.add(row);
-    const session = rootSession(typeof row.session === "string" ? row.session.trim() : "");
+    const recordedSession = typeof row.session === "string" ? row.session.trim() : "";
+    const session = rootSession(recordedSession);
     const requests = Number(row.platform_requests ?? 1);
     const b = buckets.get(session) || buckets.set(session, bucket(session)).get(session)!;
     addRow(b, row, currency, requests);
     if (options.projectTree) {
-      const project = session ? options.metadata?.(session)?.project || row.project || "" : "";
+      const inherited = session !== recordedSession;
+      const project = session ? options.metadata?.(session)?.project || (inherited ? inheritedProjects.get(session) : undefined) || row.project || "" : "";
+      if (inherited && project) inheritedProjects.set(session,project);
       const sessions = projects.get(project) || projects.set(project, new Map()).get(project)!;
       const entry = sessions.get(session) || sessions.set(session, bucket(session)).get(session)!;
       addRow(entry, row, currency, requests);

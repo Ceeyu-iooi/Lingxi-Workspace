@@ -1,5 +1,5 @@
-import {closeSync, existsSync, openSync, readFileSync, readSync, statSync} from "node:fs";
-import {dirname, extname, join, relative, resolve, isAbsolute, sep} from "node:path";
+import {closeSync, existsSync, openSync, readFileSync, readSync, realpathSync, statSync} from "node:fs";
+import {basename, dirname, extname, join, relative, isAbsolute, sep} from "node:path";
 import {DatabaseSync} from "node:sqlite";
 import {parseExact, type JsonObject, type ProfileStore} from "./profile.ts";
 
@@ -28,7 +28,12 @@ export function sessionMetadata(profile: ProfileStore, source: string, root?: st
         if (!line) continue;
         try { const row = JSON.parse(line); add(row.id, row.thread_name); } catch { /* ignore an incomplete line */ }
       }
-      const roots = [resolve(root), resolve(dirname(root), "archived_sessions")];
+      const canonical = realpathSync(root);
+      const roots = [canonical];
+      if (["sessions","archived_sessions"].includes(basename(canonical))) {
+        const sibling = join(dirname(canonical), basename(canonical) === "sessions" ? "archived_sessions" : "sessions");
+        if (existsSync(sibling)) roots.push(realpathSync(sibling));
+      }
       const cursors = profile.db.prepare("SELECT path,offset FROM cursors WHERE owner=?").iterate(profile.owner) as Iterable<JsonObject>;
       const buffer = Buffer.allocUnsafe(256 * 1024);
       for (const cursor of cursors) {
