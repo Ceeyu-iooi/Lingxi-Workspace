@@ -1,5 +1,5 @@
 {
-  "version": "0.1.34",
+  "version": "0.1.35",
   "files": [
     {
       "file": "README.md",
@@ -15,15 +15,15 @@
     },
     {
       "file": "TOKEN_ACCOUNTING.md",
-      "sha256": "5fd55706360e1a10e9e62998d0a515417f790db317bb0a444f2e18e4d0b4905d"
+      "sha256": "f0ebbc7db25b6e388e84008361832774a75e3f3e0f93a7e8c30d112f6560c291"
     },
     {
       "file": "VERSION",
-      "sha256": "691087f859ce8399cb11902c2fb32ed9095a22d055f0bd7d8ff97274f5d6e650"
+      "sha256": "ad293b715e631d84895611a4991dfa1d0f824c1ed575cf93edb6a51492ed9e69"
     },
     {
       "file": "design.md",
-      "sha256": "662a6c3fb1504d95976ad4c0c433c78f042608014efbe4d612cceddc19f9b73d"
+      "sha256": "aa0ed4a9c2527bba51702d7853d3f35c53c8b296a45e1d7037c296d293639065"
     },
     {
       "file": "start.bat",
@@ -51,7 +51,7 @@
     },
     {
       "file": "src/server/agents.ts",
-      "sha256": "21e1695b9f64ea16a504c403a24730911259bbcd5c3305dd1b4522c320bd7168"
+      "sha256": "9152e15bde3c0f860e10c9a4bae3f95c8a81f2f31f4d541df6c331c75fa64dd8"
     },
     {
       "file": "src/server/avatar-worker.ts",
@@ -131,7 +131,7 @@
     },
     {
       "file": "src/server/main.ts",
-      "sha256": "9f93986a0f73ccefc53dc509c3825661af216a3f87901ababa213c07adb271b5"
+      "sha256": "8ee2b758555eb8d87af40e534a35d7e1bf2a28f026df4f3d0f231eaa0b626b7f"
     },
     {
       "file": "src/server/maintain.ts",
@@ -210,8 +210,12 @@
       "sha256": "e262a89226fc6377625364c6594d8ea962fdb9aa56671335d00538e0d4b6022c"
     },
     {
+      "file": "src/server/session-titles.ts",
+      "sha256": "d53c1bb784de32e5b78337cb211163825ad1fc8b1c4d8d01b2af8597b34f36aa"
+    },
+    {
       "file": "src/server/session-usage.ts",
-      "sha256": "d11cbf5e691d9b4ad5468e99e1bd34a8a1e2ab9a0691fb52359a5feacf089cbc"
+      "sha256": "e0d823932ab24157148011d421bde77119bae5f34696b7aa8c4ed3f16f6ddb3c"
     },
     {
       "file": "src/server/skill-manager.ts",
@@ -239,7 +243,7 @@
     },
     {
       "file": "src/server/usage-cube.ts",
-      "sha256": "8f798e30805e370f77f1ff1896557741aa0556d6b169fb681122db76d4293a1f"
+      "sha256": "2f83292b9292de251b70ffe1fd12acd1a56975c1e1b5b4c94f7cadae6b7cac62"
     },
     {
       "file": "src/server/usage-import.ts",
@@ -251,7 +255,7 @@
     },
     {
       "file": "src/server/usage-summary.ts",
-      "sha256": "cca704af922876357a20742aa924cba822d17f9ee24e4881d14d92cf231b8572"
+      "sha256": "7a599c9abc772c63aa9f7236e9ac790ffa56855c568642e8f589728f90e7a785"
     },
     {
       "file": "src/server/web-updates.ts",
@@ -275,11 +279,11 @@
     },
     {
       "file": "src/shared/git-timeline.ts",
-      "sha256": "e376b2183bc2e29a4a53f5e2daee817119dec99781c2d757f2efad199c664745"
+      "sha256": "bf9d5fc7c853b2f9751b9414855840ec2c59f18795b19e7b3cde9fa4f19ed167"
     },
     {
       "file": "src/shared/model-brand.ts",
-      "sha256": "fa8380a5c090b255270ea73a011102fa5627f88366208dafaa725f952eb8b312"
+      "sha256": "10f6364f7d4139820746736f4bb1bd2f3e3c3673baaadd4a99d38d1f71e6a61b"
     },
     {
       "file": "src/shared/model-families.ts",
@@ -291,7 +295,7 @@
     },
     {
       "file": "src/shared/session-usage.ts",
-      "sha256": "42862597c5ce80180c87a78283e5ea2ca12be80b076be5a690686cb540597fe0"
+      "sha256": "d9877f2a0bbd08ef0e095a15d0de81da4532e8cde257c5f503ee6b6dc3475411"
     },
     {
       "file": "src/shared/skill-presentation.ts",
@@ -387,7 +391,7 @@
     },
     {
       "file": "frontend/app/preview.ts",
-      "sha256": "7f1167f7f3f978c1457af0eb1480eb014865883d498b022f05b651812891cbbf"
+      "sha256": "0873bde8e609e27d996a2a4d0b1e16f6037d93813627b8a39e61473388576d6f"
     },
     {
       "file": "frontend/app/prices.html",
@@ -527,7 +531,7 @@
     },
     {
       "file": "frontend/compat/usage-charts.ts",
-      "sha256": "2629883ea76af20d16d8842f6ac87c0fa25706124a81ce569abd9c32868074a9"
+      "sha256": "05809dfd0136d22d5dadd28f7f2d09572b19b25f44769c02bc686ab91eb58d3a"
     },
     {
       "file": "frontend/compat/usage-filters.ts",
@@ -539,7 +543,7 @@
     },
     {
       "file": "frontend/compat/usage-view.ts",
-      "sha256": "1b2547d8788df3c183690c4b8d0955342eb93fc7b611cca75bcac15f92c988c0"
+      "sha256": "79b4ed95a095d4ef1509f5e61a0664047701ba1d487a54660a320bc53e13e1dc"
     },
     {
       "file": "frontend/compat/workbench-design.ts",
@@ -614,8 +618,12 @@
       "sha256": "9e983b4f649c25c6ca0623a50be1a6e705fd8f49f756638b980fa13b40575ab6"
     },
     {
+      "file": "static/assets/floating/plugin-detail-dark.webp",
+      "sha256": "d6462161387f1d3bbd68cd1bedcac3bc7bc03ebb56504ec25382cbcf21f2e462"
+    },
+    {
       "file": "static/assets/floating/plugin-detail.webp",
-      "sha256": "08d41bf3f6cd8225d2c0588d2893c5f69b900f68315df1123147f13adddcfe95"
+      "sha256": "1876a7555115a81aa327b93835c771d0f50e864de9a6a166ac1b8bc016c6a94a"
     },
     {
       "file": "static/assets/floating/taskbar-entry.webp",
@@ -707,7 +715,7 @@
     },
     {
       "file": "static/control-center.css",
-      "sha256": "b172599ce3e1584bbf10789b9a09a2330398cae83c7d69cfff84ad2f91ae075d"
+      "sha256": "52117bae76b5a16e43bf9066783e89f0eb30838d9577be8f9db30853a7555d31"
     },
     {
       "file": "static/design-preview.css",
@@ -819,7 +827,7 @@
     },
     {
       "file": "static/usage-stable.css",
-      "sha256": "702772fa46777d27c0bfc71d9ef09ef3f8e27a46924ac67fca8cf3813a4d7395"
+      "sha256": "3793e330240fad1fa1e4b0c32de0fdabaad9dbc170ddd834610a08ab84f45f44"
     },
     {
       "file": "static/usage-v23.css",
@@ -931,7 +939,7 @@
     },
     {
       "file": "docs/design-coverage.json",
-      "sha256": "1171218dda9018b2b2eb1aa84ca09b78ec0d6eec7cee57d80b0523f92c74f7e7"
+      "sha256": "52b83eef393f8ffcaf5cc5fcf8193327c760ceb74f2dfb4777316510ac1ebd80"
     },
     {
       "file": "docs/design-reference-audit.json",
@@ -967,7 +975,7 @@
     },
     {
       "file": "docs/UI_DESIGN.md",
-      "sha256": "b185796bbee72e83e59392cd6ffc8666de80230e27f556735b942d4c82272266"
+      "sha256": "91c9dd5ca1fdaeb9045c037d72fa1fe8c738371453933c3fa8f1b6d708bc19ce"
     },
     {
       "file": "docs/USAGE.md",
@@ -987,7 +995,7 @@
     },
     {
       "file": "scripts/package_manifest.cjs",
-      "sha256": "997ba5c19ac0c6001243db2fd5c72a09b8ffe3bef079af1befb4c78636398664"
+      "sha256": "d514bb0217819e0fd26d5dcafbc141a867df35c916531a11c0c3b7b9f14cdb1a"
     },
     {
       "file": "scripts/web_launcher.mjs",

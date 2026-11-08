@@ -89,28 +89,13 @@
       ? '<path d="M8 16V9m5 7V5m5 11v-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>'
       : '<path d="m6 15 4-6 4 3 6-7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>') +
     "</svg>";
-  // Heat ramp: neutral low end, then cyan → indigo → magenta with even perceptual steps,
-  // so neighbouring days stay distinguishable instead of merging into one blue mass.
   const heatStops = [
-    [0.0, [246, 248, 251]],
-    [0.06, [234, 247, 251]],
-    [0.12, [214, 240, 250]],
-    [0.18, [185, 230, 248]],
-    [0.24, [150, 218, 245]],
-    [0.3, [111, 204, 240]],
-    [0.36, [79, 190, 234]],
-    [0.42, [63, 170, 227]],
-    [0.48, [79, 147, 218]],
-    [0.54, [107, 123, 208]],
-    [0.6, [142, 103, 198]],
-    [0.66, [179, 90, 186]],
-    [0.72, [212, 79, 172]],
-    [0.78, [233, 72, 155]],
-    [0.84, [240, 72, 138]],
-    [0.9, [228, 59, 120]],
-    [0.95, [206, 47, 102]],
-    [1.0, [176, 37, 86]],
-  ];;
+    [0, [226, 231, 237]],
+    [0.25, [196, 214, 235]],
+    [0.5, [142, 175, 217]],
+    [0.75, [80, 126, 189]],
+    [1, [24, 69, 134]],
+  ];
   function number(el, value, raw = false, suffix = "", replay = false) {
     if (!el) return;
     const previous=counters.get(el), signature=JSON.stringify([value,raw,suffix,el.dataset.currency]);
@@ -527,7 +512,7 @@
       columns = Math.ceil(map.children.length / 7);
     const key = JSON.stringify([activity, state.heat, cash]);
     // Keep empty cells theme-aware without forcing layout after counter updates.
-    const surface = "var(--color-surface, var(--surface))";
+    const surface = heatColor(0);
     const paint = (cell, r, motion) => {
       const before = cell.style.backgroundColor || surface,
         color = r.total ? heatColor(r.total / max) : surface;

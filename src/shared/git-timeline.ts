@@ -149,7 +149,7 @@ export interface GitTimelineResult {
   hint?: string;
   /** 本次载荷来自哪里 */
   source: GitTimelineSource;
-  /** 读取来源的中文说明，例如“读取来源：远程仓库 · 仓库名” */
+  /** 读取来源的中文说明，例如“读取来源：远程仓库” */
   sourceLabel: string;
   /** 远程仓库的 `owner/repo`；本地模式为 null */
   remote: string | null;

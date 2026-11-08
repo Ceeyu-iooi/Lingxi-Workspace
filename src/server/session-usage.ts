@@ -3,7 +3,7 @@ import {
   FIELDS,
   dateRange,
   shanghaiDay,
-  summarize,
+  summaryAccumulator,
   type Dataset,
 } from "./usage-summary.ts";
 import type { JsonObject } from "./profile.ts";
@@ -18,15 +18,9 @@ import {
   type SessionUsageUnknown,
 } from "../shared/session-usage.ts";
 
-/** Exact integer addition that keeps BigInt precision until the safe range ends. */
-function addCount(a: any, b: any): number | bigint {
-  const total = BigInt(a ?? 0) + BigInt(b ?? 0);
-  return total <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(total) : total;
-}
-
 function countOut(value: number | bigint | null): Count {
-  if (value == null) return null;
-  return typeof value === "bigint" ? value.toString() : value;
+  if (typeof value !== "bigint") return value;
+  return value <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(value) : value.toString();
 }
 
 const emptyUnknown = (): SessionUsageUnknown => ({
@@ -56,16 +50,11 @@ type Bucket = {
   total: bigint | null;
   unknown: SessionUsageUnknown;
   observed: number;
-  cachedKnown: bigint;
-  inputKnown: bigint;
   /** cached sum over rows that also reported input: the only measurable share. */
   rateCached: bigint;
   /** input sum over those same rows, so the ratio has one denominator. */
   rateInput: bigint;
   rateRows: number;
-  cachedUnknownRows: number;
-  inputUnknownRows: number;
-  cachedTotalRows: number;
   failures: number;
   modelTotals: Map<string, ModelTotal>;
   costs: Map<string, ExactSum>;
@@ -82,6 +71,7 @@ type ModelTotal = {
   cached: bigint | null;
   total: bigint | null;
   requests: number;
+  unknownTotal: boolean;
 };
 
 function bucket(session: string): Bucket {
@@ -104,14 +94,9 @@ function bucket(session: string): Bucket {
     total: null,
     unknown: emptyUnknown(),
     observed: 0,
-    cachedKnown: 0n,
-    inputKnown: 0n,
     rateCached: 0n,
     rateInput: 0n,
     rateRows: 0,
-    cachedUnknownRows: 0,
-    inputUnknownRows: 0,
-    cachedTotalRows: 0,
     failures: 0,
     modelTotals: new Map(),
     costs: new Map(),
@@ -120,52 +105,9 @@ function bucket(session: string): Bucket {
   };
 }
 
-/**
- * Aggregate already-filtered usage rows into request-session buckets.
- *
- * The rows are the same rows the daily dataset uses, so a session total is always the
- * sum of the daily totals for the same filter — there is no second accounting path.
- * Unknown fields stay counted per row (`unknownFields`) rather than being folded into 0.
- */
-export function aggregateSessions(
-  rows: Iterable<JsonObject>,
-  options: {
-    scope: string;
-    params?: JsonObject;
-    limit?: unknown;
-    currency?: string;
-    days?: number;
-    dataVersion?: string;
-    now?: number;
-    range?: [string, string];
-  },
-): SessionUsageResult {
-  const params = options.params || {},
-    now = options.now ?? Date.now(),
-    currency = options.currency || "CNY",
-    limit = clampSessionLimit(options.limit);
-  const [start, end] =
-    options.range || dateRange(options.days ?? 30, params, undefined, shanghaiDay(now));
-  const buckets = new Map<string, Bucket>();
-  const dayTotals = new Map<string, { total: bigint | null; requests: number }>();
-  // Retained only for the shared `summarize` accumulator, which reads the same rows once;
-  // the per-session buckets above are the authoritative page output.
-  const rowsBuffer: JsonObject[] = [];
-  let rowCount = 0;
-  for (const row of rows) {
-    if (
-      typeof row.local_date !== "string" ||
-      row.local_date < start ||
-      row.local_date > end
-    )
-      continue;
-    rowCount++;
-    rowsBuffer.push(row);
-    const rawSession = typeof row.session === "string" ? row.session.trim() : "";
-    const session = rawSession.slice(0, 300);
-    const b = buckets.get(session) || buckets.set(session, bucket(session)).get(session)!;
+function addRow(b: Bucket, row: JsonObject, currency: string, requests: number) {
     b.observed++;
-    b.requests += Number(row.platform_requests ?? 1) || 1;
+    b.requests += requests;
     for (const [key, set] of [
       ["source", b.sources],
       ["agent", b.agents],
@@ -190,12 +132,14 @@ export function aggregateSessions(
           cached: null,
           total: null,
           requests: 0,
+          unknownTotal: false,
         }),
       );
-    modelTotal.requests += Number(row.platform_requests ?? 1) || 1;
+    modelTotal.requests += requests;
     for (const key of ["input", "cached", "total"] as const) {
       const value = row[key];
-      if (value != null) modelTotal[key] = addCount(modelTotal[key] ?? 0n, value) as bigint;
+      if (value != null) modelTotal[key] = (modelTotal[key] ?? 0n) + BigInt(value);
+      else if (key === "total") modelTotal.unknownTotal = true;
     }
     const at = typeof row.at === "string" ? row.at : "";
     if (at && (!b.firstAt || at < b.firstAt)) b.firstAt = at;
@@ -214,22 +158,15 @@ export function aggregateSessions(
         b.unknown[target] += 1;
         continue;
       }
-      b[target] = addCount(b[target] ?? 0n, value) as bigint;
+      b[target] = (b[target] ?? 0n) + BigInt(value);
     }
-    if (row.cached != null) {
-      b.cachedKnown += BigInt(row.cached);
-      b.cachedTotalRows++;
-    } else b.cachedUnknownRows++;
-    if (row.input != null) {
-      b.inputKnown += BigInt(row.input);
-    } else b.inputUnknownRows++;
     // The cache share is cached/input — input already contains the cache reads, so
     // adding cached again would count them twice. Measure it only on rows that
     // reported both sides; an unknown side stays unknown, never a zero.
     if (row.cached != null && row.input != null) {
       b.rateCached += BigInt(row.cached);
       b.rateInput += BigInt(row.input);
-      b.rateRows++;
+      b.rateRows += requests;
     }
     if (["error", "failed", "cancelled"].includes(String(row.status))) b.failures++;
     const cost = row.cost;
@@ -239,15 +176,62 @@ export function aggregateSessions(
         .add(cost);
       b.pricedRequests++;
     } else b.unpricedRequests++;
+}
+
+/**
+ * Aggregate already-filtered usage rows into request-session buckets.
+ *
+ * The rows are the same rows the daily dataset uses, so a session total is always the
+ * sum of the daily totals for the same filter — there is no second accounting path.
+ * Unknown fields stay counted per row (`unknownFields`) rather than being folded into 0.
+ */
+export function aggregateSessions(
+  rows: Iterable<JsonObject>,
+  options: {
+    scope: string;
+    params?: JsonObject;
+    limit?: unknown;
+    currency?: string;
+    days?: number;
+    dataVersion?: string;
+    now?: number;
+    range?: [string, string];
+    projectTree?: boolean;
+    metadata?: (session: string) => {title?: string; project?: string} | undefined;
+  },
+): SessionUsageResult {
+  const params = options.params || {},
+    now = options.now ?? Date.now(),
+    currency = options.currency || "CNY",
+    limit = clampSessionLimit(options.limit);
+  const [start, end] =
+    options.range || dateRange(options.days ?? 30, params, undefined, shanghaiDay(now));
+  const buckets = new Map<string, Bucket>();
+  const dayTotals = new Map<string, { total: bigint | null; unknown: boolean; requests: number }>();
+  const summary = summaryAccumulator(currency);
+  const projects = new Map<string, Map<string, Bucket>>();
+  for (const row of rows) {
+    if (typeof row.local_date !== "string" || row.local_date < start || row.local_date > end) continue;
+    summary.add(row);
+    const session = typeof row.session === "string" ? row.session.trim() : "";
+    const requests = Number(row.platform_requests ?? 1);
+    const b = buckets.get(session) || buckets.set(session, bucket(session)).get(session)!;
+    addRow(b, row, currency, requests);
+    if (options.projectTree) {
+      const project = session ? row.project || options.metadata?.(session)?.project || "" : "";
+      const sessions = projects.get(project) || projects.set(project, new Map()).get(project)!;
+      const entry = sessions.get(session) || sessions.set(session, bucket(session)).get(session)!;
+      addRow(entry, row, currency, requests);
+    }
     const day = String(row.local_date);
-    const dayEntry = dayTotals.get(day) || { total: null as bigint | null, requests: 0 };
+    const dayEntry = dayTotals.get(day) || { total: null, unknown: false, requests: 0 };
     if (row.total != null)
-      dayEntry.total = addCount(dayEntry.total ?? 0n, row.total) as bigint;
-    dayEntry.requests += Number(row.platform_requests ?? 1) || 1;
+      dayEntry.total = (dayEntry.total ?? 0n) + BigInt(row.total);
+    else dayEntry.unknown = true;
+    dayEntry.requests += requests;
     dayTotals.set(day, dayEntry);
   }
-  const sessionRows: SessionUsageRow[] = [...buckets.values()]
-    .map((b) => {
+  const toRow = (b: Bucket): SessionUsageRow => {
       // `input` is the whole prompt (cache reads included), so the cache share is
       // cached/input, measured on the rows that reported both. `cacheCoverage` says how
       // much of the session that measurement actually covers, so a partial ratio is
@@ -262,6 +246,7 @@ export function aggregateSessions(
       }));
       return {
         session: b.session,
+        title: options.metadata?.(b.session)?.title,
         unknownIdentity: b.unknownIdentity,
         sources: [...b.sources].sort(),
         agents: [...b.agents].sort(),
@@ -276,7 +261,7 @@ export function aggregateSessions(
         output: countOut(b.output),
         cached: countOut(b.cached),
         reasoning: countOut(b.reasoning),
-        total: countOut(b.total),
+        total: countOut(b.unknown.total ? null : b.total),
         unknownFields: b.unknown,
         cacheHitRate: cacheHitRate != null && Number.isFinite(cacheHitRate) ? cacheHitRate : null,
         cacheCoverage,
@@ -287,7 +272,7 @@ export function aggregateSessions(
             requests: entry.requests,
             input: countOut(entry.input),
             cached: countOut(entry.cached),
-            total: countOut(entry.total),
+            total: countOut(entry.unknownTotal ? null : entry.total),
             cacheHitRate:
               entry.input != null && entry.cached != null && entry.input > 0n
                 ? Number(entry.cached) / Number(entry.input)
@@ -300,18 +285,16 @@ export function aggregateSessions(
           }),
         costs,
         failures: b.failures,
-      } satisfies SessionUsageRow;
-    })
-    .sort((a, b) => {
-      const at = typeof a.total === "number" ? a.total : Number(a.total ?? 0);
-      const bt = typeof b.total === "number" ? b.total : Number(b.total ?? 0);
-      if (bt !== at) return bt - at;
-      const aLast = a.lastAt || "";
-      const bLast = b.lastAt || "";
-      if (aLast !== bLast) return bLast.localeCompare(aLast);
-      return a.session.localeCompare(b.session);
-    });
-  const summarySum = summarize(rowsBuffer, currency);
+      };
+  };
+  const compare = (a: SessionUsageRow, b: SessionUsageRow) => {
+    if ((a.total == null) !== (b.total == null)) return a.total == null ? 1 : -1;
+    const left = BigInt(a.total ?? 0), right = BigInt(b.total ?? 0);
+    if (left !== right) return left > right ? -1 : 1;
+    return (b.lastAt || "").localeCompare(a.lastAt || "") || a.session.localeCompare(b.session);
+  };
+  const sessionRows = options.projectTree ? [] : [...buckets.values()].map(toRow).sort(compare);
+  const summarySum = summary.result();
   const notes: string[] = [];
   if (buckets.has("")) {
     const bucketRow = buckets.get("")!;
@@ -333,11 +316,7 @@ export function aggregateSessions(
     .slice(0, 10)
     .map((row) => ({
       session: row.session,
-      label: row.unknownIdentity
-        ? SESSION_UNKNOWN_LABEL
-        : row.models[0]
-          ? `${row.session.slice(0, 8)} · ${row.models[0]}`
-          : row.session.slice(0, 8),
+      label: row.unknownIdentity ? SESSION_UNKNOWN_LABEL : row.title || "未命名会话",
       total: row.total,
       requests: row.requests,
     }));
@@ -346,7 +325,7 @@ export function aggregateSessions(
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, entry]) => ({
       date,
-      total: countOut(entry.total),
+      total: countOut(entry.unknown ? null : entry.total),
       requests: entry.requests,
     }));
   // Group-level cache share and the busiest single session, both exact sums over the
@@ -361,21 +340,40 @@ export function aggregateSessions(
     groupInput += b.rateInput;
     groupRateRows += b.rateRows;
     groupRequests += b.requests;
-    if (b.total != null && (peakSession == null || b.total > peakSession)) peakSession = b.total;
+    if (!b.unknown.total && b.total != null && (peakSession == null || b.total > peakSession)) peakSession = b.total;
   }
   const groupHitRate = groupInput > 0n ? Math.min(1, Number(groupCached) / Number(groupInput)) : null;
   return {
     scope: options.scope,
     range: { start, end },
     timezone: "Asia/Shanghai",
-    sessions: sessionRows.slice(0, limit),
+    sessions: options.projectTree ? [] : sessionRows.slice(0, limit),
+    ...(options.projectTree ? {projects: [...projects].map(([project, group]) => {
+      let total = 0n, unknown = false, requests = 0, lastAt = "", input = 0n, cached = 0n, measured = 0;
+      for (const b of group.values()) {
+        total += b.total ?? 0n;
+        unknown ||= b.unknown.total > 0;
+        requests += b.requests;
+        if (b.lastAt > lastAt) lastAt = b.lastAt;
+        input += b.rateInput;
+        cached += b.rateCached;
+        measured += b.rateRows;
+      }
+      return {project, total: countOut(unknown ? null : total), requests, lastAt: lastAt || null,
+        cacheHitRate: input > 0n ? Math.min(1, Number(cached) / Number(input)) : null,
+        cacheCoverage: requests ? measured / requests : null, sessions: [...group.values()].map(toRow).sort(compare).map(row => {
+          const {session,title,unknownIdentity,total,requests,cacheHitRate,cacheCoverage,lastAt} = row;
+          return {session,title,unknownIdentity,total,requests,cacheHitRate,cacheCoverage,lastAt,
+            modelTotals:row.modelTotals.map(({provider,model,total})=>({provider,model,total}))};
+        })};
+    })} : {}),
     summary: {
-      sessions: sessionRows.length,
+      sessions: buckets.size,
       requests: summarySum.requestCount ?? 0,
       // `summarize` returns bigint for values above the safe integer range; serialize those
       // exactly like the per-session fields or JSON.stringify throws.
       total: countOut(
-        typeof summarySum.total === "bigint" ? summarySum.total : summarySum.total ?? null,
+        summarySum.unknownFields.total ? null : summarySum.total ?? null,
       ),
       cached: countOut(
         typeof summarySum.cached === "bigint" ? summarySum.cached : summarySum.cached ?? null,
@@ -387,8 +385,8 @@ export function aggregateSessions(
     },
     distribution,
     timeline,
-    totalSessions: sessionRows.length,
-    truncated: sessionRows.length > limit,
+    totalSessions: buckets.size,
+    truncated: !options.projectTree && sessionRows.length > limit,
     updatedAt: new Date(now).toISOString(),
     dataVersion: options.dataVersion || "",
     notes,
@@ -411,19 +409,16 @@ export function sessionUsage(
     days?: number;
     dataVersion?: string;
     now?: number;
+    projectTree?: boolean;
+    metadata?: (session: string) => {title?: string; project?: string} | undefined;
   },
 ): SessionUsageResult {
   const params = options.params || {};
-  const snapshot = dataset.snapshot({ ...params, include_all: true });
-  const rows = (snapshot.events as JsonObject[]) || [];
-  const currency = String(params.cost_currency || dataset.currency || "CNY");
-  return aggregateSessions(rows, {
+  const earliest = dataset.rows.reduce((day, row) => row.local_date < day ? row.local_date : day, shanghaiDay(options.now ?? Date.now()));
+  return aggregateSessions(dataset.rows, {
     ...options,
-    currency,
-    days: options.days ?? Number(params.days) ?? 30,
-    range: [String(snapshot.range.start), String(snapshot.range.end)],
-    dataVersion:
-      options.dataVersion || String((snapshot as JsonObject).dataVersion || ""),
+    currency: String(params.cost_currency || dataset.currency || "CNY"),
+    range: dateRange(options.days ?? 30, params, earliest, shanghaiDay(options.now ?? Date.now())),
   });
 }
 

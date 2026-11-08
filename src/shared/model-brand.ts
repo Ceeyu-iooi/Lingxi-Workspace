@@ -103,17 +103,14 @@ export function modelBrand(provider: unknown, model: unknown): BrandDescriptor {
   const cached = brandCache.get(key);
   if (cached) return cached;
   let family: BrandFamily = "other";
-  for (const [pattern, id] of PROVIDERS)
-    if (pattern.test(p)) {
-      family = id;
-      break;
+  for (const [pattern, id] of MODEL_HINTS) {
+    if (pattern.test(m)) { family = id; break; }
+  }
+  if (family === "other") {
+    for (const [pattern, id] of PROVIDERS) {
+      if (pattern.test(p)) { family = id; break; }
     }
-  if (family === "other")
-    for (const [pattern, id] of MODEL_HINTS)
-      if (pattern.test(m)) {
-        family = id;
-        break;
-      }
+  }
   let descriptor: BrandDescriptor;
   if (family === "other") {
     // Unknown but still distinct: keep one stable hue per provider id.

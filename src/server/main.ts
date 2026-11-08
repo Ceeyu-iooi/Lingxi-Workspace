@@ -29,6 +29,7 @@ import { analyzeTask } from "./text-agent.ts";
 import { Monitor, iso } from "./monitor.ts";
 import { GitTimeline } from "./git-timeline.ts";
 import { sessionUsage } from "./session-usage.ts";
+import { sessionMetadata } from "./session-titles.ts";
 import { Codex } from "./codex.ts";
 import { Agents } from "./agents.ts";
 import { Sources } from "./sources.ts";
@@ -1298,7 +1299,7 @@ export async function startServer(
       currency,
     };
   });
-  app.get("/api/usage/sessions", (request) => {
+  app.get("/api/usage/sessions", (request, reply) => {
     const params = qs(request),
       scope = params.scope || "codex";
     if (!["codex", "zcode", "dsh", "api", ""].includes(scope))
@@ -1307,10 +1308,19 @@ export async function startServer(
     // the daily summary; there is no second accounting path.
     if (scope === "api")
       throw new Error("API 供应商来源没有会话标识，请使用 Codex／ZCode／DSH");
+    const config = control.state().config;
+    const pub = control.public();
+    const root = config[scope + "Path"] || pub[scope === "codex" ? "defaultCodexPath" : scope === "dsh" ? "defaultDshPath" : "defaultZcodePath"];
+    const projectTree = params.project_tree === "1";
+    if (projectTree && !desktopBridge(request)) return reply.code(403).send({error:"会话标题仅供本机任务栏插件查看"});
+    const titles = projectTree && config[scope + "Enabled"] === true
+      ? sessionMetadata(profile, scope, root) : undefined;
     return sessionUsage(monitor.dataset(scope, params), {
       scope,
       params,
       limit: params.limit,
+      projectTree,
+      metadata: session => titles?.get(session),
       days: Number(params.days) || 30,
       dataVersion: String(monitor.version()),
     });

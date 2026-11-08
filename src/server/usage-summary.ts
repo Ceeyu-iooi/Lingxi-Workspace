@@ -75,10 +75,10 @@ export function summaryAccumulator(currency = "CNY") {
     priced = 0,
     costUnknown = 0,
     requests = 0,
-    requestsKnown = true,observations=0;
+    requestsKnown = true,observations=0,pairedInput=0n,pairedCached=0n,pairedRequests=0;
   return {add(row:JsonObject){
     const aggregated=row._aggregate;const count=aggregated?.observations??1;observations+=count;
-    if(aggregated){for(const key of FIELDS){totals[key]+=BigInt(row[key]??0);missing[key]+=aggregated.unknownFields[key]||0;}failures+=aggregated.failures;unknown+=aggregated.unknown;priced+=aggregated.pricedRequests;costUnknown+=aggregated.costUnknown;requests+=count;for(const [key,value] of Object.entries(aggregated.valueIssues||{}))issues[key]=(issues[key]||0)+Number(value);if(aggregated.pricedRequests)(costs[row.currency]||(costs[row.currency]=new ExactSum())).add(row.cost);for(const [key,value] of Object.entries(row.valueParts||{}))(parts[key]||(parts[key]=new ExactSum())).add(value);return;}
+    if(aggregated){pairedInput+=BigInt(aggregated.pairedInput??0);pairedCached+=BigInt(aggregated.pairedCached??0);pairedRequests+=aggregated.pairedRequests??0;for(const key of FIELDS){totals[key]+=BigInt(row[key]??0);missing[key]+=aggregated.unknownFields[key]||0;}failures+=aggregated.failures;unknown+=aggregated.unknown;priced+=aggregated.pricedRequests;costUnknown+=aggregated.costUnknown;requests+=count;for(const [key,value] of Object.entries(aggregated.valueIssues||{}))issues[key]=(issues[key]||0)+Number(value);if(aggregated.pricedRequests)(costs[row.currency]||(costs[row.currency]=new ExactSum())).add(row.cost);for(const [key,value] of Object.entries(row.valueParts||{}))(parts[key]||(parts[key]=new ExactSum())).add(value);return;}
     for (const key of FIELDS) {
       if (row[key] == null) missing[key]++;
       else totals[key] += BigInt(row[key]);
@@ -98,7 +98,14 @@ export function summaryAccumulator(currency = "CNY") {
     let n = row.platform_requests;
     if (n == null && (row.granularity || "request") === "request") n = 1;
     if (n == null) requestsKnown = false;
-    else requests += Number(n);
+    else {
+      requests += Number(n);
+      if (row.input != null && row.cached != null) {
+        pairedInput += BigInt(row.input);
+        pairedCached += BigInt(row.cached);
+        pairedRequests += Number(n);
+      }
+    }
   },result():JsonObject{
   for (const key of FIELDS)
     result[key] = totals[key] <= BigInt(Number.MAX_SAFE_INTEGER)
@@ -108,6 +115,8 @@ export function summaryAccumulator(currency = "CNY") {
     ...result,
     requests: observations,
     observations,
+    cacheHitRate: pairedInput > 0n ? Math.min(1, Number(pairedCached) / Number(pairedInput)) : null,
+    cacheCoverage: requestsKnown && requests > 0 ? pairedRequests / requests : null,
     requestCount: requestsKnown ? requests : null,
     unknown,
     failures,

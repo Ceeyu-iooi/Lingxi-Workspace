@@ -156,7 +156,7 @@ export class Agents {
       .catch(() => {});
     return task;
   }
-  async parseDSH(file: string) {
+  async parseDSH(file: string, metadata?: JsonObject) {
     const rows: JsonObject[] = [];
     for await (const row of records(file, {
       compressed: true,
@@ -166,6 +166,9 @@ export class Agents {
         // Keep only accounting context while folding the transcript. Large
         // user/tool/assistant bodies are never retained in the scan array.
         if(row.type==='session')rows.push({type:row.type,id:row.id,version:row.version,isSeeded:row.isSeeded,seedLength:row.seedLength,cwd:row.cwd});
+        else if (row.type === "session/title" && metadata && typeof row.data?.title === "string") {
+          metadata.title = row.data.title.trim().slice(0, 300);
+        }
         else if(row.type==='session/end-seed')rows.push({type:row.type,seq:row.seq,data:{inherited:row.data?.inherited}});
         else if(['request/header','llm/retry-started','assistant/message','assistant/attempt','compaction/summary'].includes(row.type)) {
           const d=row.data||{},source=d.message?.source||d.source||{},lastUsage=(d.stream||[]).findLast((item:JsonObject)=>item.type==='chunk'&&item.chunk?.type==='usage'&&item.chunk.usage&&typeof item.chunk.usage==='object'&&!Array.isArray(item.chunk.usage));
@@ -182,6 +185,7 @@ export class Agents {
       version = header.version ?? null;
     if (typeof sid !== "string" || !sid || ![null, 2, 3, 4].includes(version))
       throw new Error("Harness 会话头或版本不受支持");
+    if (metadata) metadata.session = sid;
     const seeded = header.isSeeded === true || header.seedLength != null,
       cuts = rows
         .filter(
@@ -406,7 +410,7 @@ export class Agents {
       if (
         prior.size === fingerprint.size &&
         prior.mtime === fingerprint.mtime &&
-        prior.readerVersion === "harness-v19" &&
+        prior.readerVersion === "harness-v20" &&
         !prior.error
       )
         continue;
@@ -415,10 +419,10 @@ export class Agents {
         continue;
       }
       try {
-        fingerprint.readerVersion = "harness-v19";
+        fingerprint.readerVersion = "harness-v20";
         if (fingerprint.size > 128 * 1024 * 1024)
           throw new Error("Harness 文件超过单次读取限制");
-        items.push(...(await this.parseDSH(file)));
+        items.push(...(await this.parseDSH(file, fingerprint)));
         scanned++;
         const after = statSync(file, { bigint: true });
         if (after.size !== stat.size || after.mtimeNs !== stat.mtimeNs)

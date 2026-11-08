@@ -31,6 +31,7 @@ const backendInline = [
   '@fastify/ajv-compiler',
   '@fastify/fast-json-stringify-compiler',
   '@fastify/error',
+  '@fastify/deepmerge',
   '@fastify/merge-json-schemas',
   '@fastify/proxy-addr',
   '@fastify/forwarded',
@@ -142,4 +143,9 @@ const shellPackageExcludes = {
 };
 
 
-module.exports = { dropFile, runtimeFile, backendInline, backendExternal, readManifest, backendExcludedFiles, backendPackageExcludes, excludedRuntimeFile, runtimeOnly, shellPackageExcludes };
+// The full Bootstrap sheet is retained in source as an audit baseline.
+function desktopStaticFile(relative) {
+  return relative.split(path.sep).join('/') !== 'vendor/bootstrap/bootstrap.min.css';
+}
+
+module.exports = { desktopStaticFile, dropFile, runtimeFile, backendInline, backendExternal, readManifest, backendExcludedFiles, backendPackageExcludes, excludedRuntimeFile, runtimeOnly, shellPackageExcludes };

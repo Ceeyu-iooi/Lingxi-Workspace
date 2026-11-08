@@ -86,10 +86,10 @@ import {modelBrand} from "../../src/shared/model-brand";
   new MutationObserver(() => {
     for (const host of hosts) if (!host.isConnected) dispose(host);
   }).observe(document.body, { childList: true, subtree: true });
-  function tooltip(host, reset) {
+  function tooltip(host, reset, variant = "") {
     host.classList.add("usage-chart-host");
     const tip = document.createElement("div");
-    tip.className = "usage-tooltip";
+    tip.className = "usage-tooltip" + (variant ? " " + variant : "");
     tip.id = "usage-tooltip-" + ++sequence;
     tip.role = "tooltip";
     tip.hidden = true;
@@ -496,14 +496,6 @@ import {modelBrand} from "../../src/shared/model-brand";
       }
       svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
       svg.innerHTML = `<defs><linearGradient id="${clipId}-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="var(--accent, #1683ff)" stop-opacity=".34"/><stop offset="100%" stop-color="var(--accent, #1683ff)" stop-opacity=".03"/></linearGradient><clipPath id="${clipId}" clipPathUnits="userSpaceOnUse"><rect class="usage-reveal" x="${left - 2}" y="0" width="${right - left + 4}" height="260"/></clipPath></defs><text class="usage-chart-label" x="${left}" y="16">${escape(host.dataset.axisLabel || (host.dataset.format === "rate" ? "CNY / USD" : host.dataset.metric === "cost" ? (host.dataset.currency === "USD" ? "$" : "￥") : "Token"))}</text>${ticks.map((v) => `<line class="usage-gridline" x1="${left}" x2="${right}" y1="${layout.y(v)}" y2="${layout.y(v)}"/><text class="usage-chart-label" text-anchor="end" x="${left - 8}" y="${layout.y(v) + 4}">${escape(tickLabel(v))}</text>`).join("")}<path class="usage-coordinate-axis usage-main-axis" d="M ${left} ${top - 8} V ${bottom} H ${right + 7}"/><path class="usage-axis-arrow" d="M ${left - 4} ${top - 3} L ${left} ${top - 9} L ${left + 4} ${top - 3} M ${right + 2} ${bottom - 4} L ${right + 8} ${bottom} L ${right + 2} ${bottom + 4}"/>${indices.map((i) => `<line class="usage-coordinate-axis usage-date-mark" data-base-x="${layout.x(i)}" x1="${layout.x(i)}" x2="${layout.x(i)}" y1="${bottom}" y2="${bottom + 4}"/><text class="usage-chart-label usage-date-tick" data-base-x="${layout.x(i)}" text-anchor="${i === 0 ? "start" : i === rows.length - 1 ? "end" : "middle"}" x="${layout.x(i)}" y="${bottom + 20}">${escape(rows[i].label||String(rows[i].date).slice(5))}</text>`).join("")}<text class="usage-chart-label usage-date-axis-label" text-anchor="end" x="${right}" y="255">日期</text><g class="usage-chart-data" clip-path="url(#${clipId})">${chart}</g>${!rows.some(valid) ? '<text class="usage-chart-label usage-no-data" text-anchor="middle" x="' + (left + right) / 2 + '" y="120">' +escape(host.dataset.noDataLabel||'暂无用量')+'</text>' : ""}<g class="usage-crosshair" visibility="hidden"><line y1="${top}" y2="${bottom}"/><circle r="4"/></g>`;
-      svg
-        .querySelectorAll(".usage-bar[data-interactive=true]")
-        .forEach((bar) => {
-          listen(bar,"focus", () =>
-            show(Number(bar.dataset.day), undefined, undefined, bar),
-          );
-          listen(bar,"blur", reset);
-        });
       if (
         vertical &&
         oldGeometry.size &&
@@ -584,22 +576,14 @@ import {modelBrand} from "../../src/shared/model-brand";
             { duration: 460, easing: "cubic-bezier(.22,1,.36,1)", fill: "backwards" },
           );
         } else {
-          const bars = [...svg.querySelectorAll(".usage-bar")];
-          bars.forEach((bar, index) => {
-            const base = layout.y(0);
-            bar.animate(
-              [
-                { transform: `translateY(${base - Number(bar.getAttribute("y"))}px)`, opacity: 0.2 },
-                { transform: "translateY(0)", opacity: 1 },
-              ],
-              {
-                duration: 460,
-                delay: Math.min(180, index * 6),
-                easing: "cubic-bezier(.22,1,.36,1)",
-                fill: "backwards",
-              },
-            );
-          });
+          animation.cancel();
+          const data = svg.querySelector(".usage-chart-data");
+          if (data) {
+            // Scale the entire stack from the same zero baseline to keep segments joined.
+            data.style.transformOrigin = `0px ${layout.y(0)}px`;
+            animation = data.animate([{transform:"scaleY(0)"},{transform:"scaleY(1)"}],
+              {duration:460,easing:"cubic-bezier(.22,1,.36,1)",fill:"backwards"});
+          }
         }
         host.dataset.lastAnimation = stacked ? "stack-reveal" : "reveal";
       }
@@ -644,7 +628,11 @@ import {modelBrand} from "../../src/shared/model-brand";
       if (ev.pointerType !== "touch") reset();
     });
     listen(svg,"pointercancel", reset);
-    listen(svg,"blur", reset);
+    listen(svg,"focusin", (event) => {
+      const bar = event.target.closest?.(".usage-bar[data-interactive=true]");
+      if (bar) show(Number(bar.dataset.day), undefined, undefined, bar);
+    });
+    listen(svg,"focusout", reset);
     listen(svg,"keydown", (ev) => {
       let index = active < 0 ? 0 : active;
       if (ev.key === "ArrowRight") index++;

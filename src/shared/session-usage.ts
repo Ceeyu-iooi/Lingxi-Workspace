@@ -44,6 +44,7 @@ export interface SessionUsageRow {
   /** Stable request-session identity from the source log. Empty sessions are grouped
    *  under a single "未识别会话" bucket instead of being dropped. */
   session: string;
+  title?: string;
   /** True when `session` is the placeholder bucket, not a real log session id. */
   unknownIdentity: boolean;
   sources: string[];
@@ -74,6 +75,10 @@ export interface SessionUsageRow {
   failures: number;
 }
 
+export type ProjectSession = Pick<SessionUsageRow, "session" | "title" | "unknownIdentity" | "total" | "requests" | "cacheHitRate" | "cacheCoverage" | "lastAt"> & {
+  modelTotals: Pick<SessionUsageModelTotal, "provider" | "model" | "total">[];
+};
+
 export interface SessionUsageGroupSummary {
   sessions: number;
   requests: number;
@@ -96,6 +101,10 @@ export interface SessionUsageResult {
   sessions: SessionUsageRow[];
   /** Aggregate over all sessions in range, before any UI-side page limit. */
   summary: SessionUsageGroupSummary;
+  projects?: {
+    project: string; total: Count; requests: number; lastAt: string | null;
+    cacheHitRate: number | null; cacheCoverage: number | null; sessions: ProjectSession[];
+  }[];
   /** Distribution buckets used by the chart, already sorted by usage desc. */
   distribution: { session: string; label: string; total: Count; requests: number }[];
   /** Per-day activity for the selected sessions, for the sparkline. */

@@ -199,7 +199,10 @@
       "transparent"
     ],
     "name": "任务栏插件",
-    "preview": "light-entry-and-compact-detail"
+    "preview": "light-entry-and-theme-aware-compact-detail",
+    "dateRange": "four-views-single-month-equal-width-reversible-endpoints-jelly-presets",
+    "sessionTable": "five-columns-project-session-model-token",
+    "heatRamp": "neutral-gray-to-deep-blue"
   },
   "finance": {
     "sharedUsageCharts": true,
