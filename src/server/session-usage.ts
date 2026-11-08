@@ -227,7 +227,17 @@ export function aggregateSessions(
     return current;
   };
   const inheritedProjects = new Map<string,string>();
-  for (const row of rows) {
+  const hasChildren = new Set<string>();
+  const treeRows = options.projectTree ? Array.isArray(rows) ? rows : [...rows] : null;
+  if (treeRows) {
+    for (const row of treeRows) {
+      if (row.local_date < start || row.local_date > end || typeof row.session !== "string") continue;
+      const id = row.session.trim(), root = rootSession(id);
+      if (id !== root) hasChildren.add(root);
+      else if (row.project && !inheritedProjects.has(root)) inheritedProjects.set(root,row.project);
+    }
+  }
+  for (const row of treeRows ?? rows) {
     if (typeof row.local_date !== "string" || row.local_date < start || row.local_date > end) continue;
     summary.add(row);
     const recordedSession = typeof row.session === "string" ? row.session.trim() : "";
@@ -236,7 +246,7 @@ export function aggregateSessions(
     const b = buckets.get(session) || buckets.set(session, bucket(session)).get(session)!;
     addRow(b, row, currency, requests);
     if (options.projectTree) {
-      const inherited = session !== recordedSession;
+      const inherited = hasChildren.has(session);
       const project = session ? options.metadata?.(session)?.project || (inherited ? inheritedProjects.get(session) : undefined) || row.project || "" : "";
       if (inherited && project) inheritedProjects.set(session,project);
       const sessions = projects.get(project) || projects.set(project, new Map()).get(project)!;
