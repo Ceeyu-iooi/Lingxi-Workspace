@@ -998,7 +998,7 @@ export class UsageAccounts {
     }
   }
   codexSnapshot(params: JsonObject): JsonObject {
-    const source = params.source || "",
+    const source = params.source || "codex",
       attributed = [
         "model",
         "models",
@@ -1006,18 +1006,21 @@ export class UsageAccounts {
         "provider",
         "connection_id",
       ].some((k) => params[k]);
-    if (!["", "official", "codex"].includes(source))
+    if (!["official", "codex"].includes(source))
       throw new Error("Codex 来源不受支持");
     if (source === "official" && attributed)
       throw new Error("官方账户没有模型和工作区明细，请选择本机日志后筛选");
-    if (source === "codex" || attributed) {
+    if (source === "codex") {
       const result = this.monitor.snapshot({
         ...params,
         scope: "codex",
         source: "codex",
       });
       result.options.source = ["official", "codex"];
-      return result;
+      return {
+        ...result,
+        dataSource: { kind: "local-logs", label: "Codex 本机日志" },
+      };
     }
     const row = this.bound()
         ? this.rows().find((r) => r.kind === "codex") || {}

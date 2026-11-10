@@ -159,7 +159,7 @@ import {animateNumber} from "../app/number-motion";
   function reveal(root, force=false) {
     if (!force && root.dataset.wbRevealed) return;
     root._motionDispose?.();root.dataset.wbRevealed="true";
-    root._motionDispose=window.WorkbenchMotion?.rows(root);
+    root._motionDispose=window.WorkbenchMotion?.rows(root, false, true);
   }
   function capture(root) {
     const fields = {};
@@ -261,8 +261,10 @@ import {animateNumber} from "../app/number-motion";
     snapshots.clear();
   }
   const unsaved = () =>
-    !!active?.root._wbUnsaved?.() ||
-    !!active?.root.querySelector("#settings-panel")?._wbUnsaved?.();
+    isDirty(active?.root) || isDirty(active?.root.querySelector("#settings-panel"));
+  function isDirty(root) {
+    return typeof root?._wbUnsaved === "function" && Boolean(root._wbUnsaved());
+  }
   window.workbenchDesign = {
     paint,
     number,

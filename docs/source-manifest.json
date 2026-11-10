@@ -1,5 +1,5 @@
 {
-  "version": "0.1.36",
+  "version": "0.1.37",
   "files": [
     {
       "file": "README.md",
@@ -11,15 +11,15 @@
     },
     {
       "file": "THIRD_PARTY_NOTICES.md",
-      "sha256": "1ca6b26256efd2678bf6775d4f25ae56526bde767538079f5710fcf464d09f61"
+      "sha256": "accfc54d505d8d8e027d389957ef3b1558d7d6310d5ba9c06701f799b98b9097"
     },
     {
       "file": "TOKEN_ACCOUNTING.md",
-      "sha256": "f0ebbc7db25b6e388e84008361832774a75e3f3e0f93a7e8c30d112f6560c291"
+      "sha256": "82bcb4e042eed03953f7e01c0b053e8da0f6f948fda555cfc1c42acc980d05ca"
     },
     {
       "file": "VERSION",
-      "sha256": "196fad5565a3093a857e884d66978883793c1b7a810547fa98759044c274e851"
+      "sha256": "0f0d0710fff8a986da1ee1be450d3e5be658c10dfd0ecccf21c7b2c640e25f8c"
     },
     {
       "file": "design.md",
@@ -47,7 +47,7 @@
     },
     {
       "file": "src/server/agent-scheduler.ts",
-      "sha256": "8d84ee62b78a463ff5d0fbc8325fda451487eb515fb5aad37733716974e128dc"
+      "sha256": "03be07c8318e53995e9836a89f9dc48eb2463a675c6798837df8b63481dd2d32"
     },
     {
       "file": "src/server/agents.ts",
@@ -79,7 +79,7 @@
     },
     {
       "file": "src/server/codex-reader-pool.ts",
-      "sha256": "bb73f2058279bc2fb4d2a78245f6d5bcc2e7782ef5203883de68f59988ca52bd"
+      "sha256": "6ace70f6ebbda5f6e0ecdddd2f78f75cb6be7c89664886543f210e92dc814f70"
     },
     {
       "file": "src/server/codex-reader-worker.ts",
@@ -91,7 +91,7 @@
     },
     {
       "file": "src/server/codex.ts",
-      "sha256": "250569bdcb53a020e55de38e4cea4cc56250bdd29ceb9da211820a68d766231c"
+      "sha256": "0f1eebe79fa5aaa65cea70f18c93e2137d0e34af07590ce1b16c864b207e6da2"
     },
     {
       "file": "src/server/compressed-text.ts",
@@ -99,7 +99,7 @@
     },
     {
       "file": "src/server/control.ts",
-      "sha256": "da238bb42bbd0631e3086ab88e89b12a3315e2516a5226537cdd5e0d559e233c"
+      "sha256": "ece55ea5e13bc6638b2d22d4d0e791f988b6681d040afecb0d233abf3db4f54e"
     },
     {
       "file": "src/server/deepseek-authorization.ts",
@@ -131,7 +131,7 @@
     },
     {
       "file": "src/server/main.ts",
-      "sha256": "e693171a5d372bbaeae88e26bf70851aedaa95293de482bc8ae6c201631109bb"
+      "sha256": "5afc840c519c2231a01145cc724d199beeb37b35119acf466f6c967cc270bbce"
     },
     {
       "file": "src/server/maintain.ts",
@@ -227,7 +227,7 @@
     },
     {
       "file": "src/server/sources.ts",
-      "sha256": "bf0c518150afb79837958472569654c4f7984c2647d7fc14beff24b3d7f83bff"
+      "sha256": "872eac7bdb5e2b43862f9e137b189d26a39ec9ac10a71e29e3bf9672286fe572"
     },
     {
       "file": "src/server/sqlite.ts",
@@ -239,7 +239,7 @@
     },
     {
       "file": "src/server/usage-accounts.ts",
-      "sha256": "669dc27d360493ec7270586149ca39e5aa2f18ca839eb7a4eb82a46f483e3b10"
+      "sha256": "9373c6519aaa9840bfc4ffde7585d5b90e132b2feb65624b0e4ddf50808f1bd2"
     },
     {
       "file": "src/server/usage-cube.ts",
@@ -359,11 +359,11 @@
     },
     {
       "file": "frontend/app/main.tsx",
-      "sha256": "e24e4cb1cfa34723b3acccbfe463bdc737894e5e5ffae02a4af4fd2e949d8b7c"
+      "sha256": "7eeff83c325fa79018a092c39af600773a70de4df81992710ff1d0c9e919b77a"
     },
     {
       "file": "frontend/app/motion.ts",
-      "sha256": "281922e1dff2f383b843b05ef1d6aedd6667c6664221f7f289c5b5a102dbd1dd"
+      "sha256": "4302f2398ab72f6ffb648fa1ba579cbc6dce133edb0c9067f2cdf4514dbe3558"
     },
     {
       "file": "frontend/app/number-motion.css",
@@ -411,7 +411,7 @@
     },
     {
       "file": "frontend/app/startup.ts",
-      "sha256": "2d9490572f27696b00bef12a39336275771ebf9f73d3568658ca6b2146dec0f4"
+      "sha256": "0148305f032fabdcc793fbef3825b831156754e6a950bb1eafcbfdcd3190ccfd"
     },
     {
       "file": "frontend/app/surfaces.ts",
@@ -443,7 +443,7 @@
     },
     {
       "file": "frontend/compat/app.ts",
-      "sha256": "93b3946ff121de9c36117c31bd325d3779258b25a03cbd95837d8600fe1fb71e"
+      "sha256": "d5de5ff54c17fbcbe9167f32c4b5837ee8e6eb843e4e2ff56a3878c2abd441e1"
     },
     {
       "file": "frontend/compat/commands.ts",
@@ -471,11 +471,11 @@
     },
     {
       "file": "frontend/compat/library-views.ts",
-      "sha256": "9de50500c22283b7d80e3a28e4e46bd4363af2c5076c6385aa33aefce9c9ee33"
+      "sha256": "36c81494ae93c4f45e984876798fff8781793ffd21b85c6aa4fdaa5b9d382882"
     },
     {
       "file": "frontend/compat/lingxi-design.ts",
-      "sha256": "ef1b82ddbba4864afe3509b4a34e4d3223d8d03078e19d266813375d37dbf56f"
+      "sha256": "a1ad1f72d6789545fc03f077efe84c2ce969e8129a00054b85e9663da0164127"
     },
     {
       "file": "frontend/compat/news-board.ts",
@@ -547,7 +547,7 @@
     },
     {
       "file": "frontend/compat/workbench-design.ts",
-      "sha256": "5f85417ad0824bee0d5e11272180df9a95bb9d40152f3791a16cbbc3d078326d"
+      "sha256": "2eab18be46116b7593eabb4c045b0ec49b252d47cf4204f6a1a1d46139c1c8df"
     },
     {
       "file": "frontend/compat/workbench-ui.ts",
@@ -731,7 +731,7 @@
     },
     {
       "file": "static/entrance-motion.css",
-      "sha256": "f3c1f6d582b72395f5256c63d7dce874882f9e8619954752365ee7e8b1fc9797"
+      "sha256": "332ac288f23c2d3083fcb33043004ab5114700d16f84e65aefc00b4945b03528"
     },
     {
       "file": "static/git-timeline.css",
@@ -791,7 +791,7 @@
     },
     {
       "file": "static/shell/window-controls.js",
-      "sha256": "811ddf0c4b958c03f5fce1bfab864f716242543f80b088265fd07754a9ca388a"
+      "sha256": "6549f14c8390197410c83c2be89f6ea082d15e45e481742d459d3c8754b6e210"
     },
     {
       "file": "static/shell-experience.css",
@@ -931,7 +931,7 @@
     },
     {
       "file": "docs/ARCHITECTURE.md",
-      "sha256": "08e8952f33ec0791754707dc00a2f474310711dd8aab6cd88d5b0c69dd5abce6"
+      "sha256": "ab2a8c29bee691ee00ae05a401a032df5a818d6a22962f59fc9992c470758719"
     },
     {
       "file": "docs/BOOTSTRAP_USAGE.md",
@@ -995,7 +995,7 @@
     },
     {
       "file": "scripts/package_manifest.cjs",
-      "sha256": "d514bb0217819e0fd26d5dcafbc141a867df35c916531a11c0c3b7b9f14cdb1a"
+      "sha256": "32e95482cad307db958f2d2ef5ddf8fff11dc88b33ff147ce1876523d7d5d528"
     },
     {
       "file": "scripts/web_launcher.mjs",

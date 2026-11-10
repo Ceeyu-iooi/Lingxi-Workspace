@@ -63,20 +63,6 @@ function Page({ route, ready }: { route: string; ready: boolean }) {
         void presented.then(()=>window.workbenchDesktop?.applicationReady?.()).catch(() => {});
     }
   }, [route, hash, ready]);
-  useLayoutEffect(() => {
-    const main = document.getElementById("main");
-    const surface = main?.firstElementChild as HTMLElement | null | undefined;
-    if (!surface) return;
-    surface.classList.remove("is-entering");
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    void surface.offsetWidth;
-    surface.classList.add("is-entering");
-    const timer = window.setTimeout(
-      () => surface.classList.remove("is-entering"),
-      720,
-    );
-    return () => window.clearTimeout(timer);
-  }, [route]);
   return null;
 }
 function OverviewPage({ ready }: { ready: boolean }) {

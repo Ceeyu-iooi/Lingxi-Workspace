@@ -1,6 +1,6 @@
 /* Shared DOM titlebar; the preload exposes only bounded window operations. */
 (()=>{
- const bridge=window.workbenchDesktop,disposers=new Map();let observer;
+ const bridge=window.workbenchDesktop||window.workbenchWindowControls,disposers=new Map();let observer;
  const mount=host=>{
   if(!bridge?.windowAction||!host||host.querySelector('.lingxi-window-controls'))return ()=>{};
   document.documentElement.classList.add('desktop-shell');

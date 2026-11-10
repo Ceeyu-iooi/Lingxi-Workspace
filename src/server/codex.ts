@@ -7,9 +7,12 @@ import { parseCodexFile } from "./codex-reader.ts";
 import { parseCodexBatch } from "./codex-reader-pool.ts";
 import { CompactCodexWriter } from "./usage-storage.ts";
 
+const FAILED_READ_RETRY_MS = 5 * 60 * 1000;
+
 export class Codex {
   private scanning: Promise<JsonObject> | null = null;
   private rootJobs = new Map<string,Promise<JsonObject>>();
+  private failedReads = new Map<string, { version: string; retryAt: number }>();
   constructor(readonly monitor: Monitor,private allowed=()=>true) {}
   parse(file:string){return parseCodexFile(file);}
   get running() {
@@ -75,11 +78,18 @@ export class Codex {
       errors: JsonObject[] = [];
     let pending = 0;
     const discovered=performance.now();
-    const changed:string[]=[];
+    const changed = new Map<string, string>();
+    const now = Date.now();
+    for (const [file, failure] of this.failedReads) {
+      if (failure.retryAt <= now) this.failedReads.delete(file);
+    }
     for (const file of files) {
       if(!this.allowed())throw Error('日志监测已停止');
-      const stat = statSync(file, { bigint: true }),
-        prior = cursors.get(file),
+      const stat = statSync(file, { bigint: true, throwIfNoEntry: false });
+      if (!stat) continue;
+      const version = `${stat.size}:${stat.mtimeNs}`;
+      if (this.failedReads.get(file)?.version === version) continue;
+      const prior = cursors.get(file),
         state = prior ? parseExact(prior.state) : {};
       if (
         prior &&
@@ -88,15 +98,22 @@ export class Codex {
         state.scannerVersion === 4
       )
         continue;
-      if (changed.length >= (cursors.size?256:32)) {
+      if (changed.size >= (cursors.size?256:32)) {
         pending++;
         continue;
       }
-      changed.push(file);
+      changed.set(file, version);
     }
-    for(const result of await parseCodexBatch(changed)){
-      if(result.item)parsed.push(result.item);
+    for(const result of await parseCodexBatch([...changed.keys()])){
+      if(result.item){
+        this.failedReads.delete(result.path);
+        parsed.push(result.item);
+      }
       else if(result.error){
+        this.failedReads.set(result.path, {
+          version: changed.get(result.path)!,
+          retryAt: Date.now() + FAILED_READ_RETRY_MS,
+        });
         errors.push(result.error);
         db.prepare("INSERT OR REPLACE INTO codex_reads VALUES(?,?,?)").run(
           owner,
@@ -110,7 +127,7 @@ export class Codex {
     const parsedAt=performance.now();
     // Nothing changed: previously reconciled evidence cannot acquire a new
     // ancestor or conflict. Avoid decoding the entire retained history again.
-    if (!parsed.length) return {imported:0,corrected:0,scanned:0,files:files.length,errors,truncated:!!pending,pending,syncedAt:iso()};
+    if (!parsed.length) return {imported:0,corrected:0,scanned:0,attempted:changed.size,files:files.length,errors,truncated:!!pending,pending,syncedAt:iso()};
     let imported = 0,
       corrected = 0;
     profile.transaction(() => {
@@ -361,6 +378,7 @@ export class Codex {
       imported,
       corrected,
       scanned: parsed.length,
+      attempted: changed.size,
       files: files.length,
       errors,
       truncated: !!pending,

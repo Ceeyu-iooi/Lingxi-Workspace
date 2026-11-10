@@ -105,3 +105,7 @@ Source: official npm distribution `bootstrap@5.3.8` (`https://registry.npmjs.org
 Vendored copy: `static/vendor/bootstrap/bootstrap.min.css` (verbatim upstream bytes plus one trailing LF), with the upstream MIT license at `static/vendor/bootstrap/LICENSE` and the version/source/SHA-256 record at `static/vendor/bootstrap/SOURCE.json`.
 
 The vendored stylesheet is a **design-language audit baseline only**; it is never linked into any page. The actually-loaded layer is the project's own `static/bootstrap-scope.css`, which maps Bootstrap's semantic variables onto this project's tokens and only applies inside `.bs-scope` containers. No Bootstrap JavaScript, Popper, or upstream component behaviour is shipped. Upstream is not rebuilt or modified.
+
+## Windows Tauri release
+
+The Windows installer bundles the Rust shell, Node.js 24 and Win32 taskbar helpers. Rust dependency notices are included in `backend/node-backend/RUST-THIRD-PARTY-NOTICES.txt`; the Node distribution notice is in `backend/node-backend/LICENSE.node.rtf`. WebView2 is supplied by Microsoft.

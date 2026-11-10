@@ -147,7 +147,7 @@ export class Control {
         "data",
         "shortcuts",
       ],
-      defaultCodexPath: join(home, ".codex", "sessions"),
+      defaultCodexPath: join(process.env.CODEX_HOME || join(home, ".codex"), "sessions"),
       defaultZcodePath: join(
         process.env.ZCODE_DATA_BASE_DIR || join(home, ".zcode"),
         "cli",

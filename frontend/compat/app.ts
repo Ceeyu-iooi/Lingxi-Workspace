@@ -293,37 +293,56 @@ function render() {
   const target =
     window.workbenchDesign?.activate($("#main"), viewName, identity) ||
     $("#main");
-  const result = fn(target);
+  let placeholder;
+  const current = () =>
+    user?.username === identity && location.hash === requestedHash &&
+    sequence === renderSequence && target.isConnected;
   const finish = () => {
-    if (
-      !user ||
-      user.username !== identity ||
-      location.hash !== requestedHash ||
-      sequence !== renderSequence
-    )
-      return;
+    placeholder?.remove();
+    if (!current()) return;
     window.workbenchDesign?.finish(target);
     target.classList.add("wb-fixed-layout");
     // Route changes must never rehydrate a stale durable preference over live zoom.
     setPageZoom(window.WorkbenchPageZoom?.get() || Number(layoutStorage.getItem(layoutPrefs.zoomKey)) || 100);
-
     window.dispatchEvent(
       new CustomEvent("workbench:state", {
         detail: { user, projects: state.projects, tasks: state.tasks },
       }),
     );
   };
-  if (result?.then)
-    result.then(finish).catch((error) => {
-      if (
-        error.name !== "AbortError" &&
-        sequence === renderSequence &&
-        user?.username === identity &&
-        location.hash === requestedHash
-      )
-        toast(error.message, {kind:"error"});
-    });
-  else finish();
+  const failed = (error) => {
+    placeholder?.remove();
+    if (!current() || error?.name === "AbortError") return;
+    if (!target.firstElementChild) {
+      const panel = document.createElement("div");
+      panel.className = "module-load-error";
+      panel.setAttribute("role", "alert");
+      const message = document.createElement("span");
+      message.textContent = "模块加载失败";
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "btn ghost";
+      retry.textContent = "重试";
+      retry.onclick = () => { panel.remove(); render(); };
+      panel.append(message, retry);
+      target.append(panel);
+    }
+    toast(error?.message || "模块加载失败", {kind:"error"});
+  };
+  try {
+    const result = fn(target);
+    if (!result?.then) return finish();
+    if (!target.firstElementChild) {
+      placeholder = document.createElement("div");
+      placeholder.className = "control-loading";
+      placeholder.setAttribute("role", "status");
+      placeholder.textContent = "正在读取…";
+      target.append(placeholder);
+    }
+    Promise.resolve(result).then(finish).catch(failed);
+  } catch (error) {
+    failed(error);
+  }
 }
 
 /* ---------- 页面缩放；旧自由布局偏好不再恢复 ---------- */

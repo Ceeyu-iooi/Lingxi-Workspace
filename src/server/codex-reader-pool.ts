@@ -7,7 +7,7 @@ type Parsed={path:string;item?:any;error?:{file:string;error:string}};
 // never open Profile/credentials or write the database; commit order stays fixed.
 export async function parseCodexBatch(files:string[]):Promise<Parsed[]>{
   const compiled=new URL('./codex-reader-worker.mjs',import.meta.url);
-  const sizes=files.map(path=>({path,size:Number(statSync(path).size)}));
+  const sizes=files.map(path=>({path,size:Number(statSync(path,{throwIfNoEntry:false})?.size||0)}));
   if(files.length<4||sizes.reduce((sum,file)=>sum+file.size,0)<32*1024*1024||!existsSync(compiled)){
     const rows:Parsed[]=[];
     for(const path of files)try{rows.push({path,item:await parseCodexFile(path)});}catch(error:any){rows.push({path,error:{file:basename(path),error:String(error.message).slice(0,160)}});}

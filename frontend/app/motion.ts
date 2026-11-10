@@ -62,7 +62,7 @@ HTMLDialogElement.prototype.close = function (value?: string) {
   if (quiet() || (this as any)._skipMotion) finish();
   else void expand(this, destination, true).then(finish);
 };
-function rows(root: HTMLElement, scrolling = false) {
+function rows(root: HTMLElement, scrolling = false, keepVisible = false) {
   if (quiet()) return () => {};
   const selector = '.lingxi-about-card,.usage-managed-key,.resource-summary,.resource-group,.lingxi-carousel,[data-motion-row],.preview-card,.preview-swatch,.wb-library-toolbar,.library-toolbar,.wb-library-head,.wb-empty,.empty,.usage-toolbar,.preview-type-row,.preview-section>h2,.preview-section>.preview-lead,.card,.hot-card,.ob-panel,.ob-stats>article,.control-section,.sum-card,.wb-library-card,.resource-row,.workspace-browser,.workspace-files,.dsh-setting-row,.wb-setting-switch,.usage-summary>article,.usage-lifetime>article,.lingxi-account-details>section,.account-quota-window';
   const selected = [...root.querySelectorAll<HTMLElement>(selector)].filter(node=>node.offsetHeight && !node.parentElement?.closest('.lingxi-carousel') && !(node.matches('.control-section')&&node.querySelector('.dsh-setting-row,.wb-setting-switch')));
@@ -78,7 +78,7 @@ function rows(root: HTMLElement, scrolling = false) {
   const play = (node: HTMLElement, delay = 0) => {
     running.get(node)?.cancel();node.style.opacity='1';
     const heroEntry=node.matches('.preview-hero-copy-inner,.brand-visual-inner');
-    const animation=node.animate([{opacity:0,transform:`translateY(${heroEntry?18:scrolling?28:20}px)`},{opacity:1,transform:'translateY(0)'}],{duration:heroEntry?680:scrolling?520:420,delay,easing:ease,fill:'backwards'});
+    const animation=node.animate([{opacity:keepVisible?1:0,transform:`translateY(${heroEntry?18:scrolling?28:20}px)`},{opacity:1,transform:'translateY(0)'}],{duration:heroEntry?680:scrolling?520:420,delay,easing:ease,fill:'backwards'});
     running.set(node,animation);void animation.finished.catch(()=>{}).finally(()=>{if(running.get(node)===animation)running.delete(node);});
   };
   let observer: IntersectionObserver | undefined;

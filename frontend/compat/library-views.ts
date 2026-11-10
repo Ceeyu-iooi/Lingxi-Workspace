@@ -2140,7 +2140,7 @@
         sheet.hidden = true;
         q("[data-sheet-body]", sheet).innerHTML = "";
         state.detail = null;
-        root._wbUnsaved = false;
+        delete root._wbUnsaved;
         try { state.lastFocus?.focus?.(); } catch {}
       };
       if (force) done();
@@ -2148,7 +2148,7 @@
     }
 
     function syncUnsaved() {
-      root._wbUnsaved = false;
+      delete root._wbUnsaved;
     }
 
     function paintSide() {
@@ -2704,7 +2704,7 @@
     const sheet = q("[data-skm-sheet]", root);
     sheet.innerHTML = sheetHTML();
     bindEvents(app);
-    root._wbUnsaved = false;
+    delete root._wbUnsaved;
     const priorDispose = root._wbDispose;
     root._wbDispose = () => {
       clearTimeout(state.searchTimer);

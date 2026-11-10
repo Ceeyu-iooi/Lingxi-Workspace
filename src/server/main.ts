@@ -1,7 +1,7 @@
 import Fastify from "fastify";
 import {RuntimeResources} from "./runtime-resources.ts";
 import {AgentScheduler} from "./agent-scheduler.ts";
-import {timingSafeEqual} from "node:crypto";
+import {randomInt, timingSafeEqual} from "node:crypto";
 import { WebUpdates } from "./web-updates.ts";
 import { CodexLogin } from "./codex-login.ts";
 import { existsSync, readFileSync, statSync } from "node:fs";
@@ -35,6 +35,7 @@ import { Agents } from "./agents.ts";
 import { Sources } from "./sources.ts";
 import { UsageAccounts } from "./usage-accounts.ts";
 import {DeepseekAuthorization} from './deepseek-authorization.ts';
+import { createRequire } from 'node:module';
 import {OFFICIAL_POLICY,OFFICIAL_RATES,shanghaiPeak} from './official-pricing.ts';
 import { Relay } from "./relay.ts";
 import { Pricing, ValuationTasks } from "./pricing.ts";
@@ -971,6 +972,27 @@ export async function startServer(
     ]};
   });
   const desktopBridge=(request:any)=>{const secret=process.env.WORKBENCH_DESKTOP_BRIDGE_SECRET||'',candidate=String(request.headers['x-lingxi-desktop-bridge']||'');return desktop&&local(request)&&secret.length===64&&candidate.length===64&&timingSafeEqual(Buffer.from(secret),Buffer.from(candidate));};
+  if (desktop && process.env.WORKBENCH_TAURI === "1") {
+    const { createFloatingData } = createRequire(import.meta.url)(join(root, "floating-data.cjs"));
+    let floating: ReturnType<typeof createFloatingData>;
+    app.post("/api/runtime/taskbar", { bodyLimit: 32768 }, async (request, reply) => {
+      if (!desktopBridge(request)) return reply.code(403).send({ error: "仅限任务栏原生通道" });
+      floating ??= createFloatingData({
+        profile: profile.root, runtime: { origin: "http://" + request.headers.host },
+        bridgeSecret: process.env.WORKBENCH_DESKTOP_BRIDGE_SECRET,
+      });
+      const input = body(request);
+      if (input.action === "state") return floating.state();
+      if (input.action === "save") return floating.save(input.value, input.fields, input.revision);
+      if (input.action === "read") return floating.read(input.value, input.epoch ?? null);
+      if (input.action === "quota") return floating.quota();
+      if (input.action === "pause" && Number.isSafeInteger(input.epoch)) {
+        floating.pause(input.epoch);
+        return { ok: true };
+      }
+      return reply.code(400).send({ error: "无效的任务栏操作" });
+    });
+  }
   app.post('/api/runtime/resources/network/record',{bodyLimit:4096},(request,reply)=>{if(!desktopBridge(request))return reply.code(403).send({error:'仅限桌面采集通道'});const v=body(request);resourceManager.record({source:'桌面网络',pid:Number.isSafeInteger(v.pid)?v.pid:null,method:String(v.method||'GET').slice(0,16),url:String(v.url||'').slice(0,2048),status:Number.isInteger(v.status)?v.status:null,elapsedMs:Number.isFinite(v.elapsedMs)?Math.max(0,Math.round(v.elapsedMs)):null});return {ok:true};});
   app.get('/api/deepseek/authorization/internal',(request,reply)=>desktopBridge(request)?deepseekAuthorization.internalState():reply.code(403).send({error:'仅限桌面授权通道'}));
   app.post('/api/deepseek/authorization/receive',{bodyLimit:8192},async(request,reply)=>desktopBridge(request)?deepseekAuthorization.receive(String(body(request).id||''),String(body(request).pairToken||''),String(body(request).credential||'')):reply.code(403).send({error:'仅限桌面授权通道'}));
@@ -1200,7 +1222,9 @@ export async function startServer(
     const snapshot =
         scope === "api"
           ? accounts.providerSnapshot({ ...params, period: "all" })
-          : monitor.snapshot({
+          : scope === "codex"
+            ? accounts.codexSnapshot({ ...params, period: "all", value_currency: params.currency || "USD" })
+            : monitor.snapshot({
               ...params,
               source: scope,
               scope,
@@ -1311,6 +1335,8 @@ export async function startServer(
     // the daily summary; there is no second accounting path.
     if (scope === "api")
       throw new Error("API 供应商来源没有会话标识，请使用 Codex／ZCode／DSH");
+    if (scope === "codex" && params.source === "official")
+      throw new Error("官方账户没有会话明细，请选择本机日志");
     const config = control.state().config;
     const pub = control.public();
     const root = config[scope + "Path"] || pub[scope === "codex" ? "defaultCodexPath" : scope === "dsh" ? "defaultDshPath" : "defaultZcodePath"];
@@ -1469,7 +1495,19 @@ export async function startServer(
       process.env.WORKBENCH_HOST ||
       (desktop ? "127.0.0.1" : config.host || "127.0.0.1"),
     port = options.port ?? Number(process.env.WORKBENCH_PORT || 8765);
-  await app.listen({ host, port });
+  if (desktop && process.env.WORKBENCH_TAURI === "1" && port === 0) {
+    // The OS's ephemeral range can include ports prohibited by WebView2.
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await app.listen({ host, port: randomInt(49152, 65536) });
+        break;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "EADDRINUSE" || attempt >= 7) throw error;
+      }
+    }
+  } else {
+    await app.listen({ host, port });
+  }
   const address = app.server.address(),
     actualPort = typeof address === "object" && address ? address.port : port;
   const runtime = {

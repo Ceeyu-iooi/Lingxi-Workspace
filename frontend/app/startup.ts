@@ -1,6 +1,7 @@
 import '../../static/startup.css';
 const cover=document.getElementById('startup-cover');
-if((window as any).workbenchDesktop?.resumeState)void (window as any).workbenchDesktop.resumeState().then((state:any)=>{if(state.resuming)cover?.remove();}).catch(()=>{});
+const desktop=(window as any).workbenchDesktop||(window as any).workbenchWindowControls;
+if(desktop?.resumeState)void desktop.resumeState().then((state:any)=>{if(state.resuming)cover?.remove();}).catch(()=>{});
 let finishing:Promise<void>|null=null;
 const began=performance.now();
 function finish(){
