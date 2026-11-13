@@ -1,9 +1,9 @@
 {
-  "version": "0.1.37",
+  "version": "0.1.38",
   "files": [
     {
       "file": "README.md",
-      "sha256": "d876fc2184361e4d4e22f930de0b77daa089b5a7e680e3eb6b508c071be1e4f9"
+      "sha256": "ed6127455bc69c6098e419f9924bb4eaf98cc823d323b6982b78e7f4a39725ab"
     },
     {
       "file": "LICENSE",
@@ -19,7 +19,7 @@
     },
     {
       "file": "VERSION",
-      "sha256": "0f0d0710fff8a986da1ee1be450d3e5be658c10dfd0ecccf21c7b2c640e25f8c"
+      "sha256": "6c63e8271c4e93b96649dae2d492739a2547d17a0992e43aae854e56c4282b3c"
     },
     {
       "file": "design.md",
@@ -131,7 +131,7 @@
     },
     {
       "file": "src/server/main.ts",
-      "sha256": "5afc840c519c2231a01145cc724d199beeb37b35119acf466f6c967cc270bbce"
+      "sha256": "a7dda3e9bb2eaf9d0bb44b4d017cd97830e871a1f399561b3a09f7f82e243c5a"
     },
     {
       "file": "src/server/maintain.ts",
@@ -455,7 +455,7 @@
     },
     {
       "file": "frontend/compat/control-center.ts",
-      "sha256": "05e73f6003b1481277015bb0f8308b3af180a9518fea1e3493a4320986c4a1ac"
+      "sha256": "24a847bb1c24787212fb8e29e311d9c2882218ad7764f5b24ab739f60533b679"
     },
     {
       "file": "frontend/compat/dialogs.ts",
@@ -931,7 +931,7 @@
     },
     {
       "file": "docs/ARCHITECTURE.md",
-      "sha256": "ab2a8c29bee691ee00ae05a401a032df5a818d6a22962f59fc9992c470758719"
+      "sha256": "4e913e733968c0a9209a86ab557641fddbf20ec10d74b4ca638ed1165f06d695"
     },
     {
       "file": "docs/BOOTSTRAP_USAGE.md",

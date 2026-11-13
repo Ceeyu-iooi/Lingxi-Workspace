@@ -4,7 +4,7 @@ import {AgentScheduler} from "./agent-scheduler.ts";
 import {randomInt, timingSafeEqual} from "node:crypto";
 import { WebUpdates } from "./web-updates.ts";
 import { CodexLogin } from "./codex-login.ts";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { resolve, join, extname, dirname, relative, sep, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -520,7 +520,7 @@ export async function startServer(
           String(qs(request).file).replace(/[^A-Za-z0-9.-]/g, "") +
           '"',
       )
-      .send(readFileSync(backups.file(qs(request).file))),
+      .send(createReadStream(backups.file(qs(request).file))),
   );
   app.post("/api/restore", async (request) => {
     if (workersBusy()) throw new Error("请先等待当前后台任务完成");
@@ -1390,7 +1390,7 @@ export async function startServer(
     };
     return reply
       .type(mime[extname(file)] || "application/octet-stream")
-      .send(readFileSync(file));
+      .send(createReadStream(file));
   };
   app.get('/licenses/chromium',(_request,reply)=>{const file=join(assets,'chromium-licenses.html.gz');if(!existsSync(file))return reply.code(404).send({error:'此版本未打包 Chromium 运行时'});return reply.header('Content-Encoding','gzip').type('text/html; charset=utf-8').send(readFileSync(file));});
   app.get("/", staticFile);

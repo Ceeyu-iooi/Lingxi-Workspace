@@ -1415,7 +1415,9 @@
         if(current?.status==='collecting')note.textContent='正在自动读取日志，已出现的用量会继续补齐历史…';
         else if(current?.status==='error')note.textContent=current.error;
         else if(current?.status==='ready')note.textContent=current.error||'已自动同步 '+new Date(current.syncedAt).toLocaleTimeString();
-        cache.clear();request();
+        // Keep the previous snapshot so update() can avoid repainting an
+        // unchanged result. request() still fetches the latest data.
+        request();
       }catch(_){}finally{refreshing=false;}
     },2000);
     usageTimer = timer;
