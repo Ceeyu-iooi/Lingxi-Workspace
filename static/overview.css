@@ -1,4 +1,4 @@
-/* Overview owns its layout. Colours and type follow design.md. */
+/* Overview owns its layout. Colours and type follow DESIGN.md. */
 .ob-dashboard{padding:0!important;background:transparent!important;max-width:1600px;margin-inline:auto}
 .ob-dashboard .ob-top{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:22px}
 .ob-top h1{font-size:clamp(20px,2vw,28px);font-weight:550;letter-spacing:-.03em;margin:4px 0 0}.ob-top small,.ob-top time{color:var(--ink-3);font-size:var(--text-ui-sm)}

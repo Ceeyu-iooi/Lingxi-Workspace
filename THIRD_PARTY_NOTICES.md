@@ -61,7 +61,7 @@ SlideCommit-JS-CSS, SquishSwitch-JS-CSS and WakeSlider-JS-CSS were obtained with
 
 ## DeepSeek Harness installer and onboarding reference (0.0.31)
 
-DeepSeek Harness, Copyright (c) 2026 DeepSeek, MIT License. Native GDI+ rounded-control macros and button drawing from apps/desktop/installer/drawing.nsh and pages.nsh are adapted in desktop/installer-drawing.nsh. Installer layout and first-run spacing/transitions reference the upstream native installer and DesktopOnboarding. Source: https://github.com/deepseek-ai/deepseek-harness . License: static/vendor/dsh/LICENSE. Lingxi branding is original; no DSH credential, telemetry, update or account implementation is imported. See docs/UI_DESIGN.md.
+DeepSeek Harness, Copyright (c) 2026 DeepSeek, MIT License. Native GDI+ rounded-control macros and button drawing from apps/desktop/installer/drawing.nsh and pages.nsh are adapted in desktop/installer-drawing.nsh. Installer layout and first-run spacing/transitions reference the upstream native installer and DesktopOnboarding. Source: https://github.com/deepseek-ai/deepseek-harness . License: static/vendor/dsh/LICENSE. Lingxi branding is original; no DSH credential, telemetry, update or account implementation is imported. See UI_DESIGN.md.
 
 ## TypeScript runtime (0.0.32)
 
@@ -106,6 +106,6 @@ Vendored copy: `static/vendor/bootstrap/bootstrap.min.css` (verbatim upstream by
 
 The vendored stylesheet is a **design-language audit baseline only**; it is never linked into any page. The actually-loaded layer is the project's own `static/bootstrap-scope.css`, which maps Bootstrap's semantic variables onto this project's tokens and only applies inside `.bs-scope` containers. No Bootstrap JavaScript, Popper, or upstream component behaviour is shipped. Upstream is not rebuilt or modified.
 
-## Windows Tauri release
+## Windows Electron release
 
-The Windows installer bundles the Rust shell, Node.js 24 and Win32 taskbar helpers. Rust dependency notices are included in `backend/node-backend/RUST-THIRD-PARTY-NOTICES.txt`; the Node distribution notice is in `backend/node-backend/LICENSE.node.rtf`. WebView2 is supplied by Microsoft.
+The Windows installer bundles Electron, Chromium, Node.js and a Win32 taskbar helper. Electron and Chromium notices are included in the installation, and the Node distribution notice is in the bundled backend.

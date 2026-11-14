@@ -35,7 +35,7 @@
 
 浅色与深色主题、六套配色、字号和页面缩放可以按习惯调整。侧栏可收起，筛选和滚动位置在切换页面后保留。Windows 任务栏双环提供独立的用量详情。
 
-[设计规范](design.md) · [浅色预览](frontend/app/preview.html) · [深色预览](frontend/app/preview-dark.html)
+[设计规范](DESIGN.md) · [浅色预览](frontend/app/preview.html) · [深色预览](frontend/app/preview-dark.html)
 
 ## 为什么用灵犀工作坊？
 
@@ -53,7 +53,7 @@
 | 用量监测 | 日志证据、供应商余额与账单、多 Key、日期与任意多模型筛选；逐会话多维用量表与会话条形图 |
 | 历史参考计价 | 为 Codex、ZCode 与 Harness 用量按供应商官方价表折算费用，界面默认人民币，保留缺价与分项说明 |
 | 任务栏插件（桌面版） | 五小时与周额度双环，点击查看概览、用量、会话、图表及单模型详情；位置、颜色、主题与材质可调 |
-| Git 时间轴 | 独立横向泳道界面，只读本机仓库的提交、分支与标签；变更统计仅在 60 条内计算，未核验项如实列出 |
+| Git 时间轴 | 桌面版查看公开仓库的提交、分支与标签，离线时显示标记过期的随包快照；源码运行时也可只读查看本机仓库 |
 | 提示词 | 分类、编辑、版本、导入导出、模板市场、按需 AI 评估与优化 |
 | 本机技能 | 登记目录、只读扫描、搜索、来源和原文查看，不执行技能脚本 |
 | Profile 与资料 | 可改用户名及头像、加密完整备份、受控迁移、资料空间统计 |
@@ -68,7 +68,7 @@ Codex 参考金额使用内置官方价表与历史汇率：每条价格记录�
 |---|---|
 | `Lingxi-Workbench-版本-x64-Setup.exe` | 安装与升级；默认 Profile 跟随安装目录，可选择其他可写位置 |
 
-桌面附带 Node 运行时，无需另外安装 Node 或 Python。系统缺少 WebView2 时，安装器需要联网下载微软的运行时安装程序。卸载保留 Profile。当前未配置发布者代码签名，摘要校验与签名验证是两件事。
+桌面版使用 Electron 自带的 Chromium 和 Node 运行时，无需另装 Node、Python 或 WebView2。卸载保留 Profile。当前未配置发布者代码签名，摘要校验与签名验证是两件事。
 
 ### 首次启动
 
@@ -134,7 +134,7 @@ Vite 构建到 `.runtime/web-ui`，Node 后端构建到 `.runtime/server`。开�
 
 React 管理应用壳、路由与页面入口，现有编辑器和图表通过兼容适配保留交互；新入口、共享契约和后端采用严格 TypeScript，兼容控制器尚未全面严格类型化。Fastify 提供本机 HTTP，SQLite 保存资料，Decimal 处理金额，Sharp 处理头像，YAML 与 Node Zstandard 支持技能结构和日志解码。
 
-用量采集核验原始证据、去重与归属；累计值、缓存子集和推理子集不会重复相加。价格按 UTC 消费日期、汇率按上海日期取历史证据，最多沿用此前七日，不使用未来汇率。更多见[架构与资料流](docs/ARCHITECTURE.md)、[用量来源及限制](docs/USAGE.md)及[TOKEN_ACCOUNTING](TOKEN_ACCOUNTING.md)。图的表达参考 [C4 容器图](https://c4model.com/diagrams/container)，采用本项目自绘 SVG。
+用量采集核验原始证据、去重与归属；累计值、缓存子集和推理子集不会重复相加。价格按 UTC 消费日期、汇率按上海日期取历史证据，最多沿用此前七日，不使用未来汇率。更多见[架构与资料流](ARCHITECTURE.md)、[用量来源及限制](docs/USAGE.md)及[TOKEN_ACCOUNTING](TOKEN_ACCOUNTING.md)。图的表达参考 [C4 容器图](https://c4model.com/diagrams/container)，采用本项目自绘 SVG。
 
 ## 会话数据保留期
 
@@ -173,7 +173,7 @@ React 管理应用壳、路由与页面入口，现有编辑器和图表通过�
 
 ## 参与贡献
 
-欢迎通过公开仓库 Issue 提交可复现的问题与界面建议，请使用合成资料和脱敏截图。开发前可阅读 [架构说明](docs/ARCHITECTURE.md)、[设计规范](design.md)与[用量计算约定](TOKEN_ACCOUNTING.md)。提交改动时，请说明复现步骤、预期结果和实际验证范围。
+欢迎通过公开仓库 Issue 提交可复现的问题与界面建议，请使用合成资料和脱敏截图。开发前可阅读 [架构说明](ARCHITECTURE.md)、[设计规范](DESIGN.md)与[用量计算约定](TOKEN_ACCOUNTING.md)。提交改动时，请说明复现步骤、预期结果和实际验证范围。
 
 
 

@@ -13,7 +13,7 @@ const dropFile = (p) => {
 };
 
 // 浏览器/多环境专用入口：Node 运行时会走 package.json 的 exports 指向 lib 实现。
-// 逐个用静态导入核验：后端与其依赖从不 require 这些文件（见 verify_desktop_payload.cjs 的入口核验）。
+// 逐个用静态导入核验：后端与其依赖从不 require 这些文件（见 verify_backend_bundle.cjs 的入口核验）。
 const pngjsBrowser = (p) => /[/\\]browser\.js$/.test(p);
 
 function runtimeFile(p) {
@@ -138,8 +138,11 @@ const runtimeOnly = ['debug', 'ms'];
 // electron-updater 只用 require('js-yaml').load() 解析 app-update.yml；js-yaml 的 CJS 入口是 index.js -> lib/，
 // dist/ 下的 ESM 构建、未压缩 CJS 构建与压缩 CJS 构建是同一份代码的三种产物。
 // 实测三者的 load/dump 结果与导出键完全一致，因此只保留压缩 CJS 一份：删 js-yaml.mjs（104,118B）与 js-yaml.js（131,632B）。
+const shellPackageExcludes = {
+  'js-yaml': [/^\/dist\/(?:js-yaml\.mjs|js-yaml\.js)$/],
+};
 function desktopStaticFile(relative) {
   return relative.split(path.sep).join('/') !== 'vendor/bootstrap/bootstrap.min.css';
 }
 
-module.exports = { desktopStaticFile, dropFile, runtimeFile, backendInline, backendExternal, readManifest, backendExcludedFiles, backendPackageExcludes, excludedRuntimeFile, runtimeOnly };
+module.exports = { desktopStaticFile, dropFile, runtimeFile, backendInline, backendExternal, readManifest, backendExcludedFiles, backendPackageExcludes, excludedRuntimeFile, runtimeOnly, shellPackageExcludes };

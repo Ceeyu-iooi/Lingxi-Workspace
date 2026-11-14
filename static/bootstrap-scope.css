@@ -128,7 +128,7 @@
 .bs-col-11 { --bs-span: 11; }
 .bs-col-12 { --bs-span: 12; }
 
-/* 只保留插件实际需要的 md（768px）一档，其余断点见 docs/BOOTSTRAP_USAGE.md */
+/* 只保留插件实际需要的 md（768px）一档，其余断点见 BOOTSTRAP_USAGE.md */
 @media (min-width: 768px) {
   .bs-col-md-3 { --bs-span: 3; }
   .bs-col-md-4 { --bs-span: 4; }

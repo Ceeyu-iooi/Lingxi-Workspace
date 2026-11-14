@@ -534,6 +534,8 @@ export interface GitTimelineOptions {
   remote?: string | null;
   /** 缓存目录（通常是 profile 根）；给出时才写磁盘缓存。 */
   cacheDir?: string | null;
+  /** 随程序分发的公开历史快照，实时仓库不可用时作为最后的只读回退。 */
+  snapshotFile?: string | null;
   /** 是否允许读取本机工作树；桌面安装版可显式关闭。 */
   allowLocal?: boolean;
 }
@@ -1066,6 +1068,27 @@ export class GitTimeline {
           `${GIT_TIMELINE_FAILURES[failure.code].reason}（${failure.message}）；当前展示 ${fallback.at.toLocaleString("zh-CN", { hour12: false })} 读取的缓存。`,
         ];
         return this.finalize(stale, this.signatureOf(stale), started);
+      }
+      // The installed package has no worktree, and an unauthenticated GitHub
+      // request may be rate-limited on its very first use. Only use the bundled
+      // snapshot when it is explicitly for the requested public repository.
+      try {
+        const file = this.options.snapshotFile;
+        if (file) {
+          const bundle = JSON.parse(readFileSync(file, "utf8")) as {
+            repository?: string; snapshots?: Record<string, GitTimelineResult>;
+          };
+          const saved = bundle.repository === remote ? bundle.snapshots?.[String(limit)] : undefined;
+          if (saved?.available && Array.isArray(saved.commits) && saved.summary) {
+            const snapshot: GitTimelineResult = {
+              ...saved, cached: true, stale: true, code: failure.code,
+              unverified: [...(saved.unverified ?? []), `实时读取失败：${failure.message}`],
+            };
+            return this.finalize(snapshot, this.signatureOf(snapshot), started);
+          }
+        }
+      } catch {
+        // A missing or malformed snapshot must not mask the original error.
       }
       const failed = unavailableGitTimeline(
         GIT_TIMELINE_FAILURES[failure.code].reason,

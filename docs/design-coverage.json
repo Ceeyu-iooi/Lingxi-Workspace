@@ -1,6 +1,6 @@
 {
   "version": "0.1.32",
-  "specification": "design.md",
+  "specification": "DESIGN.md",
   "preview": {
     "light": "/preview.html",
     "dark": "/preview-dark.html",

@@ -4,7 +4,7 @@
 
 ## 1. 为什么引入
 
-本项目已有 `design.md` 作为唯一设计依据，但任务栏插件与独立设置窗口此前缺少稳定的**布局刻度**。Bootstrap 5 提供的是成熟、可验证的刻度语义，而不是视觉风格：
+本项目已有 `DESIGN.md` 作为唯一设计依据，但任务栏插件与独立设置窗口此前缺少稳定的**布局刻度**。Bootstrap 5 提供的是成熟、可验证的刻度语义，而不是视觉风格：
 
 - **间距刻度**：以 4px 为基准的 0/4/8/16/24/48 六档（`$spacer: 1rem`），与项目 8 点栅格重合，能直接消除各处 `margin:13px` 之类的随手值。
 - **栅格**：12 栏、12 的因数多（2/3/4/6），适合 420 DIP 插件宽度下做 2 栏、主窗做 3–4 栏。
@@ -50,7 +50,7 @@
 
 `static/bootstrap-scope.css` 本身也需要被引用（与 `theme.css` 同一挂载点、同一顺序：主题令牌在前，作用层在后），但**不得**改写为全局选择器。若某个独立窗口无法引用外部 CSS，只能把该文件内容整体内联，仍保留 `.bs-scope` 前缀。
 
-## 5. 与 design.md 令牌的对应关系
+## 5. 与 DESIGN.md 令牌的对应关系
 
 作用层不新增任何品牌色，所有值都指向项目令牌；括号内为令牌缺失时的回退值。
 
@@ -116,7 +116,7 @@
 3. **不得**用 Bootstrap 的 JS 组件（`dropdown`/`modal`/`tooltip`/`collapse`/`offcanvas`）替换 `JellyRadio`、`SquishSwitch`、`SwipeToast`、共享下拉与浮层等既有原生实现。本仓库未 vendored 任何 Bootstrap JS。
 4. **不得**把 `.btn`、`.form-control`、`.form-select`、`.card` 等上游类直接套到既有控件上——继续复用项目的 `.btn` 与共享输入样式，只用作用层的 `.bs-*` 类。
 5. **不得**在 `.bs-scope` 之外书写任何 Bootstrap 相关覆盖，也不得用更高优先级去补 `.bs-scope` 内实例。
-6. **不得**为迁就 Bootstrap 默认值修改 `design.md` 令牌。令牌是唯一依据，Bootstrap 只提供刻度与结构。
+6. **不得**为迁就 Bootstrap 默认值修改 `DESIGN.md` 令牌。令牌是唯一依据，Bootstrap 只提供刻度与结构。
 7. **不得**在作用层里硬编码品牌色（`#0d6efd`、`#212529` 等一律禁止），也不得新增 `prefers-color-scheme` 分支。
 
 ## 8. 采纳 / 拒绝清单

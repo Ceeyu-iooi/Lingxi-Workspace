@@ -1,4 +1,4 @@
-/* Lingxi application adapters. DSH layout references are documented in docs/UI_DESIGN.md. */
+/* Lingxi application adapters. DSH layout references are documented in UI_DESIGN.md. */
 :root{--shell-edge:#ececee;--sidebar-width:240px}
 :root[data-theme=light]{--shell-edge:#eef5f8}
 :root[data-theme=dark]{--shell-edge:#000;--color-background-win-alt:#000}
