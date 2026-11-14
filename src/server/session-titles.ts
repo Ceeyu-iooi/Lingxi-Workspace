@@ -34,14 +34,22 @@ export function sessionMetadata(profile: ProfileStore, source: string, root?: st
         const sibling = join(dirname(canonical), basename(canonical) === "sessions" ? "archived_sessions" : "sessions");
         if (existsSync(sibling)) roots.push(realpathSync(sibling));
       }
-      const cursors = profile.db.prepare("SELECT path,offset FROM cursors WHERE owner=?").iterate(profile.owner) as Iterable<JsonObject>;
+      const cursors = profile.db.prepare("SELECT path,offset,state FROM cursors WHERE owner=?").iterate(profile.owner) as Iterable<JsonObject>;
       const buffer = Buffer.allocUnsafe(256 * 1024);
       for (const cursor of cursors) {
         const file = cursor.path;
-        if (typeof file !== "string" || !file.endsWith(".jsonl") || !roots.some(base => {
+        if (typeof file !== "string" || !/\.jsonl(?:\.zst)?$/i.test(file) || !roots.some(base => {
           const rel = relative(base,file);
           return rel && !isAbsolute(rel) && rel !== ".." && !rel.startsWith(".." + sep);
         })) continue;
+        if (file.toLowerCase().endsWith('.zst')) {
+          try {
+            const meta = parseExact(cursor.state);
+            if (typeof meta.session === 'string' && meta.session)
+              titles.set(meta.session, {...titles.get(meta.session), project:meta.project || undefined, parent:meta.headerParent || undefined});
+          } catch { /* A damaged optional cursor must not hide usage. */ }
+          continue;
+        }
         let header = codexHeaders.get(file);
         if (!header || header.offset !== cursor.offset) {
           header = {offset:cursor.offset};

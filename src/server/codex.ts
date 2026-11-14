@@ -59,7 +59,7 @@ export class Codex {
         ...new Set(
           (
             await Promise.all(
-              roots.map((r) => listFiles(r, (n) => n.endsWith(".jsonl"))),
+              roots.map((r) => listFiles(r, (n) => /\.jsonl(?:\.zst)?$/i.test(n))),
             )
           ).flat(),
         ),

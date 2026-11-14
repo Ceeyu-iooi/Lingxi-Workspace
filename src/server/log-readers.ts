@@ -9,7 +9,8 @@ import {
 } from "node:fs";
 import { join, relative, isAbsolute, sep } from "node:path";
 import { open } from "node:fs/promises";
-import { zstdDecompressSync, constants } from "node:zlib";
+import { zstdDecompressSync, createZstdDecompress, constants } from "node:zlib";
+import { Readable } from "node:stream";
 import { parseExact } from "./profile.ts";
 
 // Node's Zstandard decoder stops at the first frame. Read the framing (RFC
@@ -75,6 +76,69 @@ async function* zstdFrames(file: string, maxBytes: number) {
   } finally { await handle.close(); }
 }
 
+// Codex archives can contain very large frames. Decode each frame as a stream
+// so their chat content is never materialized in memory or written to disk.
+async function* codexZstdFrames(file: string, maxBytes: number) {
+  const handle = await open(file, "r");
+  let offset = 0, decoded = 0;
+  const read = async (length: number, eof = false): Promise<Buffer | null> => {
+    const result = Buffer.allocUnsafe(length);
+    let filled = 0;
+    while (filled < length) {
+      const {bytesRead} = await handle.read(result, filled, length - filled, offset);
+      if (!bytesRead) {
+        if (!filled && eof) return null;
+        throw new Error("Codex 压缩帧已截断");
+      }
+      offset += bytesRead; filled += bytesRead;
+    }
+    return result;
+  };
+  try {
+    for (;;) {
+      const magic = await read(4, true);
+      if (!magic) break;
+      const number = magic.readUInt32LE();
+      if ((number >>> 4) === (0x184d2a50 >>> 4)) {
+        const size = (await read(4))!.readUInt32LE();
+        if (offset + size > (await handle.stat()).size) throw new Error("Codex 元数据帧已截断");
+        offset += size;
+        continue;
+      }
+      if (number !== 0xfd2fb528) throw new Error("Codex 压缩帧标识不正确");
+      async function* frame() {
+        yield magic!;
+        const descriptor = (await read(1))!, flags = descriptor[0];
+        if (flags & 8) throw new Error("Codex 压缩帧使用不支持的格式");
+        yield descriptor;
+        const single = !!(flags & 32), contentFlag = flags >>> 6;
+        const headerSize = (single ? 0 : 1) + [0, 1, 2, 4][flags & 3] + (contentFlag ? [0, 2, 4, 8][contentFlag] : single ? 1 : 0);
+        if (headerSize) yield (await read(headerSize))!;
+        for (;;) {
+          const block = (await read(3))!, value = block.readUIntLE(0, 3);
+          const type = (value >>> 1) & 3, size = value >>> 3;
+          if (type === 3 || size > 131072) throw new Error("Codex 压缩块不正确");
+          yield block;
+          const physicalSize = type === 1 ? 1 : size;
+          if (physicalSize) yield (await read(physicalSize))!;
+          if (value & 1) break;
+        }
+        if (flags & 4) yield (await read(4))!;
+      }
+      const input = Readable.from(frame()), decoder = createZstdDecompress({params:{[constants.ZSTD_d_windowLogMax]:27}});
+      input.on("error", error => decoder.destroy(error));
+      input.pipe(decoder);
+      try {
+        for await (const chunk of decoder) {
+          decoded += chunk.length;
+          if (decoded > maxBytes) throw new Error("解压或读取数据超过单次限制");
+          yield chunk as Buffer;
+        }
+      } finally {input.destroy(); decoder.destroy();}
+    }
+  } finally {await handle.close();}
+}
+
 export async function* records(
   file: string,
   options: {
@@ -85,9 +149,9 @@ export async function* records(
     codexUsageOnly?: boolean;
   } = {},
 ) {
-  let stream: any = createReadStream(file, { highWaterMark: (options.codexUsageOnly ? 1024 : 128) * 1024 });
+  let stream: any;
   if (options.compressed) {
-    if (statSync(file).size > 128 * 1024 * 1024)
+    if (!options.codexUsageOnly && statSync(file).size > 128 * 1024 * 1024)
       throw new Error("Harness 压缩文件超过单次限制");
     const fd = openSync(file, "r"),
       magic = Buffer.alloc(4);
@@ -97,10 +161,14 @@ export async function* records(
       closeSync(fd);
     }
     if (magic.readUInt32LE() === 0xfd2fb528 || (magic.readUInt32LE() >>> 4) === (0x184d2a50 >>> 4)) {
-      stream.destroy();
-      stream = zstdFrames(file, options.maxBytes ?? 256 * 1024 * 1024);
+      stream = options.codexUsageOnly
+        ? codexZstdFrames(file, options.maxBytes ?? Infinity)
+        : zstdFrames(file, options.maxBytes ?? 256 * 1024 * 1024);
+    } else if (options.codexUsageOnly) {
+      throw new Error("Codex 压缩文件标识不正确");
     }
   }
+  stream ??= createReadStream(file, { highWaterMark: (options.codexUsageOnly ? 1024 : 128) * 1024 });
   let chunks: Buffer[] = [],
     length = 0,
     total = 0,

@@ -89,6 +89,7 @@ export async function parseCodexFile(file: string) {
     for await (const record of records(file, {
       allowLargeResponse: true,
       codexUsageOnly: true,
+      compressed: file.toLowerCase().endsWith('.zst'),
       state: readerState,
     })) {
       if (!record || typeof record !== "object" || Array.isArray(record))
@@ -99,6 +100,9 @@ export async function parseCodexFile(file: string) {
         state.session = String(payload.id || payload.session_id || "");
         state.provider = String(payload.model_provider || "未标注");
         state.project = String(payload.cwd || "");
+        const child = payload.source?.subagent;
+        const parent = child?.thread_spawn?.parent_thread_id || (child ? payload.parent_thread_id : undefined);
+        state.headerParent = typeof parent === 'string' && parent !== state.session ? parent : null;
         state.lineage = {};
         if (
           payload.forked_from_id &&
@@ -226,11 +230,15 @@ export async function parseCodexFile(file: string) {
     const stat = statSync(file, { bigint: true });
     return {
       path: file,
-      offset: readerState.offset,
+      offset: file.toLowerCase().endsWith('.zst') ? Number(stat.size) : readerState.offset,
       state: {
         scannerVersion: 4,
         mtime: String(stat.mtimeNs),
         size: Number(stat.size),
+        session: state.session,
+        project: state.project,
+        lineage: state.lineage,
+        headerParent: state.headerParent,
       },
       observations,
     };

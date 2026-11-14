@@ -1,5 +1,5 @@
 {
-  "version": "0.1.39",
+  "version": "0.1.40",
   "files": [
     {
       "file": "README.md",
@@ -15,7 +15,7 @@
     },
     {
       "file": "TOKEN_ACCOUNTING.md",
-      "sha256": "82bcb4e042eed03953f7e01c0b053e8da0f6f948fda555cfc1c42acc980d05ca"
+      "sha256": "ee3ccae2522490aa269a12a9a61c2062435c29f7521216923471684e8a10e0bf"
     },
     {
       "file": "UI_DESIGN.md",
@@ -35,7 +35,7 @@
     },
     {
       "file": "VERSION",
-      "sha256": "719a4e95a9456d21af9c2a88e9e2808853644367f09683dde0c13c8b2a57f280"
+      "sha256": "d039141f2ff4fdb8f3353d7836193293677127535438e103fc60c09a4d42d9e7"
     },
     {
       "file": "DESIGN.md",
@@ -103,11 +103,11 @@
     },
     {
       "file": "src/server/codex-reader.ts",
-      "sha256": "e7377ba42456d5235026401f91c5429f050f4f526412097ed22d8d9aaf96624b"
+      "sha256": "35977de2b1eb35b28ac16894d43b02138cdc306239e13986d4782d0af180738c"
     },
     {
       "file": "src/server/codex.ts",
-      "sha256": "0f1eebe79fa5aaa65cea70f18c93e2137d0e34af07590ce1b16c864b207e6da2"
+      "sha256": "3b9c60ddcafd418bed5e1ac402252dd7bcbb14c9cbf473b3ec04bca4f83b7dae"
     },
     {
       "file": "src/server/compressed-text.ts",
@@ -143,7 +143,7 @@
     },
     {
       "file": "src/server/log-readers.ts",
-      "sha256": "1fce3cef4f37105683ad8160734b670b4419d36ecdf2f218734eb800eff46196"
+      "sha256": "7156bc90207227e1b5884b1d113e93ca8a317f6b0de7637e006586d5e554c0ca"
     },
     {
       "file": "src/server/main.ts",
@@ -227,7 +227,7 @@
     },
     {
       "file": "src/server/session-titles.ts",
-      "sha256": "4ac0ccac3bc59f61c0d8fec419e02db603f3f788e3319e54c4db85bb374188b9"
+      "sha256": "f9683469ca0874c3657a3e35c9cd0769c996be7c03f6ea268cb11d4657a18882"
     },
     {
       "file": "src/server/session-usage.ts",

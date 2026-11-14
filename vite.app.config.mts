@@ -12,7 +12,7 @@ export default defineConfig({
   root: resolve(root, "frontend/app"),
   publicDir: resolve(root, "static"),
   plugins: [
-    {name:"lingxi-design-source",generateBundle(){this.emitFile({type:"asset",fileName:"design.md",source:readFileSync(resolve(root,"design.md"),"utf8")});}},
+    {name:"lingxi-design-source",generateBundle(){this.emitFile({type:"asset",fileName:"design.md",source:readFileSync(resolve(root,"DESIGN.md"),"utf8")});}},
     react(),
     {
       name: "lingxi-interaction-runtime",
