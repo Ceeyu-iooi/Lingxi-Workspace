@@ -25,7 +25,14 @@ import type { PriceSnapshot } from './price-source.ts';
  *   can be located but not converted into a token estimate.
  */
 
-export const OFFICIAL_POLICY = 'official-price-table-v3';
+/**
+ * Table policy version.
+ *
+ * v4 reads the vendor tables line by line on every sync instead of comparing a
+ * single page digest, so a newly published model is found even when the rest of
+ * the page is unchanged. Manual and daily refreshes use the same reader.
+ */
+export const OFFICIAL_POLICY = 'official-price-table-v4';
 
 export type OfficialSource = {
   vendor: string;
@@ -48,6 +55,471 @@ export type OfficialSource = {
    * and above the vendor's long-context threshold.
    */
   flatStandard?: boolean;
+  /**
+   * The machine-readable table this file is generated from.
+   *
+   * `heading` is the exact heading the table sits under, `models` limits which
+   * rows are ours, and `columns` maps a header cell onto a quote field. Without
+   * it the page is read as a whole, which cannot tell a new model from a typo.
+   */
+  /** Rows-as-fields table (DeepSeek): model names across the top, peak rows only. */
+  transposed?: {
+    heading: string;
+    headings?: string[];
+    models: string;
+    currency: 'USD' | 'CNY';
+    fields: ((header: string) => TransposedField | null)[];
+  };
+  standardTable?: {
+    heading: string;
+    models: string;
+    currency: 'USD' | 'CNY';
+    columns?: [RegExp, QuoteField | 'write12h'][];
+  };
+  /** Set on the generated file: models a human reviewed out of the table. */
+  excluded?: string[];
+};
+
+/** Fields a published row can carry; `write12h` is read for audit, not quoted. */
+export type PublishedField = QuoteField | 'write12h';
+export type PublishedQuote = Record<PublishedField, string | null>;
+
+/** One row read off a vendor table, priced in the table's own currency. */
+export type PublishedModel = {
+  vendor: string;
+  model: string;
+  key: string;
+  currency: 'USD' | 'CNY';
+  quote: PublishedQuote;
+};
+
+// A vendor may write the amount with its unit next to it ("0.04元"), a currency
+// symbol in front ("$0.04") or nothing at all; the number is still the one the
+// page states. Anything else — "-", "—", "面议" — is not a price.
+const MONEY = /^(?:\$|￥|¥)?\s*([0-9]+(?:\.[0-9]+)?)\s*(?:元|美元|USD|CNY)?$/;
+
+/** A cell that holds a real, positive amount; `-`, `—` and text stay unknown. */
+export function tableNumber(cell: string): string | null {
+  const text = String(cell || '').replace(/\*\*/g, '').replace(/,/g, '').trim(),
+    match = MONEY.exec(text);
+  if (!match) return null;
+  const value = new Decimal(match[1]);
+  return value.gt(0) ? value.toString() : null;
+}
+
+/** Split one markdown table row into trimmed cells. */
+export function tableCells(line: string): string[] {
+  const cells: string[] = [];
+  let cell = '';
+  for (const char of line.trim().replace(/^\|/, '').replace(/\|$/, '')) {
+    if (char === '|') {
+      cells.push(cell.trim());
+      cell = '';
+    } else cell += char;
+  }
+  cells.push(cell.trim());
+  return cells;
+}
+
+/**
+ * Column names as the page writes them. The table also repeats every column for
+ * long context; that column is not modelled (see pricingNotes), so a header must
+ * match exactly — a long-context column must never be taken for the standard one.
+ */
+const OPENAI_COLUMNS: [RegExp, PublishedField][] = [
+  [/^(short context )?input$/i, 'input'],
+  [/^(short context )?output$/i, 'output'],
+  [/^(short context )?cached( input)?$/i, 'cached'],
+  [/^(short context )?30m write$/i, 'write'],
+  [/^(short context )?12h write$/i, 'write12h'],
+];
+const ZHIPU_COLUMNS: [RegExp, 'input' | 'output' | 'cached'][] = [
+  [/^输入单价/, 'input'],
+  [/^输出单价/, 'output'],
+  [/^缓存命中/, 'cached'],
+];
+
+/** Match header cells to quote fields; unmapped headers stay null. */
+export function columnsFor(source: OfficialSource, headers: string[]): (PublishedField | null)[] {
+  const rules =
+    source.standardTable?.columns ??
+    (source.vendor === '智谱' ? ZHIPU_COLUMNS : OPENAI_COLUMNS);
+  return headers.map((header) => {
+    const text = header.replace(/\*\*/g, '').trim();
+    return rules.find(([pattern]) => pattern.test(text))?.[1] ?? null;
+  });
+}
+
+/**
+ * Read the Standard table under the declared heading.
+ *
+ * Only the first table below the heading is read; a cell without a number stays
+ * unknown rather than becoming zero. Nothing here writes a price: the caller
+ * decides whether a row is corroboration or a review item.
+ */
+export function readPublishedTable(body: string, source: OfficialSource): PublishedModel[] {
+  const spec = source.standardTable;
+  if (!spec || !body) return [];
+  const lines = body.split(/\r?\n/);
+  let headingLine = -1;
+  for (let index = 0; index < lines.length; index++) {
+    const match = /^#{2,4}\s*(.+?)\s*$/.exec(lines[index]);
+    if (match && match[1].replace(/\*\*/g, '').trim() === spec.heading) {
+      headingLine = index;
+      break;
+    }
+  }
+  if (headingLine < 0) return [];
+  const models: PublishedModel[] = [];
+  let columns: (PublishedField | null)[] | null = null,
+    started = false;
+  for (let index = headingLine + 1; index < lines.length; index++) {
+    const line = lines[index].trim();
+    if (!line) continue;
+    if (line.startsWith('#')) break;
+    if (!line.startsWith('|')) {
+      if (started) break;
+      continue;
+    }
+    const cells = tableCells(line);
+    if (/^[-:\s|]+$/.test(line)) continue;
+    if (!columns) {
+      const name = cells[0].replace(/\*\*/g, '').trim();
+      if (/^(model|模型名称|模型)$/i.test(name)) {
+        columns = columnsFor(source, cells.slice(1));
+        started = true;
+      }
+      continue;
+    }
+    started = true;
+    const raw = cells[0].replace(/\*\*/g, '').trim();
+    if (!raw) continue;
+    const model = raw.replace(/\s*[(（][^)）]*[)）]\s*$/, '').trim();
+    if (!model.toLowerCase().startsWith(spec.models.toLowerCase())) continue;
+    const quote: PublishedQuote = { input: null, cached: null, write: null, output: null, write12h: null };
+    cells.slice(1).forEach((cell, position) => {
+      const field = columns![position];
+      if (field) quote[field] = tableNumber(cell);
+    });
+    models.push({ vendor: source.vendor, model, key: normalizeModelKey(model), currency: spec.currency, quote });
+  }
+  return models;
+}
+
+/** Which side of a row the quoted cell is. */
+export type TransposedField = 'input' | 'output' | 'cached';
+
+/**
+ * Read a table whose rows are fields and whose columns are models.
+ *
+ * DeepSeek states its price table sideways: one column per model, one row per
+ * component, and each component split into 空闲时段 / 高峰时段. The peak side is
+ * the table price (off-peak is the vendor-stated fraction of it), so only that
+ * row is taken. A cell mixes a number and a unit ("2元"), which is still a
+ * number the page states.
+ */
+export function readTransposed(
+  body: string,
+  spec: { heading: string; models: string; currency: 'USD' | 'CNY'; headings?: string[]; fields: ((header: string) => TransposedField | null)[] },
+  vendor: string,
+): PublishedModel[] {
+  // The model row and its price rows can sit under different headings of the
+  // same page ("模型 & 价格" states the table, "模型细节" carries it), so any of
+  // the declared headings opens a readable window.
+  const headings = [spec.heading, ...(spec.headings || [])];
+  const lines = body.split(/\r?\n/);
+  let headingLine = -1;
+  for (let index = 0; index < lines.length; index++) {
+    const match = /^#{1,6}\s*(.+?)\s*$/.exec(lines[index]);
+    if (match && match[1].replace(/\*\*/g, '').trim() === spec.heading) {
+      headingLine = index;
+      break;
+    }
+  }
+  if (headingLine < 0) return [];
+  // Model names live in the first row that has more than one distinct column.
+  let columns: string[] | null = null;
+  const quotes = new Map<string, { currency: 'USD' | 'CNY'; quote: PublishedQuote }>();
+  for (let index = headingLine + 1; index < lines.length; index++) {
+    const line = lines[index].replace(/\r/g, '').trim();
+    // A heading of another table ends this one.
+    const section = /^#{1,6}\s*(.+?)\s*$/.exec(line);
+    if (section && !headings.includes(section[1].replace(/\*\*/g, '').trim())) break;
+    if (!line || !line.startsWith('|')) continue;
+    if (/^[-:\s|]+$/.test(line)) continue;
+    // Separator rows are written with many dashes; they are not data.
+    if (/^\|?[\s:|-]+\|?$/.test(line)) continue;
+    const cells = tableCells(line);
+    if (!columns) {
+      // Column names are split across the header cell ("模型 & 价格" / "模型"),
+      // so count only the cells that are not part of the leading label.
+      // Read names from the raw line: a name may hold a parenthetical condition,
+      // and any "|" inside it must not split the cell.
+      const names = line.replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim()).filter(Boolean);
+      const models = names.filter((name) => name.toLowerCase().startsWith(spec.models.toLowerCase()));
+      if (models.length < 2) continue;
+      columns = names;
+      for (const name of models) {
+        const model = name.replace(/\s*[(（][^)）]*[)）]\s*$/, '').trim();
+        if (!model.toLowerCase().startsWith(spec.models.toLowerCase())) continue;
+        if (!quotes.has(model)) quotes.set(model, { currency: spec.currency, quote: { input: null, cached: null, write: null, output: null, write12h: null } });
+      }
+      continue;
+    }
+    // Rows are repeated per time band and only the peak row is the table price.
+    // The component may be split over two cells ("价格(2)" / "百万tokens 输入");
+    // every cell before the time band belongs to it. Prices are the last cells,
+    // so the component must be read from the front, not by scanning the row.
+    const bandAt = cells.findIndex((cell) => /空闲|高峰/.test(cell));
+    if (bandAt < 0 || !/高峰/.test(cells[bandAt])) continue;
+    const header = cells.slice(0, bandAt).join(' ').replace(/\*\*/g, '').trim();
+    const quoteField = spec.fields.map((match) => match(header)).find(Boolean);
+    if (!quoteField) continue;
+    // Each model owns one trailing price cell, in column order.
+    const priced = [...quotes.keys()];
+    for (let offset = 0; offset < priced.length; offset++) {
+      const cell = cells[cells.length - priced.length + offset];
+      const entry = quotes.get(priced[offset]);
+      if (!entry || cell == null) continue;
+      entry.quote[quoteField] = tableNumber(cell);
+    }
+  }
+  return [...quotes].map(([model, entry]) => ({ vendor, model, key: normalizeModelKey(model), currency: entry.currency, quote: entry.quote }));
+}
+
+/**
+ * What a freshly read table means for the price table.
+ *
+ * The reader is the judge, not a human queue: a row that is read from a vendor
+ * table with a complete, positive input and output price *is* the official price
+ * for that model, so it can be priced. A row the reader only half understands
+ * (an unmatched column, a missing component the transcription does have) is
+ * quarantined instead — a partially read price is worse than a reported gap.
+ */
+export type PublishedReview = {
+  /** Rows that may replace the transcription, complete and unambiguous. */
+  rates: PublishedModel[];
+  /** Rows stored only as corroboration; a human must settle them. */
+  partial: { vendor: string; model: string; reason: string; quote: PublishedQuote }[];
+  /** Complete rows the transcription does not have yet. */
+  added: PublishedModel[];
+  /** Transcribed models the vendor no longer prices in this table. */
+  withdrawn: { vendor: string; model: string }[];
+  /** Transcribed prices that differ from the vendor page. */
+  drift: { vendor: string; model: string; field: QuoteField; expected: string; actual: string }[];
+  /** Rows that agree with the transcription. */
+  confirmed: PublishedModel[];
+};
+
+/** Columns a vendor table must fill before a model can be valued per token. */
+function complete(row: PublishedModel): boolean {
+  return row.quote.input != null && row.quote.output != null
+    ? true
+    : false;
+}
+
+export function readPublishedReview(
+  published: { source: OfficialSource; rows: PublishedModel[] }[],
+  rates: readonly OfficialRate[] = OFFICIAL_RATES,
+): PublishedReview {
+  const index = new Map<string, OfficialRate>();
+  for (const rate of rates) index.set(normalizeModelKey(rate.modelName), rate);
+  const review: PublishedReview = { rates: [], partial: [], added: [], withdrawn: [], drift: [], confirmed: [] };
+  const seen = new Set<string>();
+  for (const table of published) {
+    for (const row of table.rows) {
+      seen.add(row.key);
+      const rate = index.get(row.key);
+      const transcribed = rate?.quote.peak as Record<QuoteField, string | null> | undefined;
+      if (!complete(row)) {
+        // A half-read row never replaces anything; if the model is already
+        // priced, the transcription keeps pricing and the page is a review task.
+        review.partial.push({
+          vendor: row.vendor,
+          model: row.model,
+          reason: transcribed ? 'official_row_incomplete_but_transcribed' : 'official_price_not_verifiable',
+          quote: row.quote,
+        });
+        continue;
+      }
+      if (transcribed && !rate) continue;
+      let unfinished: string | null = null;
+      if (transcribed) {
+        // Cache and write columns may legitimately be absent ("-") in the table;
+        // only a column the transcription states but the page leaves blank blocks
+        // automatic replacement, because that would silently change an amount.
+        for (const field of QUOTE_FIELDS) {
+          if (transcribed[field] != null && row.quote[field] == null) unfinished = field;
+        }
+      }
+      if (unfinished) {
+        review.partial.push({ vendor: row.vendor, model: row.model, reason: 'official_column_unreadable:' + unfinished, quote: row.quote });
+        continue;
+      }
+      review.rates.push(row);
+      if (!transcribed) review.added.push(row);
+      else review.confirmed.push(row);
+      if (transcribed) {
+        for (const field of QUOTE_FIELDS) {
+          const actual = row.quote[field],
+            expected = transcribed[field];
+          if (actual == null || expected == null) continue;
+          if (!new Decimal(actual).eq(new Decimal(expected)))
+            review.drift.push({ vendor: row.vendor, model: rate!.modelName, field, expected, actual });
+        }
+      }
+    }
+  }
+  const vendors = new Set(published.map((table) => table.source.vendor));
+  for (const rate of rates) {
+    // Only tables we actually read can withdraw anything: an unreadable page
+    // must not empty the price table.
+    if (!vendors.has(rate.provider)) continue;
+    if (!seen.has(normalizeModelKey(rate.modelName))) review.withdrawn.push({ vendor: rate.provider, model: rate.modelName });
+  }
+  return review;
+}
+
+/**
+ * Transcribe a vendor table into rates.
+ *
+ * A row keeps the transcription's peak windows, provider, notes and history
+ * start, because the table rarely restates them; only the numbers are replaced.
+ * A model that appears for the first time gets a new series and is marked as
+ * read today. Generation happens offline (see `scripts/publish_official_prices.mts`)
+ * so the app never prices from a page at request time.
+ */
+export function transcribeTable(
+  published: PublishedModel[],
+  current: readonly OfficialRate[] = OFFICIAL_RATES,
+  day = new Date().toISOString().slice(0, 10),
+): OfficialRate[] {
+  const byKey = new Map(current.map((rate) => [normalizeModelKey(rate.modelName), rate])),
+    output = current.map((rate) => ({ ...rate, quote: { peak: { ...rate.quote.peak }, offPeak: { ...rate.quote.offPeak } } }));
+  const placed = new Map(output.map((rate) => [normalizeModelKey(rate.modelName), rate]));
+  for (const row of published) {
+    const base = byKey.get(row.key);
+    const peak: Record<QuoteField, string | null> = {
+      input: row.quote.input,
+      cached: row.quote.cached,
+      output: row.quote.output,
+      write: row.quote.write,
+    };
+    if (base) {
+      const target = placed.get(row.key)!;
+      target.quote = { peak, offPeak: { ...peak } };
+      continue;
+    }
+    const source = Object.values(OFFICIAL_SOURCES).find((item) => item.vendor === row.vendor && item.standardTable),
+      created: OfficialRate = {
+        model: `${row.vendor.toLowerCase()}:${row.model}`,
+        id: `${row.vendor.toLowerCase()}/${row.model}`,
+        sourceType: 'official',
+        provider: row.vendor,
+        modelName: row.model,
+        currency: row.currency,
+        sourceUrl: source?.url ?? '',
+        basis: 'official_table',
+        alias: null,
+        // The day it first appears is the day we can prove the price; earlier
+        // usage is estimated from this series and labelled, never back-filled.
+        history: { currentEffective: day, start: day },
+        pricingNotes: source ? `逐行读取${source.vendor}官方标准表；与官方页同价` : '人工录入',
+        peak: FLAT_PEAK,
+        quote: { peak, offPeak: { ...peak } },
+      };
+    byKey.set(row.key, created);
+    placed.set(row.key, created);
+    output.push(created);
+  }
+  return output;
+}
+
+/** What a reviewed read does to one price table. */
+export type TableRefresh = {
+  rates: OfficialRate[];
+  report: {
+    /** The day the read was made in Asia/Shanghai. */
+    readAt: string;
+    sources: { vendor: string; models: number }[];
+    added: { vendor: string; model: string }[];
+    withdrawn: { vendor: string; model: string }[];
+    drift: { vendor: string; model: string; field: string; expected: string; actual: string }[];
+    partial: { vendor: string; model: string; reason: string }[];
+  };
+};
+
+/**
+ * Merge one day's reviewed read into the current table.
+ *
+ * This is the whole point of reading the page every day: a complete official row
+ * is the price, so a vendor that publishes a model or changes a number is priced
+ * from that morning on, without waiting for a release. Rows the reader could not
+ * finish never replace anything. Prices read today stay in effect for the days
+ * after today; earlier days keep the series they were priced under.
+ */
+export function mergePublishedReview(
+  review: PublishedReview,
+  current: readonly OfficialRate[] = OFFICIAL_RATES,
+  day = new Date().toISOString().slice(0, 10),
+): TableRefresh {
+  const reported: TableRefresh['report'] = {
+    readAt: day,
+    sources: [],
+    added: review.added.map((row) => ({ vendor: row.vendor, model: row.model })),
+    withdrawn: review.withdrawn.map((row) => ({ vendor: row.vendor, model: row.model })),
+    drift: review.drift.map((row) => ({ vendor: row.vendor, model: row.model, field: row.field, expected: row.expected, actual: row.actual })),
+    partial: review.partial.map((row) => ({ vendor: row.vendor, model: row.model, reason: row.reason })),
+  };
+  const byKey = new Map(current.map((rate) => [normalizeModelKey(rate.modelName), rate]));
+  const quoted = new Set<string>();
+  const rates = current.map((rate) => {
+    const key = normalizeModelKey(rate.modelName);
+    const row = review.rates.find((item) => item.key === key);
+    if (!row) return rate;
+    quoted.add(key);
+    const peak: Record<QuoteField, string | null> = { input: row.quote.input, cached: row.quote.cached, output: row.quote.output, write: row.quote.write };
+    return {
+      ...rate,
+      quote: { peak, offPeak: { ...peak } },
+      // The number changed or was confirmed today; the series starts where the
+      // proof starts, so a later price change cannot rewrite older amounts.
+      history: row.quote.input === rate.quote.peak.input ? rate.history : { currentEffective: day, start: day },
+    } as OfficialRate;
+  });
+  for (const row of review.rates) {
+    if (quoted.has(row.key)) continue;
+    const source = Object.values(OFFICIAL_SOURCES).find((item) => item.vendor === row.vendor && item.standardTable);
+    const peak: Record<QuoteField, string | null> = { input: row.quote.input, cached: row.quote.cached, output: row.quote.output, write: row.quote.write };
+    const created: OfficialRate = {
+      model: `${row.vendor.toLowerCase()}:${row.model}`,
+      id: `${row.vendor.toLowerCase()}/${row.model}`,
+      sourceType: 'official',
+      provider: row.vendor,
+      modelName: row.model,
+      currency: row.currency,
+      sourceUrl: source?.url ?? '',
+      basis: 'official_table',
+      alias: null,
+      history: { currentEffective: day, start: day },
+      pricingNotes: `逐行读取${row.vendor}官方标准表；与官方页同价，${day} 首次读取`,
+      peak: FLAT_PEAK,
+      quote: { peak, offPeak: { ...peak } },
+    };
+    byKey.set(row.key, created);
+    rates.push(created);
+  }
+  return { rates, report: reported };
+}
+
+
+/** A refresh goal: what should be true when a sync finds nothing to change. */
+export type PriceRefresh = {
+  /** Freshly read numbers, merged over the transcription. */
+  rates: OfficialRate[];
+  /** Vendors to check; a row of another vendor is legitimate drift. */
+  vendors: string[];
+  models: string[];
 };
 
 export type PeakWindow = { days: 'mon-fri'; from: string; to: string };
@@ -97,15 +569,28 @@ export type OfficialLink = {
   detail: string;
 };
 
+/** DeepSeek states its table sideways: a component in a cell, models across the top. */
+const DEEPSEEK_FIELDS: ((header: string) => TransposedField | null)[] = [
+  (header) => {
+    if (!/百万\s*tokens\s*输入/.test(header)) return null;
+    if (/缓存命中/.test(header) && !/缓存未命中/.test(header)) return 'cached';
+    return 'input';
+  },
+  (header) => (/百万\s*tokens\s*输出/.test(header) ? 'output' : null),
+];
+
 export const OFFICIAL_SOURCES: Record<string, OfficialSource> = {
   deepseekPricing: {
     vendor: 'DeepSeek',
-    url: 'https://api-docs.deepseek.com/zh-cn/quick_start/pricing/',
-    alternateUrl: 'https://api-docs.deepseek.com/quick_start/pricing',
+    // The HTML page is script-rendered; its Markdown twin is a rows-as-fields
+    // table (模型 / 百万tokens输入（缓存命中）/ 空闲时段 …), read by `readTransposed`.
+    url: 'https://api-docs.deepseek.com/zh-cn/quick_start/pricing.md',
+    alternateUrl: 'https://api-docs.deepseek.com/zh-cn/quick_start/pricing/',
     fetchedAt: '2026-11-07T06:39:00Z',
     sha256: '6205cf5d53a7903827bf21938eefb6a8ab6041bb5a73fcf43e4bdd6adc8d344b',
     kind: 'official_table',
     section: '页面「模型 & 价格」表，单位：元/百万 token',
+    transposed: { heading: '模型 & 价格', headings: ['模型细节'], models: 'deepseek-', currency: 'CNY', fields: DEEPSEEK_FIELDS },
     quote:
       '单位：元/百万 token。空闲时段价格为高峰时段价格的一半。北京时间周一至周五（不含中国法定节假日）9:00-12:00、14:00-18:00 为高峰时段；其余时段，包括周末及中国法定节假日全天均为空闲时段。',
   },
@@ -122,32 +607,41 @@ export const OFFICIAL_SOURCES: Record<string, OfficialSource> = {
   },
   zhipuPricing: {
     vendor: '智谱',
-    url: 'https://docs.bigmodel.cn/cn/guide/start/pricing',
-    alternateUrl: 'https://docs.bigmodel.cn/cn/guide/start/pricing.md',
-    fetchedAt: '2026-11-07T08:31:00Z',
-    sha256: 'c8b4d888027337ff73a24f58ebd25a6eea966155351214e164fcc640b34fca4f',
+    url: 'https://docs.bigmodel.cn/cn/guide/start/pricing.md',
+    alternateUrl: 'https://docs.bigmodel.cn/cn/guide/start/pricing',
+    fetchedAt: '2026-11-20T05:20:00Z',
+    sha256: '615f8993915c2aea98f5ed05b401a7701dc0381db7325553fadd680e71bec70b',
     kind: 'official_table',
     section: '「最新模型」与「模型推理 · 文本模型（更多文本模型）」表，单位：元/百万 Tokens；缓存存储当前限时免费，故不单列',
     quote:
       '除特别说明外，模型价格统一按照「元/百万 Tokens」展示。调用费用 = 未命中缓存的输入费用 + 缓存命中费用 + 输出费用 + 缓存存储费用。',
+    standardTable: {
+      heading: '最新模型',
+      models: 'glm-',
+      currency: 'CNY',
+      columns: ZHIPU_COLUMNS,
+    },
   },
   openaiPricing: {
     vendor: 'OpenAI',
-    url: 'https://platform.openai.com/docs/pricing',
-    alternateUrl: 'https://platform.openai.com/docs/pricing.md',
-    fetchedAt: '2026-11-07T08:32:00Z',
-    sha256: 'f1ade44afc62fd8a12dd6e199bcecaa989a94c9b691aa620a34e1504ff62ff57',
+    // The HTML page is script-rendered; its Markdown twin carries the same table
+    // as pipe rows, which is what the daily read parses.
+    url: 'https://developers.openai.com/api/docs/pricing.md',
+    alternateUrl: 'https://developers.openai.com/api/docs/pricing',
+    fetchedAt: '2026-11-20T04:00:00Z',
+    sha256: '0adbd22327247628fd7f3e70a0e91617c37c7bff0d456d16dc966a1d71a56a1d',
     kind: 'official_table',
     section:
       '「Flagship models · Standard pricing data」表，单位：美元/百万 tokens；只取 Short context 列，Long context 列不参与计价（见 pricingNotes）',
     quote:
       'Prices per 1M tokens. Standard pricing data. 列为 Short context input / output / cached input / 30m write / 12h write 与 Long context 同名列。',
     flatStandard: true,
+    standardTable: { heading: 'Standard pricing data', models: 'gpt-', currency: 'USD', columns: OPENAI_COLUMNS },
   },
   anthropicPricing: {
     vendor: 'Anthropic',
-    url: 'https://docs.anthropic.com/en/docs/about-claude/pricing',
-    alternateUrl: null,
+    url: 'https://platform.claude.com/docs/en/about-claude/pricing',
+    alternateUrl: 'https://docs.anthropic.com/en/docs/about-claude/pricing',
     fetchedAt: '2026-11-07T06:39:00Z',
     sha256: null,
     kind: 'official_page',
@@ -156,8 +650,8 @@ export const OFFICIAL_SOURCES: Record<string, OfficialSource> = {
   },
   googlePricing: {
     vendor: 'Google',
-    url: 'https://ai.google.dev/gemini-api/docs/pricing',
-    alternateUrl: null,
+    url: 'https://aistudio.google.com/docs/pricing',
+    alternateUrl: 'https://ai.google.dev/gemini-api/docs/pricing',
     fetchedAt: '2026-11-07T06:39:00Z',
     sha256: null,
     kind: 'official_page',
@@ -453,6 +947,15 @@ export const OFFICIAL_RATES: OfficialRate[] = [
   ),
   flat(
     'Zhipu',
+    'glm-5.3-flashx',
+    'CNY',
+    ZHIPU_TABLE,
+    { input: '2', output: '7', cached: '0.57', write: null },
+    'GLM-5.3-FlashX「最新模型」表：输入 2、输出 7、缓存命中 0.57 元/百万 Tokens；缓存存储当前限时免费，未单列。',
+    { currentEffective: '2026-11-19', start: '2026-11-19' },
+  ),
+  flat(
+    'Zhipu',
     'glm-4.7',
     'CNY',
     ZHIPU_TABLE,
@@ -461,8 +964,27 @@ export const OFFICIAL_RATES: OfficialRate[] = [
     { currentEffective: '2026-03-01', start: '2026-03-01' },
   ),
 
-  // ---- OpenAI：USD/百万 tokens，转录自官方文档「Pricing · Standard pricing data」（2026-11-07）
+  // ---- OpenAI：USD/百万 tokens，转录自官方文档「Pricing · Standard pricing data」（2026-11-19）
   //   Short context 列；cached input 为官方单列价；write 取 30 分钟缓存写入列。
+  //   官方页已从 platform.openai.com/docs/pricing 迁移到 developers.openai.com/api/docs/pricing。
+  flat(
+    'OpenAI',
+    'gpt-6.2-astra',
+    'USD',
+    OPENAI_TABLE,
+    { input: '8', output: '40', cached: '0.4', write: '10' },
+    'gpt-6.2-astra Standard：Short context input $8、output $40、cached input $0.40、30m write $10.00（/1M tokens）。Long context（>272K）列更贵，本表未建模，长上下文事件会低估。',
+    { currentEffective: '2026-11-19', start: '2026-11-19' },
+  ),
+  flat(
+    'OpenAI',
+    'gpt-6.2-sol',
+    'USD',
+    OPENAI_TABLE,
+    { input: '2', output: '10', cached: '0.1', write: '2.5' },
+    'gpt-6.2-sol Standard：Short context input $2、output $10、cached input $0.10、30m write $2.50（/1M tokens）。Long context（>272K）列更贵，本表未建模，长上下文事件会低估。',
+    { currentEffective: '2026-11-19', start: '2026-11-19' },
+  ),
   flat(
     'OpenAI',
     'gpt-6.1-sol',
@@ -470,15 +992,6 @@ export const OFFICIAL_RATES: OfficialRate[] = [
     OPENAI_TABLE,
     { input: '2', output: '10', cached: '0.1', write: '2.5' },
     'gpt-6.1-sol Standard：Short context input $2、output $10、cached input $0.10、30m write $2.50（/1M tokens）。Long context（>272K）列存在且更贵，本表未建模，长上下文事件会低估。',
-    { currentEffective: '2026-09-01', start: '2026-09-01' },
-  ),
-  flat(
-    'OpenAI',
-    'gpt-6.1-luna',
-    'USD',
-    OPENAI_TABLE,
-    { input: '1', output: '5', cached: '0.05', write: '1.25' },
-    'gpt-6.1-luna Standard：Short context input $1、output $5、cached input $0.05、30m write $1.25（/1M tokens）；Long context 列未建模。',
     { currentEffective: '2026-09-01', start: '2026-09-01' },
   ),
   flat(
@@ -675,20 +1188,26 @@ const ALIASES: [RegExp, string][] = [
   [/^deepseek-v4-flash-vision-exp$/, 'deepseek/deepseek-v4-flash-vision-exp'],
   [/^deepseek-chat$/, 'deepseek/deepseek-chat'],
   [/^deepseek-reasoner$/, 'deepseek/deepseek-reasoner'],
-  [/^glm-5-3-flashx?$/, 'zhipu/glm-5.3-flash'],
+  [/^glm-5-3-flashx$/, 'zhipu/glm-5.3-flashx'],
+  [/^glm-5-3-flash$/, 'zhipu/glm-5.3-flash'],
   [/^glm-5-3$/, 'zhipu/glm-5.3'],
   [/^glm-4-7$/, 'zhipu/glm-4.7'],
 ];
 
 /** Exact lookup first, then documented aliases; never a fuzzy guess. */
-export function officialRate(model: string): OfficialRate | null {
+/** The baseline transcription (what shipped with this build). */
+export function officialRates(): readonly OfficialRate[] {
+  return OFFICIAL_RATES;
+}
+
+export function officialRate(model: string, rates: readonly OfficialRate[] = OFFICIAL_RATES): OfficialRate | null {
   const name = String(model).trim().replace(/^chatgpt-web\//, '').replace(/^[a-z0-9._-]+\//i, '');
-  const direct = OFFICIAL_RATES.find((rate) => rate.modelName.toLowerCase() === name.toLowerCase());
+  const direct = rates.find((rate) => rate.modelName.toLowerCase() === name.toLowerCase());
   if (direct) return direct;
   const key = normalizeModelKey(model);
-  const byKey = OFFICIAL_RATES.find((rate) => normalizeModelKey(rate.modelName) === key);
+  const byKey = rates.find((rate) => normalizeModelKey(rate.modelName) === key);
   if (byKey) return byKey;
-  for (const [pattern, id] of ALIASES) if (pattern.test(key)) return OFFICIAL_RATES.find((rate) => rate.id === id) || null;
+  for (const [pattern, id] of ALIASES) if (pattern.test(key)) return rates.find((rate) => rate.id === id) || null;
   return null;
 }
 
@@ -823,10 +1342,10 @@ function halfOf(value: string | null, fraction: string): string | null {
  * the body, so the label survives restarts instead of living only in the first
  * valuation run.
  */
-export function officialSnapshot(day: string): PriceSnapshot {
+export function officialSnapshot(day: string, rates: readonly OfficialRate[] = OFFICIAL_RATES): PriceSnapshot {
   const models: JsonObject[] = [],
     gaps: JsonObject[] = [];
-  for (const rate of OFFICIAL_RATES) {
+  for (const rate of rates) {
     const applicable = officialQuoteFor(rate, day);
     if (applicable.status === 'unknown') {
       gaps.push({ model: rate.model, error: 'official_table_not_published', effective: rate.history.start });
@@ -895,7 +1414,7 @@ export function officialSnapshot(day: string): PriceSnapshot {
 
 export function officialSnapshots(days: string[]): { snapshots: PriceSnapshot[]; gaps: JsonObject[]; errors: JsonObject[] } {
   const unique = [...new Set(days)].sort();
-  return { snapshots: unique.map(officialSnapshot), gaps: [], errors: [] };
+  return { snapshots: unique.map((day) => officialSnapshot(day)), gaps: [], errors: [] };
 }
 
 export type OfficialFetcher = (url: string, etag?: string) => Promise<{ body: string | null; etag: string }>;
@@ -915,13 +1434,20 @@ export async function collectOfficial(
   const errors: JsonObject[] = [],
     gaps: JsonObject[] = [],
     sources: JsonObject[] = [],
+    /** Rows read off every table this run, for a caller that wants to transcribe. */
+    published: { source: OfficialSource; rows: PublishedModel[] }[] = [],
     observedAt = new Date().toISOString(),
     urls = Object.values(OFFICIAL_SOURCES)
       .filter((source) => source.kind === 'official_table')
-      .map((source) => source.alternateUrl || source.url)
+      // The declared URL is the cited page, but a script-rendered page has no
+      // table in its HTML; the vendor's Markdown twin does. Try both, in order.
+      .flatMap((source) => (source.alternateUrl ? [source.url, source.alternateUrl] : [source.url]))
       .concat([OFFICIAL_SOURCES.deepseekUpdates.url, OFFICIAL_SOURCES.anthropicPricing.url, OFFICIAL_SOURCES.googlePricing.url, OFFICIAL_SOURCES.qwenPricing.url, OFFICIAL_SOURCES.minimaxPricing.url]);
+  const read = new Set<string>();
   for (const url of urls) {
     const declared = Object.values(OFFICIAL_SOURCES).find((source) => source.url === url || source.alternateUrl === url)!;
+    // One table per page: once its rows are read, the twin adds nothing.
+    if (read.has(declared.url)) continue;
     if (!options.loader) {
       sources.push({ url: declared.url, vendor: declared.vendor, checked: false, digest: declared.sha256 });
       continue;
@@ -940,21 +1466,35 @@ export async function collectOfficial(
         matchesTranscription: declared.sha256 == null ? null : !changed,
         bytes: Buffer.byteLength(result.body || ''),
       });
-      if (changed)
+      // A table is read line by line on every sync, refresh or not: a new model
+      // can appear while the surface of the page stays the same, so a single page
+      // digest would miss it forever. Every row read becomes a candidate; which
+      // ones may be priced is decided by the caller, never here.
+      const rows = declared.transposed
+        ? readTransposed(result.body || '', declared.transposed, declared.vendor)
+        : readPublishedTable(result.body || '', declared);
+      if (rows.length) {
+        published.push({ source: declared, rows });
+        read.add(declared.url);
+      }
+      if (changed && rows.length === 0)
         gaps.push({
           source: declared.url,
           error: 'official_table_review_required',
-          message: '官方定价页内容与转录时不同，需人工核对后更新定价表；期间沿用已核对的表',
+          message: '官方定价页内容与转录时不同，且该页没有可逐行读取的表；需人工核对后更新定价表，期间沿用已核对的表',
         });
-    } catch (error: any) {
+    } catch (error) {
+      // A twin that fails after its page answered is not worth reporting: the
+      // table was already read, or the page itself has no table at all.
+      if (read.has(declared.url)) continue;
       errors.push({
         source: declared.url,
         error: 'official_page_unavailable',
-        message: String(error?.message || '官方页面读取失败，沿用已核对的定价表'),
+        message: String((error as Error)?.message || '官方页面读取失败，沿用已核对的定价表'),
       });
     }
   }
-  return { sources, gaps, errors, observedAt };
+  return { sources, gaps, errors, published, observedAt };
 }
 
 /**

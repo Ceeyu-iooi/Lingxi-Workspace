@@ -14,7 +14,12 @@ import {
   officialQuoteFor,
   officialRate,
   officialSnapshot,
+  officialRates,
+  mergePublishedReview,
+  readPublishedReview,
   shanghaiPeak,
+  type OfficialSource,
+  type PublishedModel,
   type OfficialRate,
 } from './official-pricing.ts';
 import {get as httpsGet,Agent} from 'node:https';
@@ -29,13 +34,36 @@ import {HttpsProxyAgent} from 'https-proxy-agent';
  */
 const VALUATION_POLICY = OFFICIAL_POLICY;
 
+/**
+ * The price table read from the vendors' own pages, kept per Profile.
+ *
+ * The transcription in `official-pricing.ts` is the reviewed baseline; this is
+ * what the last daily read actually found, so a model published yesterday is
+ * priced today without waiting for a release. It is replaced atomically and only
+ * by a read that finished at least one row.
+ */
+const LIVE_TABLE_KEY = 'official_live_table';
+type LiveTable = { rates: OfficialRate[]; report: Record<string, unknown> };
+
+/** Prices read for this profile, or null when nothing readable was stored yet. */
+function liveTable(db: JsonObject): LiveTable | null {
+  const row = db.prepare('SELECT value FROM app_meta WHERE key=?').get(LIVE_TABLE_KEY) as JsonObject | undefined;
+  if (!row || typeof row.value !== 'string') return null;
+  try {
+    const parsed = JSON.parse(row.value) as LiveTable;
+    return Array.isArray(parsed.rates) && parsed.rates.length ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 const STRIP_PREFIX = /^chatgpt-web\//;
 const FX_URL =
     "https://www.bankofcanada.ca/valet/observations/FXUSDCAD,FXCNYCAD/json",
   SCENARIO = "official-deepseek-peak-offpeak/text";
 type Loader = PriceLoader;
 /** Every host we may read prices from. Official pages first, mirrors last. */
-const PRICE_HOSTS = ["api-docs.deepseek.com", "platform.kimi.com", "docs.anthropic.com", "platform.openai.com", "open.bigmodel.cn", "ai.google.dev", "help.aliyun.com", "www.minimax.io", "www.bankofcanada.ca", "raw.githubusercontent.com", "api.github.com", "ai.cloudprice.net"];
+const PRICE_HOSTS = ["api-docs.deepseek.com", "platform.kimi.com", "docs.anthropic.com", "platform.claude.com", "platform.openai.com", "developers.openai.com", "open.bigmodel.cn", "docs.bigmodel.cn", "ai.google.dev", "aistudio.google.com", "help.aliyun.com", "www.minimax.io", "www.bankofcanada.ca", "raw.githubusercontent.com", "api.github.com", "ai.cloudprice.net"];
 const priceTransport = new Agent({keepAlive:true,maxSockets:4,maxCachedSessions:0});
 let priceProxy:HttpsProxyAgent<string>|undefined;
 function publicTransport(host:string){
@@ -43,7 +71,7 @@ function publicTransport(host:string){
   const excluded=(process.env.no_proxy||process.env.NO_PROXY||'').split(',').some(rule=>{const name=rule.trim().toLowerCase().replace(/:443$/,'');return name==='*'||name===host||name.startsWith('.')&&host.endsWith(name)||name.startsWith('*.')&&host.endsWith(name.slice(1));});
   return proxy&&!excluded?(priceProxy ||=new HttpsProxyAgent(proxy,{keepAlive:true,maxSockets:4})):priceTransport;
 }
-export async function loadPrice(url: string, etag = "") {
+export async function loadPrice(url: string, etag = "", hop = 0) {
   if (!PRICE_HOSTS.includes(new URL(url).hostname))
     throw new Error("价格来源不受支持");
   /* Public idempotent GET only. Keep TLS verification and avoid broken resumed
@@ -51,6 +79,17 @@ export async function loadPrice(url: string, etag = "") {
   const attempt=()=>new Promise<{body:string|null,etag:string}>((resolve,reject)=>{
     const request=httpsGet(url,{agent:publicTransport(new URL(url).hostname),signal:AbortSignal.timeout(20000),headers:{'User-Agent':'Lingxi-Usage','Accept':'text/html,application/json',...(etag?{'If-None-Match':etag}:{})}},response=>{
       if(response.statusCode===304){response.resume();resolve({body:null,etag});return;}
+      /* Official pricing pages migrate (for example platform.openai.com now
+         redirects to developers.openai.com). Follow the redirect so a moved
+         page still counts as the official source instead of becoming an error. */
+      const location=response.headers.location;
+      if(response.statusCode&&[301,302,303,307,308].includes(response.statusCode)&&location){
+        response.resume();
+        const target=new URL(location,url);
+        if(hop>=3){resolve({body:null,etag});return;}
+        loadPrice(target.toString(),etag,hop+1).then(resolve,reject);
+        return;
+      }
       if(response.statusCode!==200){response.resume();reject(Object.assign(Error('价格网络读取失败'),{status:response.statusCode}));return;}
       const chunks:Buffer[]=[];let bytes=0;
       response.on('data',(chunk:Buffer)=>{bytes+=chunk.length;if(bytes>12*1024*1024){response.destroy(Error('价格响应过大'));return;}chunks.push(chunk);});
@@ -221,6 +260,8 @@ class BudgetMap<V> extends Map<string,V> {
 }
 export class Pricing {
   private preparedUpdates:Map<string,JsonObject>|null=null;
+  /** Table in force for this profile, read once per instance. */
+  private rates:readonly OfficialRate[]|null=null;
   refreshing = false;
   task: JsonObject = { status: "idle", errors: [] };
   private syncJob: Promise<JsonObject> | null = null;
@@ -257,7 +298,7 @@ export class Pricing {
   resources(){return {cacheBytes:this.dayBytes+this.proofBytes+this.fxCache.allocatedBytes+this.formulaCache.allocatedBytes+this.rawCache.allocatedBytes+this.historyCache.allocatedBytes,budgetBytes:16*1024*1024};}
   constructor(readonly monitor: Monitor) {
     monitor.profile.db.exec(
-      `CREATE TABLE IF NOT EXISTS registry_file_cache(blob TEXT PRIMARY KEY,body TEXT,source TEXT);CREATE TABLE IF NOT EXISTS radar_days(day TEXT PRIMARY KEY,body TEXT,digest TEXT,source TEXT,observed TEXT);CREATE TABLE IF NOT EXISTS radar_meta(id INTEGER PRIMARY KEY,version INTEGER);INSERT OR IGNORE INTO radar_meta VALUES(1,0);CREATE TABLE IF NOT EXISTS radar_fetches(url TEXT PRIMARY KEY,etag TEXT,attempt REAL,success REAL,failures INTEGER,error TEXT);CREATE TABLE IF NOT EXISTS value_fx(day TEXT PRIMARY KEY,usd_cad TEXT,cny_cad TEXT,source TEXT,observed TEXT,digest TEXT);CREATE TABLE IF NOT EXISTS radar_values(owner TEXT,id TEXT,currency TEXT,fingerprint TEXT,result TEXT,PRIMARY KEY(owner,id,currency));CREATE TABLE IF NOT EXISTS radar_observations(url TEXT,digest TEXT,body TEXT,observed TEXT,PRIMARY KEY(url,digest));CREATE TABLE IF NOT EXISTS evidence_blobs(digest TEXT PRIMARY KEY,codec TEXT NOT NULL,raw_size INTEGER NOT NULL,body BLOB NOT NULL);`,
+      `CREATE TABLE IF NOT EXISTS app_meta(key TEXT PRIMARY KEY,value TEXT);CREATE TABLE IF NOT EXISTS registry_file_cache(blob TEXT PRIMARY KEY,body TEXT,source TEXT);CREATE TABLE IF NOT EXISTS radar_days(day TEXT PRIMARY KEY,body TEXT,digest TEXT,source TEXT,observed TEXT);CREATE TABLE IF NOT EXISTS radar_meta(id INTEGER PRIMARY KEY,version INTEGER);INSERT OR IGNORE INTO radar_meta VALUES(1,0);CREATE TABLE IF NOT EXISTS radar_fetches(url TEXT PRIMARY KEY,etag TEXT,attempt REAL,success REAL,failures INTEGER,error TEXT);CREATE TABLE IF NOT EXISTS value_fx(day TEXT PRIMARY KEY,usd_cad TEXT,cny_cad TEXT,source TEXT,observed TEXT,digest TEXT);CREATE TABLE IF NOT EXISTS radar_values(owner TEXT,id TEXT,currency TEXT,fingerprint TEXT,result TEXT,PRIMARY KEY(owner,id,currency));CREATE TABLE IF NOT EXISTS radar_observations(url TEXT,digest TEXT,body TEXT,observed TEXT,PRIMARY KEY(url,digest));CREATE TABLE IF NOT EXISTS evidence_blobs(digest TEXT PRIMARY KEY,codec TEXT NOT NULL,raw_size INTEGER NOT NULL,body BLOB NOT NULL);`,
     );
     const db=monitor.profile.db;db.exec("CREATE TABLE IF NOT EXISTS valuation_dirty(owner TEXT,id TEXT,PRIMARY KEY(owner,id));CREATE TABLE IF NOT EXISTS valuation_rule(owner TEXT PRIMARY KEY,rule TEXT);");
     // 计价队列覆盖所有本地采集来源：codex 依赖账号证据，dsh/zcode 依赖 agent_evidence。
@@ -332,7 +373,7 @@ export class Pricing {
   private ensureOfficialDays(days:string[],version=this.version()){
     const p=this.monitor.profile,db=p.db,touched=new Set<string>();
     for(const day of days){
-      const snapshot=officialSnapshot(day),prior=db.prepare('SELECT digest FROM radar_days WHERE day=?').get(day) as JsonObject|undefined;
+      const snapshot=officialSnapshot(day,this.liveRates()),prior=db.prepare('SELECT digest FROM radar_days WHERE day=?').get(day) as JsonObject|undefined;
       if(prior?.digest===hash(snapshot.body))continue;
       db.prepare('INSERT OR REPLACE INTO radar_days VALUES(?,?,?,?,?)').run(day,this.store(snapshot.body),hash(snapshot.body),snapshot.source,iso());
       db.prepare('UPDATE radar_meta SET version=version+1 WHERE id=1').run();
@@ -376,6 +417,28 @@ export class Pricing {
     if (raw.length !== row.raw_size || hash(raw) !== digest)
       throw new Error("压缩证据摘要校验失败");
     return raw.toString("utf8");
+  }
+  /** The table in force for this Profile: the last read, else the transcription. */
+  liveRates(): readonly OfficialRate[] {
+    if (this.rates) return this.rates;
+    const stored = liveTable(this.monitor.profile.db)?.rates;
+    return (this.rates = stored ?? officialRates());
+  }
+  /**
+   * Merge a fresh page read into the table in force.
+   *
+   * Nothing is guessed: a row needs readable input and output prices to be
+   * priced, and a row that disagrees with the transcription is replaced by the
+   * page — that is what "read it automatically" means here. Returns null when
+   * no complete row was read, so an unreadable page never empties the table.
+   */
+  liveReview(published: { source: OfficialSource; rows: PublishedModel[] }[]): LiveTable | null {
+    if (!published.some((table) => table.rows.length)) return null;
+    const current = this.liveRates();
+    const review = readPublishedReview(published, current);
+    const merged = mergePublishedReview(review, current, shanghaiDay(iso()));
+    const sources = published.map((table) => ({ vendor: table.source.vendor, models: table.rows.length }));
+    return { rates: merged.rates, report: { ...merged.report, sources } };
   }
   version() {
     return (
@@ -489,6 +552,9 @@ export class Pricing {
       historicalAPI: false,
       refreshing: this.refreshing,
       task: { ...this.task },
+      // What the last official-page read reported, so the dialog can say which
+      // models were added or repriced instead of showing a static table date.
+      official: liveTable(this.monitor.profile.db)?.report ?? null,
       version: index.version,
       assumptions: "参考等价值=DeepSeek 官方峰谷价表（北京时间峰段 9:00-12:00、14:00-18:00 的工作日；其余时间为谷时）与官方币种；不是实际账单，也不替代供应商流水。",
     };
@@ -559,16 +625,28 @@ export class Pricing {
     options.progress?.({phase:'prices',completed:0,total:2});
     // 1. Official table: transcribed rates, cited page, unreadable pages recorded
     //    as links. A change on the cited page is a review task, not a new price.
-    const official=await collectOfficial({loader:options.loader?async(url:string)=>network(url):undefined,evidence,check});
+    // A sync without an injected loader is a real refresh: it must read the
+    // vendors' pages. Passing no loader here reported "not checked" forever.
+    const official=await collectOfficial({loader:async(url:string)=>network(url),evidence,check});
     errors.push(...official.errors);gaps.push(...official.gaps);
-    // The official table is a single current transcription: every day the batch
-    // needs (including the previous day kept for the previous-rate comparison)
-    // and today get a snapshot, so a cached row is re-derived against its own day.
+    // What the page said today is the price, not a review queue: finished rows
+    // replace the transcription (or are added), so a vendor publishing a model or
+    // changing a number is priced from today on without waiting for a release.
+    const review=p.transaction(()=>{
+      const merged=this.liveReview(official.published);
+      if(merged)db.prepare('INSERT OR REPLACE INTO app_meta VALUES(?,?)').run(LIVE_TABLE_KEY,JSON.stringify(merged));
+      if(merged)this.rates=merged.rates;
+      return merged;
+    });
+    // Every day the batch needs (including the previous day kept for the
+    // previous-rate comparison) and today get a snapshot, so a cached row is
+    // re-derived against its own day.
+    const table=this.liveRates();
     const snapshotDays=new Set<string>(used);snapshotDays.add(today);
     const officialQuarantine:string[]=[];
     for(const day of [...snapshotDays].sort()){
       check();
-      const snapshot=officialSnapshot(day),prior=db.prepare('SELECT * FROM radar_days WHERE day=?').get(day) as JsonObject|undefined;
+      const snapshot=officialSnapshot(day,table),prior=db.prepare('SELECT * FROM radar_days WHERE day=?').get(day) as JsonObject|undefined;
       if(prior?.digest===hash(snapshot.body))continue;
       db.prepare('INSERT OR REPLACE INTO radar_days VALUES(?,?,?,?,?)').run(day,this.store(snapshot.body),hash(snapshot.body),snapshot.source,observed);
       db.prepare('UPDATE radar_meta SET version=version+1 WHERE id=1').run();
@@ -586,7 +664,7 @@ export class Pricing {
           check();
           const day=item.day,parsed=validatePrices(item.body,day);
           for(const rate of parsed.models){
-            const officialRate=officialRateByModel(rate.model);if(!officialRate)continue;
+            const officialRate=officialRateByModel(rate.model,this.liveRates());if(!officialRate)continue;
             const result=compareMirror({id:officialRate.id,model:officialRate.modelName,currency:officialRate.currency,quote:officialRateQuote(officialRate,day)},[rate],'mirror_registry');
             compared.push({day,model:officialRate.model,basis:'mirror_registry',...result});
           }
@@ -596,7 +674,7 @@ export class Pricing {
         if(catalogue.snapshot){
           const parsed=validatePrices(catalogue.snapshot.body,today);
           for(const item of parsed.models){
-            const officialRate=officialRateByModel(item.model);if(!officialRate)continue;
+            const officialRate=officialRateByModel(item.model,this.liveRates());if(!officialRate)continue;
             const result=compareMirror({id:officialRate.id,model:officialRate.modelName,currency:officialRate.currency,quote:officialRateQuote(officialRate,today)},[item],'mirror_catalog');
             compared.push({day:today,model:officialRate.model,basis:'mirror_catalog',...result});
           }
@@ -625,7 +703,7 @@ export class Pricing {
       options.check?.();
       const latestFx=db.prepare("SELECT max(day) AS day FROM value_fx WHERE day>=? AND day<=?").get(addDays(start,-10),end) as JsonObject;
       const fxStart=options.force?addDays(start,-10):latestFx.day?addDays(latestFx.day,1):addDays(start,-10);
-      if(fxStart>end){options.progress?.({phase:"fx",completed:1,total:1});return {pricesChecked:snapshotDays.size,pricesAdded:snapshotDays.size,errors,gaps,fxDays,observed,mirror:this.mirrorSummary(compared)};}
+      if(fxStart>end){options.progress?.({phase:"fx",completed:1,total:1});return {pricesChecked:snapshotDays.size,pricesAdded:snapshotDays.size,errors,gaps,fxDays,observed,official:official.published,mirror:this.mirrorSummary(compared)};}
       options.progress?.({ phase: "fx", completed: 0, total: 1 });
       const { body } = await network(
         FX_URL + "?start_date=" + fxStart + "&end_date=" + end,
@@ -680,6 +758,15 @@ export class Pricing {
       errors,
       gaps,
       observed,
+      official: {
+        pricePolicy: OFFICIAL_POLICY,
+        readAt: String(review?.report.readAt ?? new Date().toISOString().slice(0, 10)),
+        sources: review?.report.sources ?? [],
+        added: review?.report.added ?? [],
+        withdrawn: review?.report.withdrawn ?? [],
+        drift: review?.report.drift ?? [],
+        partial: review?.report.partial ?? [],
+      },
       mirror: this.mirrorSummary(compared),
     };
   }
@@ -992,7 +1079,7 @@ export class Pricing {
     if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('价格日期不正确');
     const price=this.catalog({date,model,limit:1}).items[0];
     if(!price)throw Error('该模型没有官方价格记录');
-    const official=officialRateByModel(price.model);
+    const official=officialRateByModel(price.model,this.liveRates());
     if(!official)throw Error('该模型只有官方定价页，没有可核验的价格表');
     return {
       date,model:official.model,currency:official.currency,sourceType:'official',source:official.sourceUrl,
@@ -1136,11 +1223,11 @@ export class Pricing {
   }
   /** Official table for a model name, or null when the vendor page is link-only. */
   officialDetail(model: string) {
-    return officialRate(model);
+    return officialRate(model, this.liveRates());
   }
 }
-function officialRateByModel(model: string): OfficialRate | null {
-  return officialRate(model);
+function officialRateByModel(model: string, rates: readonly OfficialRate[]): OfficialRate | null {
+  return officialRate(model, rates);
 }
 /** The quote shown for a day: the table's peak column, labelled as such. */
 function officialRateQuote(rate: OfficialRate, day: string) {
@@ -1162,7 +1249,8 @@ export class ValuationTasks {
   autoStatus(){
     const p=this.control.profile,history=p.read<JsonObject>('pricing-auto-update',{});
     return {enabled:this.control.state().config.codexPricingAutoUpdate===true,timezone:'Asia/Shanghai',
-      ...history,task:this.status('codex'),notice:'应用运行时按上海日期每天更新一次；关闭后下次启动补查。官方价格表随应用内置，页面变更会提示人工核对。'};
+      ...history,task:this.status('codex'),pricePolicy:OFFICIAL_POLICY,
+      notice:'应用运行时按上海日期每天自动读取一次官方定价页与历史汇率：官方新增或调价的模型会立即在对账结果中报告，内置价表仍以核验过的数字计价；关闭自动更新后下次启动补查，价格对话框的刷新按钮可随时手动更新。'};
   }
   setAuto(enabled:unknown){
     if(typeof enabled!=='boolean')throw Error('自动更新设置必须为布尔值');

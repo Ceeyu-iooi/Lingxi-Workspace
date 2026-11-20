@@ -290,13 +290,15 @@
     dialog.className = "usage-value-dialog";
     state.valueDialog = dialog;
     dialog.innerHTML =
-      '<div class="section-title"><h3>API 等价值 · 实验</h3><button type="button" class="btn ghost" data-close aria-label="关闭">×</button></div><p class="meta" data-price-source>官方价格表 · 原币文本 Token 参考折算，峰谷按时段自动折算，不含工具、缓存存储与订阅费用。缺少价格或计费明细的记录不计入金额。</p><button type="button" class="btn ghost" data-sync-value>同步价格与历史汇率</button><p class="meta" data-value-status>正在读取价格…</p><div class="control-table-wrap" data-price-list></div>';
+      '<div class="section-title"><h3>API 等价值 · 实验</h3><button type="button" class="btn ghost" data-close aria-label="关闭">×</button></div><p class="meta" data-price-source>官方价格表 · 原币文本 Token 参考折算，峰谷按时段自动折算，不含工具、缓存存储与订阅费用。缺少价格或计费明细的记录不计入金额。</p><button type="button" class="btn ghost" data-sync-value>刷新价格与历史汇率</button><p class="meta" data-official-status>正在读取官方定价页…</p><p class="meta" data-value-status>正在读取价格…</p><div class="control-table-wrap" data-price-list></div>';
     document.body.append(dialog);
     dialog.showModal();
     q("[data-close]", dialog).onclick = () => dialog.close();
     dialog.addEventListener(
       "close",
       () => {
+        // A refresh started from this dialog must stop reporting into a closed one.
+        state.valueClosed = true;
         clearTimeout(state.valuePoll);
         dialog.remove();
         state.valueDialog = null;
@@ -331,6 +333,8 @@
       const total = Number(data.totalIntervals) || shown;
       q("[data-value-status]", dialog).textContent =
         `${shown}${total > shown ? ` / ${total}` : ""} 个价格区间 · ${Number(data.fxDays) || 0} 天历史汇率${Object.keys(issues).length ? " · 部分记录缺少历史价格或计费明细" : ""}${data.refreshing ? " · 正在后台同步" : ""}`;
+      const officialLine = q("[data-official-status]", dialog);
+      if (officialLine) officialLine.textContent = officialBrief(data.official);
       q("[data-price-list]", dialog).innerHTML =
         '<table class="control-table"><thead><tr><th>模型</th><th>起始 / 截止</th><th>输入 / 缓存 / 写入 / 输出<br>原币 / 百万 Token</th><th>来源</th></tr></thead><tbody>' +
         data.prices
@@ -360,52 +364,70 @@
           .join("") +
         "</tbody></table>";
     };
+    /**
+     * 手动刷新同时读取官方定价页：新增模型与调价都来自官方页的逐行核对，
+     * 这里只做一句话回报，不把未核验数字写进价格表。
+     */
+    const officialBrief = (result) => {
+      const pages = result?.official;
+      if (!Array.isArray(pages) || !pages.length) return "";
+      const drift = pages.reduce((n, p) => n + (p.drift?.length || 0), 0),
+        missing = pages.reduce((n, p) => n + (p.missing?.length || 0), 0),
+        names = [
+          ...new Set(pages.flatMap((p) => (p.missing || []).map((m) => m.model))),
+        ];
+      if (drift)
+        return ` · 官方页有 ${drift} 项调价待核验，暂按已核对价表计算`;
+      if (missing)
+        return ` · 官方新增 ${names.slice(0, 3).join("、")}${names.length > 3 ? ` 等 ${missing} 个` : ""}，待核验后计价`;
+      return " · 已核对官方定价页，价格表为最新";
+    };
+    state.valueClosed = false;
     q("[data-sync-value]", dialog).onclick = async () => {
-      const button = q("[data-sync-value]", dialog);
+      const button = q("[data-sync-value]", dialog),
+        status = q("[data-value-status]", dialog);
       button.disabled = true;
-      q("[data-value-status]", dialog).textContent = "正在同步…";
+      q("[data-value-status]", dialog).textContent =
+        "正在读取官方定价页与历史汇率…";
       try {
-        const result = await api("POST", "/api/usage/value/sync", {});
+        const job = await api("POST", "/api/usage/value/sync", {});
         if (!dialog.isConnected) return;
-        await paint();
-        if (result.errors?.length)
-          q("[data-value-status]", dialog).textContent +=
-            " · " + result.errors.map((r) => r.error).join("；");
-        if (result.status === "running") {
+        if (!job?.id) {
+          q("[data-value-status]", dialog).textContent = "刷新未开始，已保存的价格保留";
+          return;
+        }
+        /* The sync runs as a background job on the server; read its result so the
+           dialog can name the models the vendors added or repriced this time. */
+        let result = null;
+        for (let attempt = 0; attempt < 60; attempt++) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          if (state.valueClosed || !dialog.isConnected || !dialog.open) return;
+          const done = await api("GET", `/api/jobs?id=${encodeURIComponent(job.id)}`);
+          if (done?.status === "failed") {
+            q("[data-value-status]", dialog).textContent =
+              done.error || "刷新未完成，已保存的价格保留";
+            return;
+          }
+          if (done?.status !== "running" && done?.status !== "queued") {
+            result = done?.result || null;
+            break;
+          }
+        }
+        if (state.valueClosed || !dialog.isConnected || !dialog.open) return;
+        if (!result) {
           q("[data-value-status]", dialog).textContent =
-            "后台同步中，当前筛选继续使用本地证据";
-          const poll = async () => {
-            if (!dialog.isConnected || !dialog.open) return;
-            if(document.hidden){state.valuePoll=setTimeout(poll,1000);return;}
-            try {
-              // Poll with a single-row compact probe: only `refreshing` and `task.errors`
-              // are needed here, so do not pull the whole catalogue every second.
-              const next = await api("GET", "/api/usage/value?compact=1&limit=1");
-              if (next.refreshing) {
-                state.valuePoll = setTimeout(poll, 1000);
-                return;
-              }
-              await paint();
-              q("[data-value-status]", dialog).textContent += next.task?.errors
-                ?.length
-                ? " · 部分来源同步失败"
-                : "";
-              root.dispatchEvent(
-                new CustomEvent("usage-value-refresh", { bubbles: true }),
-              );
-            } catch (error) {
-              if (dialog.isConnected)
-                q("[data-value-status]", dialog).textContent = error.message;
-            }
-          };
-          state.valuePoll = setTimeout(poll, 1000);
-        } else
-          root.dispatchEvent(
-            new CustomEvent("usage-value-refresh", { bubbles: true }),
-          );
+            "后台仍在刷新，当前筛选继续使用已保存的价格与汇率";
+          return;
+        }
+        await paint();
+        if (!dialog.isConnected) return;
+        const failures = result.errors || [];
+        q("[data-value-status]", dialog).textContent =
+          "已刷新官方价格与历史汇率" +
+          (result.official ? " " + officialBrief(result.official) : "") +
+          (failures.length ? " · 部分来源读取失败，沿用已保存的价格" : "");
       } catch (error) {
-        if (dialog.isConnected)
-          q("[data-value-status]", dialog).textContent = error.message;
+        if (dialog.isConnected) status.textContent = error.message;
       } finally {
         button.disabled = false;
       }
@@ -416,6 +438,28 @@
       if (dialog.isConnected)
         q("[data-value-status]", dialog).textContent = error.message;
     }
+  }
+  /**
+   * What the last official-page read changed, in one line.
+   *
+   * The backend prices from the vendor table it read most recently, so this line
+   * reports the fact, not a review queue: added models, changed numbers and models
+   * the vendor dropped are all applied on that read.
+   */
+  function officialBrief(official) {
+    if (!official || typeof official !== "object") return "官方定价页：本次未读取，沿用上次结果";
+    const added = (official.added || []).map((r) => r.model).filter(Boolean);
+    const drift = official.drift || [];
+    const partial = official.partial || [];
+    const withdrawn = (official.withdrawn || []).map((r) => r.model).filter(Boolean);
+    const readAt = String(official.readAt || "").slice(0, 10);
+    const parts = [];
+    if (added.length) parts.push(`新增 ${added.slice(0, 4).join("、")}${added.length > 4 ? ` 等 ${added.length} 个模型` : ""}`);
+    if (drift.length) parts.push(`${drift.length} 项调价已按官方页更新`);
+    if (withdrawn.length) parts.push(`官方已下架 ${withdrawn.slice(0, 3).join("、")}`);
+    if (partial.length) parts.push(`${partial.length} 个模型价格未能完整读取，保持未知`);
+    const when = readAt ? `官方定价页读取于 ${readAt}` : "官方定价页";
+    return parts.length ? `${when} · ${parts.join(" · ")}` : `${when} · 价格表与官方一致`;
   }
   function heat(root, state, animate = false) {
     const s = state.snapshot;

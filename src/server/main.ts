@@ -35,7 +35,7 @@ import { Agents } from "./agents.ts";
 import { Sources } from "./sources.ts";
 import { UsageAccounts } from "./usage-accounts.ts";
 import {DeepseekAuthorization} from './deepseek-authorization.ts';
-import {OFFICIAL_POLICY,OFFICIAL_RATES,shanghaiPeak} from './official-pricing.ts';
+import {OFFICIAL_POLICY,shanghaiPeak} from './official-pricing.ts';
 import { Relay } from "./relay.ts";
 import { Pricing, ValuationTasks } from "./pricing.ts";
 import { parseUsageFile } from "./usage-import.ts";
@@ -1131,7 +1131,7 @@ export async function startServer(
   // windows in the vendor's time zone and marks which side is currently billed.
   app.get("/api/pricing/peak", () => {
     const at = new Date(),
-      rates = OFFICIAL_RATES.filter((rate) => rate.peak.windows.length),
+      rates = pricing.liveRates().filter((rate) => rate.peak.windows.length),
       rule = rates[0]?.peak ?? {
         timezone: "Asia/Shanghai" as const,
         windows: [] as { days: "mon-fri"; from: string; to: string }[],

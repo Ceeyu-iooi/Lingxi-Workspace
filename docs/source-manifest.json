@@ -1,5 +1,5 @@
 {
-  "version": "0.1.40",
+  "version": "0.1.43",
   "files": [
     {
       "file": "README.md",
@@ -35,7 +35,7 @@
     },
     {
       "file": "VERSION",
-      "sha256": "d039141f2ff4fdb8f3353d7836193293677127535438e103fc60c09a4d42d9e7"
+      "sha256": "50766a38825ec7efac1027ccb38429c89701fe085fd517bef828bb89a72d729e"
     },
     {
       "file": "DESIGN.md",
@@ -147,7 +147,7 @@
     },
     {
       "file": "src/server/main.ts",
-      "sha256": "642a6d3a297085c98150f0900d8f1ebef0867b9986e5ae51fce7c46c378af24c"
+      "sha256": "fef3f7ec588c7f96f1d234e67dc25d459cb46300d3443452dec8f79d9bf52d27"
     },
     {
       "file": "src/server/maintain.ts",
@@ -171,7 +171,7 @@
     },
     {
       "file": "src/server/official-pricing.ts",
-      "sha256": "ec602a3501ab5517de5250623a29a11fa2f15beabbc30a5a7f4c99c10c57713b"
+      "sha256": "566cf5f0b55acdf2d5cd3dc2cde5566dba089c379904dc79e3d08dc8fb1da417"
     },
     {
       "file": "src/server/package.json",
@@ -191,7 +191,7 @@
     },
     {
       "file": "src/server/pricing.ts",
-      "sha256": "711c3bcbdef229d4197c9c1fe6b7ead72257919445280d246dced59facbd5adf"
+      "sha256": "2aaf850b2fee5b8cc331302c70c2fb860847efc28223522167030f26abf3b7a0"
     },
     {
       "file": "src/server/profile.ts",
@@ -563,7 +563,7 @@
     },
     {
       "file": "frontend/compat/usage-view.ts",
-      "sha256": "408e07fb56dc4168d0ef807b4f5bbb34cc66908ccca0d08dcffeada3ae53eccd"
+      "sha256": "37150231901b583db54e62873c1077f680db03c6d84d2fe01bb34308bdcd8c2c"
     },
     {
       "file": "frontend/compat/workbench-design.ts",
