@@ -5,6 +5,7 @@
   "layout-storage.ts",
   "ui-core.ts",
   "library-views.ts",
+  "prompts-module.ts",
   "commands.ts",
   "usage-charts.ts",
   "usage-accounts.ts",

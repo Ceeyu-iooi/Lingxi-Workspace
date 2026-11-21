@@ -1,5 +1,5 @@
 {
-  "version": "0.1.32",
+  "version": "0.1.44",
   "specification": "DESIGN.md",
   "preview": {
     "light": "/preview.html",
@@ -161,8 +161,8 @@
     "summary": "history-editor",
     "news": "sources-content",
     "finance": "summary-analysis-ledger",
-    "prompts": "filters-resources-actions",
-    "skills": "sources-resources-actions",
+    "prompts": "module-top-nav-filters-resources-actions",
+    "skills": "module-top-nav-sources-resources-actions",
     "usage": "preserved-0.1.5"
   },
   "providerBrandSources": "static/assets/providers/sources.json",
@@ -372,5 +372,12 @@
     "server": "src/server/git-timeline.ts",
     "styles": "static/git-timeline.css",
     "readOnly": true
+  },
+  "moduleNavigation": {
+    "skills": "two-level-top-bar: overview/library/agents/workspaces/settings + preset,agent,workspace chips",
+    "prompts": "two-level-top-bar: library/market/stats + folder,tag,state,template-source chips",
+    "scope": "module-internal; global sidebar keeps 240/64 states",
+    "narrow": "under 860px labels collapse to icons, active item keeps its label",
+    "detail": "shared full-screen sheet; skill detail and prompt template preview reuse the same surface"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "version": "0.1.43",
+  "version": "0.1.44",
   "files": [
     {
       "file": "README.md",
@@ -35,11 +35,11 @@
     },
     {
       "file": "VERSION",
-      "sha256": "50766a38825ec7efac1027ccb38429c89701fe085fd517bef828bb89a72d729e"
+      "sha256": "8f84ade2d56d086e8307558b6e50be1c3bf36534e464e9d9f58942e6a37e2d4c"
     },
     {
       "file": "DESIGN.md",
-      "sha256": "6b15f6675b7726993e6e093529196de4a8bbd34b7704c26e850fdc7606cc382d"
+      "sha256": "b6ab948e52461475d73ea06d4372d60ec841b0513cdc1b44abcf1755127adfb6"
     },
     {
       "file": "start.bat",
@@ -355,7 +355,7 @@
     },
     {
       "file": "frontend/app/controller-order.json",
-      "sha256": "b05709067ca3818a6d3af4cf3b80527a7d6403d790016d3b78dadcb626d531a9"
+      "sha256": "302434a2298d6f815a349ce5eff11ff948177cf70bb008ac6029ac0ca3ed8ea7"
     },
     {
       "file": "frontend/app/count-motion.ts",
@@ -403,15 +403,15 @@
     },
     {
       "file": "frontend/app/preview-dark.html",
-      "sha256": "4e96a80b38f16a21440720bbda2e6793a2bfbe5f8e009f9843cebe705d7fb884"
+      "sha256": "8120cd66e38709f47d8286405329e9db6f790c50939e0c9b2e6f5a8ee999f784"
     },
     {
       "file": "frontend/app/preview.html",
-      "sha256": "ac3b9c1e66452bbb1117a633b8e19fd2c2964f8a4a090f1a73ff9fbc84bf4542"
+      "sha256": "100194bca752c74459582fe0e838ed8bdf9a17b50a328b463d05847662304b29"
     },
     {
       "file": "frontend/app/preview.ts",
-      "sha256": "7fda182ad5daa83a11498e67d9bb571a7abdda1b4a7ad92144b40671ee7f5908"
+      "sha256": "f4726cfcecac0e922d8716aacdb5abc0d6d43724576d7ab9718ca932917c3ad6"
     },
     {
       "file": "frontend/app/prices.html",
@@ -491,7 +491,7 @@
     },
     {
       "file": "frontend/compat/library-views.ts",
-      "sha256": "36c81494ae93c4f45e984876798fff8781793ffd21b85c6aa4fdaa5b9d382882"
+      "sha256": "51d08d730d2a6e6f87aa45e5fc635aac20ca77194c605923980cb0aba6e682da"
     },
     {
       "file": "frontend/compat/lingxi-design.ts",
@@ -516,6 +516,10 @@
     {
       "file": "frontend/compat/projects-board.ts",
       "sha256": "616a19dd16fe73c8b0bce9b02e193c807c86d641608a8d77c54d968a94c28069"
+    },
+    {
+      "file": "frontend/compat/prompts-module.ts",
+      "sha256": "4c4ec21cf3f4dc7bceeb4f5384655e3db2aaf6a77cea4ef8762bb574c286df0d"
     },
     {
       "file": "frontend/compat/rounded-selects.ts",
@@ -823,7 +827,7 @@
     },
     {
       "file": "static/skill-manager.css",
-      "sha256": "899eb2fa8d48e0a683e0adad4c5e2ba1ef164022460da6352668d0195f9afcda"
+      "sha256": "a62fbb69bf9a03a470cd5c89366a8446d72a4ce94c3d37c135bae51b8f0f1d22"
     },
     {
       "file": "static/startup.css",
@@ -955,7 +959,7 @@
     },
     {
       "file": "docs/design-coverage.json",
-      "sha256": "e24f064dd0f6475d83213336361cbfb07e2c6fff6ea1cc0323c54ad2c4781c82"
+      "sha256": "590b25760e311b578767d5abb52c3e5a2b45aeb5cbae7b6f37efaecaf6ac9284"
     },
     {
       "file": "docs/design-reference-audit.json",
