@@ -118,3 +118,20 @@ export function skillPresentation(original:string,description:string,override?:S
  const chineseDescription=/^[\u3400-\u9fff]/.test(description.trim())?description.trim().split(/(?<=[。！？])\s*/)[0].slice(0,240):known?.description||"暂无中文简介，可在详情中补充。";
  return {title:chineseTitle,description:chineseDescription,source:known?"catalog":/[\u3400-\u9fff]/.test(original)?"source":"untranslated"};
 }
+
+export const skillCategories = ["开发与运维","设计与媒体","科研与数据","写作与沟通","办公与文档","工作流与工具","其他"] as const;
+const skillFunctions: readonly [typeof skillCategories[number],RegExp][] = [
+  ["科研与数据",/nature-|research|penman|literature|citation|analytics|实验|调研|科研|文献|数据分析/i],
+  ["办公与文档",/artifact-template|spreadsheet|document|slides|presentation|pdf|docx|excel|xlsx|pptx|表格|演示文稿|文档/i],
+  ["设计与媒体",/figma|design|imagegen|re?motion|theme|visualize|image|svg|界面设计|配色|插画|截图/i],
+  ["开发与运维",/cloudflare|worker|wrangler|electron|typescript|react|^git-|api|web-perf|stm32|^code-|frontend|backend|开发|部署/i],
+  ["写作与沟通",/writing|writer|copy|tone|essay|memo|comms|写作|文案|报告|周报|沟通/i],
+  ["工作流与工具",/skill|installer|workflow|automation|plugin|converter|tool|workbench|知识整理|工作流|技能|工具/i],
+];
+
+export function skillCategory(name: string, title: string, tags: string[]){
+  const identity=name.split(":").pop()||name;
+  return skillFunctions.find(([,pattern])=>pattern.test(identity))?.[0]
+    ?? skillFunctions.find(([,pattern])=>pattern.test([title,...tags].join(" ")))?.[0]
+    ?? "其他";
+}

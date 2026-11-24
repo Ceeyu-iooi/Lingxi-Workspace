@@ -2,6 +2,8 @@
 // Compatibility controller: retain the validated interactions during the React migration.
 /* Prompt-Tools / Skills-Manager presentation adapted to the workbench UI contract.
  * Their MIT source licences are retained in static/vendor; all storage uses owned HTTP APIs. */
+import { skillCategories } from "../../src/shared/skill-presentation";
+
 (() => {
   const U = () => window.WorkbenchUI,
     e = (s) => U().e(s),
@@ -78,7 +80,7 @@
       scan: null,
       settings: null,
       library: {
-        items: [], total: 0, q: "", tag: "", agent: "", status: "all", source: "", view: "grid",
+        items: [], total: 0, q: "", tag: "", agent: "", status: "all", source: "", category: "", view: "grid",
         offset: 0, limit: 12, loading: false, loaded: false, error: "", preset: "",
       },
       agentCounts: {},
@@ -141,9 +143,12 @@
     const agentName = (id) => (state.agents.find((a) => a.id === id) || {}).name || id || "Agent";
     const agentTone = { shared: "indigo", codex: "zinc", claude: "orange", cursor: "blue", gemini: "sky", dsh: "green" };
     const agentTile = (a, size = 36) => {
-      const tone = agentTone[a?.id] || "violet";
-      const label = a?.id === "shared" ? "SH" : String(a?.id || a?.name || "?").slice(0, 2);
-      return `<span class="skm-agent-tile skm-tone-${tone}${size <= 28 ? " is-sm" : ""}" aria-hidden="true">${esc(label)}</span>`;
+      const id=a?.id||a?.agentId;
+      const tone = agentTone[id] || "violet";
+      const brands={codex:"openai-blossom-black.svg",claude:"agent-claude.svg",cursor:"agent-cursor.svg",gemini:"agent-gemini.svg",dsh:"dsh-logo.svg",opencode:"agent-opencode.svg",copilot:"agent-copilot.svg",antigravity:"agent-antigravity.svg"};
+      const asset=Object.hasOwn(brands,id)?brands[id]:null;
+      const label=asset?`<img src="assets/${asset}" alt="">`:icon(a?.id==="shared"?"layers":"bot",16);
+      return `<span class="skm-agent-tile skm-tone-${tone}${size <= 28 ? " is-sm" : ""}" aria-hidden="true">${label}</span>`;
     };
 
     function statusPills(skill) {
@@ -164,7 +169,7 @@
       const agents = deployedAgents(skill);
       const tags = (skill.tags || []).slice(0, 5);
       const title = String(skill.name || skill.displayName || "未命名技能");
-      return `<article class="skm-card" data-open-skill="${esc(skill.id)}" role="button" tabindex="0" aria-label="打开技能 ${esc(title)}">
+      return `<article class="skm-card" data-skill-category="${esc(skill.category||"其他")}" data-open-skill="${esc(skill.id)}" role="button" tabindex="0" aria-label="打开技能 ${esc(title)}">
         <div class="skm-card-head">
           <span class="skm-dot${agents.length ? " is-on" : ""}" title="${agents.length ? "已部署到 " + esc(agents.map((a) => a.name).join("、")) : "尚未部署到 Agent"}"></span>
           <div class="skm-card-titles">
@@ -174,7 +179,7 @@
           <span class="skm-card-pills">${statusPills(skill)}</span>
         </div>
         <p class="skm-card-desc">${desc ? esc(desc) : "暂无简介"}</p>
-        <div class="skm-card-tags">${tags.map((t) => `<span class="skm-tag">${esc(t)}</span>`).join("")}${(skill.tags || []).length > 5 ? `<span class="skm-tag is-more">+${skill.tags.length - 5}</span>` : ""}</div>
+        <div class="skm-card-tags">${skill.category?`<span class="skm-tag skm-function">${esc(skill.category)}</span>`:""}${tags.map((t) => `<span class="skm-tag">${esc(t)}</span>`).join("")}${(skill.tags || []).length > 5 ? `<span class="skm-tag is-more">+${skill.tags.length - 5}</span>` : ""}</div>
         <div class="skm-card-foot">
           <span class="skm-card-source">${icon(sourceIcon(skill.source?.type), 14)}<span>${esc(sourceType(skill.source?.type))}</span></span>
           <span class="skm-agent-dots">
@@ -404,7 +409,7 @@
       const start = l.offset;
       const page = items.slice(start, start + l.limit);
       if (!items.length) {
-        const filtered = l.q || l.tag || l.agent || l.status !== "all" || l.source || l.preset;
+        const filtered = l.q || l.tag || l.agent || l.status !== "all" || l.source || l.preset || l.category;
         const totalZero = !filtered && l.total === 0;
         return emptyState({
           title: totalZero ? "技能库还没有技能" : "没有可显示的 Skills",
@@ -459,6 +464,7 @@
             </div>
           </div>
         </div>
+        <div class="skm-chip-row skm-function-filters" role="group" aria-label="技能功能分类">${["",...skillCategories].map(category=>`<button class="skm-chip${l.category===category?" is-active":""}" data-act="lib-category" data-category="${esc(category)}" aria-pressed="${l.category===category}">${esc(category||"全部功能")}</button>`).join("")}</div>
         <div class="skm-chip-row">${sources}${tags.length ? '<span class="skm-chip-sep" aria-hidden="true"></span>' : ""}${tagChips}</div>
         </div>
         <div data-lib-results>${libraryResultsHTML()}</div>
@@ -894,6 +900,7 @@
         const params = new URLSearchParams({ limit: "100" });
         if (l.q) params.set("q", l.q);
         if (l.tag) params.set("tag", l.tag);
+        if (l.category) params.set("category", l.category);
         if (l.agent) params.set("agent", l.agent);
         const d = await api("GET", "/library?" + params.toString());
         if (signal?.aborted) return;
@@ -1203,6 +1210,7 @@
           return;
         }
         if (act === "lib-status") { state.library.status = target.dataset.status; state.library.offset = 0; paintPage(); return; }
+        if (act === "lib-category") { state.library.category = target.dataset.category; state.library.offset = 0; await loadLibrary(); paintPage(); q(`[data-act=lib-category][data-category="${CSS.escape(state.library.category)}"]`,root)?.focus({preventScroll:true}); return; }
         if (act === "lib-source") { state.library.source = target.dataset.source; state.library.offset = 0; paintPage(); return; }
         if (act === "lib-view") { state.library.view = target.dataset.view === "list" ? "list" : "grid"; paintPage(); return; }
         if (act === "lib-page") {
@@ -1216,7 +1224,7 @@
         }
         if (act === "tag") { state.library.tag = state.library.tag === target.dataset.tag ? "" : target.dataset.tag; state.library.offset = 0; await loadLibrary(); paintPage(); return; }
         if (act === "clear-filters") {
-          Object.assign(state.library, { q: "", tag: "", agent: "", status: "all", source: "", preset: "", offset: 0 });
+          Object.assign(state.library, { q: "", tag: "", agent: "", status: "all", source: "", category: "", preset: "", offset: 0 });
           await loadLibrary();
           paintPage();
           return;

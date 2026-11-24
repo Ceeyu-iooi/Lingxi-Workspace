@@ -87,7 +87,13 @@
       d.querySelector("header button").focus();
     }
     dialog.dataset.settingsRoute = location.hash;
-    return Promise.resolve(renderer(content())).then(()=>{if(dialog){window.workbenchDesign?.reveal(content(),true);if(location.hash.startsWith("#/settings/usage"))window.dispatchEvent(new CustomEvent("workbench:usage-enter"));}});
+    return Promise.resolve(renderer(content())).then(()=>{if(dialog){window.workbenchDesign?.reveal(content(),true);
+      const selected=content()?.querySelector(".settings-nav-item.selected");
+      const nav=selected?.closest(".settings-nav-list");
+      if(nav&&nav.scrollWidth>nav.clientWidth){
+        const box=selected.getBoundingClientRect(),frame=nav.getBoundingClientRect();
+        if(box.left<frame.left||box.right>frame.right)nav.scrollLeft+=box.left-frame.left-6;
+      }if(location.hash.startsWith("#/settings/usage"))window.dispatchEvent(new CustomEvent("workbench:usage-enter"));}});
   }
   window.addEventListener("workbench:state", (e) => {
     if (!e.detail?.user || (identity && e.detail.user.username !== identity))

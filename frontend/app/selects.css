@@ -1,0 +1,11 @@
+.wb-select{position:relative;display:inline-block;max-width:100%;min-width:0}
+.wb-select>select{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;padding:0!important}
+.wb-select>.wb-select-trigger{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:42px;padding:0 14px!important;border:1px solid var(--line,#dbe3ec);border-radius:999px!important;background:var(--surface,#fff);color:var(--ink,#172237);font:inherit;text-align:left}
+.wb-select-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wb-select>.wb-select-trigger .wb-select-chevron{position:static;transform:none;width:16px;height:16px;flex:none;color:var(--ink-2,#48607a)}
+.wb-select-popover[data-overlay-portal],.usage-date-popover[data-custom=false][data-overlay-portal]{box-sizing:border-box;height:auto;max-height:368px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;border:1px solid var(--line,#dbe3ec);border-radius:15px;background:var(--surface,#fff);color:var(--ink,#172237);box-shadow:0 8px 28px #132b4922}
+.wb-select-popover[data-overlay-portal]{z-index:120;display:flex;flex-direction:column;gap:2px;padding:8px 7px}
+:is(.wb-select-popover[data-overlay-portal],.usage-date-popover[data-custom=false][data-overlay-portal] .usage-date-presets) button{display:block;flex:0 0 41px;height:41px;min-height:41px;width:100%;padding:0 11px;border:0;border-radius:999px;background:transparent;color:var(--ink,#172237);font:inherit;line-height:39px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+:is(.wb-select-popover[data-overlay-portal],.usage-date-popover[data-custom=false][data-overlay-portal] .usage-date-presets) button:is(:hover,:focus-visible,[aria-selected=true],[aria-pressed=true],.active){background:color-mix(in srgb,var(--ink,#172237) 6%,var(--surface,#fff));color:var(--ink,#172237)}
+:is(.wb-select-popover[data-overlay-portal],.usage-date-popover[data-custom=false][data-overlay-portal] .usage-date-presets) button:is([aria-selected=true],[aria-pressed=true],.active){font-weight:650}
+:is(.wb-select-popover[data-overlay-portal],.usage-date-popover[data-overlay-portal])[hidden],.lingxi-module-bar[hidden]{display:none!important}

@@ -140,9 +140,8 @@
       return `<button class="skm-nav${active ? " is-active" : ""}${extra}" data-act="mode" data-mode="${view}"${active ? ' aria-current="page"' : ""}>${icon(ico, 15, "skm-nav-ico")}<span class="skm-nav-label">${esc(label)}</span>${count == null ? "" : `<span class="skm-nav-count">${count}</span>`}</button>`;
     }
     function topbarHTML() {
-      const total = result?.total ?? 0;
       return `<span class="skm-brand"><span class="skm-brand-mark">${icon("fileText", 15)}</span><span class="skm-brand-name">提示词管理</span></span>
-        <nav class="skm-nav-primary" aria-label="提示词管理导航">${MODES.map(([id, label, ico]) => navItem(id, label, ico, id === "library" ? nf(total) : null)).join("")}</nav>
+        <nav class="skm-nav-primary" aria-label="提示词管理导航">${MODES.map(([id, label, ico]) => navItem(id, label, ico, null)).join("")}</nav>
         <div class="skm-topbar-actions">
           <button class="skm-icon-btn" data-act="refresh" title="刷新" aria-label="刷新">${icon("refresh", 15)}</button>
           <button class="skm-btn skm-btn-ghost skm-btn-sm" data-act="import">${icon("upload", 14)}导入</button>
@@ -213,9 +212,9 @@
     }
     function marketCard(item) {
       return `<article class="skm-card" data-market-id="${esc(item.id)}" data-source-id="${esc(item.source)}" role="button" tabindex="0" aria-label="${esc(item.title)}">
-        <div class="skm-card-head"><div class="skm-card-titles"><div class="skm-card-title">${esc(item.title)}</div><div class="skm-card-zh">${esc(item.origin?.repo || item.source)}</div></div></div>
+        <div class="skm-card-head"><div class="skm-card-titles"><div class="skm-card-title">${esc(item.title)}</div><div class="skm-card-zh">${esc(item.tags?.[0] || item.origin?.repo || item.source)}</div></div></div>
         <p class="skm-card-desc">${esc(item.excerpt || "")}</p>
-        <div class="skm-card-foot"><span class="skm-card-source">${icon("globe", 13, "skm-ico")}公开模板</span>
+        <div class="skm-card-foot"><span class="skm-card-source">${icon("globe", 13, "skm-ico")}${item.source==="lingxi-zh"?"中文模板":"公开模板"}</span>
           <span class="skm-card-actions"><button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="market-apply">创建副本</button></span>
         </div>
       </article>`;
@@ -237,10 +236,10 @@
         <header class="skm-page-head">
           <div class="skm-page-head-main">
             <h1 class="skm-page-title">${isMarket ? "模板市场" : "我的提示词"}<span class="skm-badge" data-count>${nf(result?.total ?? 0)}</span></h1>
-            ${isMarket ? '<p class="skm-page-sub">预览模板后创建副本。</p>' : ""}
+
           </div>
           <div class="skm-page-actions">
-            ${isMarket ? `<button class="skm-btn skm-btn-secondary" data-act="market-sync">${icon("refresh", 14)}同步模板</button>` : ""}
+            ${isMarket && params.source !== "lingxi-zh" ? `<button class="skm-btn skm-btn-secondary" data-act="market-sync">${icon("refresh", 14)}同步模板</button>` : ""}
             <select class="skm-input skm-select" data-sort aria-label="排序方式">
               <option value="updated"${params.sort === "updated" ? " selected" : ""}>最近更新</option>
               <option value="created"${params.sort === "created" ? " selected" : ""}>创建时间</option>
@@ -1083,7 +1082,7 @@
           "/api/prompts/market/item?source=" +
             encodeURIComponent(item.source) +
             "&id=" +
-            item.id,
+            encodeURIComponent(item.id),
           undefined,
           { signal },
         );
@@ -1121,7 +1120,7 @@
     }
     async function syncMarket() {
       const sources = result?.sources || [];
-      const source = params.source || sources[0]?.id;
+      const source = params.source || sources.find(s=>!s.bundled)?.id;
       if (!source) {
         U().notify("先添加一个公开模板源", { kind: "error" });
         return;
@@ -1414,6 +1413,7 @@
         offset: 0,
         limit: 40,
         tags: [],
+        ...(mode === "market" ? {source:"lingxi-zh"} : {}),
         ...(modeParams[mode] || {}),
       };
       selected.clear();

@@ -1,4 +1,5 @@
 import "./motion";
+import "./overlay";
 import "./surfaces";
 import { installStandalone } from "virtual:lingxi-standalone";
 import React, { useLayoutEffect } from "react";

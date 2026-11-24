@@ -46,7 +46,7 @@ import {extraAgentSources, extraAgentIds, isExtraAgent} from "../../src/shared/l
   const button = (text, id, ghost = true) =>
     `<button type="button" class="btn ${ghost ? "ghost" : ""}" id="${id}">${text}</button>`;
   const title = (text, description, actions = "") =>
-    `<div class="control-heading"><div><h2>${e(text)}</h2><p>${e(description)}</p></div><div class="control-actions">${actions}</div></div>`;
+    `<div class="control-heading"><div><h2>${e(text)}</h2>${description?`<p>${e(description)}</p>`:""}</div><div class="control-actions">${actions}</div></div>`;
   const field = (name, text, value = "", type = "text") =>
     `<label class="control-field">${text}<input name="${name}" type="${type}" value="${e(value)}" ${type === "number" ? 'min="0" step="any"' : ""}></label>`;
   const blank = (text) => `<div class="control-empty">${e(text)}</div>`;
@@ -246,7 +246,7 @@ import {extraAgentSources, extraAgentIds, isExtraAgent} from "../../src/shared/l
       scopes
         .map(
           ([scope, name]) =>
-            `<fieldset><legend>${name}</legend>${field(scope + "Path", extraAgentSources[scope]?.input || "日志目录", logPath(scope))}<label class="control-checkbox"><input name="${scope}Enabled" type="checkbox" ${data.config[scope + "Enabled"] ? "checked" : ""}>启用自动采集</label>${isExtraAgent(scope) ? `<label class="control-checkbox"><input name="${scope}Visible" type="checkbox" ${data.config[scope + "Visible"] !== false ? "checked" : ""}>在用量监测显示</label>` : ""}</fieldset>`,
+            `<fieldset><legend>${name}</legend>${field(scope + "Path", extraAgentSources[scope]?.input || "日志目录", logPath(scope))}<div class="log-options"><label class="control-checkbox"><input name="${scope}Enabled" type="checkbox" ${data.config[scope + "Enabled"] ? "checked" : ""}>启用自动采集</label>${isExtraAgent(scope) ? `<label class="control-checkbox"><input name="${scope}Visible" type="checkbox" ${data.config[scope + "Visible"] !== false ? "checked" : ""}>在用量监测显示</label>` : ""}</div></fieldset>`,
         )
         .join("") +
       '<p class="control-form-error" role="alert"></p><div class="wb-save-state"><button type="submit" class="btn">保存采集设置</button></div></form><a href="#/usage" class="btn ghost">打开用量监测与 API供应商管理</a>';
@@ -258,7 +258,7 @@ import {extraAgentSources, extraAgentIds, isExtraAgent} from "../../src/shared/l
       [
         "promptAutosave",
         "提示词自动保存",
-        "停止输入约 800 ms 后保存，失败保留草稿。",
+        "",
       ],
       [
         "promptAIEnabled",
@@ -268,7 +268,7 @@ import {extraAgentSources, extraAgentIds, isExtraAgent} from "../../src/shared/l
     ]
       .map(
         ([name, label, desc]) =>
-          `<label class="wb-setting-switch"><span>${label}<small>${desc}</small></span><input type="checkbox" data-feature="${name}" ${data.config[name] ? "checked" : ""}></label>`,
+          `<label class="wb-setting-switch"><span>${label}${desc?`<small>${desc}</small>`:""}</span><input type="checkbox" data-feature="${name}" ${data.config[name] ? "checked" : ""}></label>`,
       )
       .join(
         "",
@@ -857,6 +857,7 @@ import {extraAgentSources, extraAgentIds, isExtraAgent} from "../../src/shared/l
     });
   }
   function usageIcon(id) {
+    if(id==="opencode") return '<picture class="usage-tab-icon agent-opencode"><img src="assets/agent-opencode.svg" alt=""><img src="assets/agent-opencode-dark.svg" alt=""></picture>';
     if(isExtraAgent(id)) return `<img class="usage-tab-icon" src="assets/agent-${id}.svg" alt="">`;
     if(id==="dsh")return '<img class="usage-tab-icon usage-dsh-logo" src="assets/dsh-logo.svg" alt="">';
     if (id === "codex")
@@ -1016,6 +1017,7 @@ import {extraAgentSources, extraAgentIds, isExtraAgent} from "../../src/shared/l
         select("source").value = "codex";
       remember();
       drawUsage(body, result);
+      window.usageView.updateSessions(body,key,result.dataVersion,scope!=="api"&&!result.aggregated&&result.dataSource?.kind!=="official-account");
       const notice = q("#usage-source-notice", root);
       if (isExtraAgent(scope) && !result.summary?.observations) {
         notice.hidden = false;
@@ -1444,8 +1446,8 @@ import {extraAgentSources, extraAgentIds, isExtraAgent} from "../../src/shared/l
     const box=trigger.getBoundingClientRect(),column=side.getBoundingClientRect();
     const width=Math.min(Math.max(200,column.width-16),innerWidth-16);
     profilePopover.style.width=width+"px";
-    profilePopover.style.left=Math.max(8,Math.min(column.left+8,innerWidth-width-8))+"px";
-    profilePopover.style.top=Math.max(8,box.top-profilePopover.offsetHeight-8)+"px";
+    profilePopover.style.left=Math.max(8,Math.min(box.right+8,innerWidth-width-8))+"px";
+    profilePopover.style.top=Math.max(8,box.bottom-profilePopover.offsetHeight)+"px";
   }
   function profileMenu() {
     if(!user)return;

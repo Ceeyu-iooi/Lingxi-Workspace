@@ -102,6 +102,9 @@
     let bar=shell.querySelector(":scope > .lingxi-module-bar");
     if(!bar){bar=document.createElement("div");bar.className="lingxi-module-bar";shell.prepend(bar);}
     const inSettings=location.hash.startsWith("#/settings"); if(inSettings) return;
+    const embedded=!!main.querySelector(".skm-topbar,.ob-top,.task-page-heading,.finance-filters");
+    bar.hidden=embedded;
+    if(embedded){bar.replaceChildren();bar._signature=undefined;return;}
     if(source){
       if(!source.classList.contains('lingxi-module-source'))source.classList.add('lingxi-module-source');
       const signature=source.innerHTML;

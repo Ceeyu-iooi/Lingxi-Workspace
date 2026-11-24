@@ -28,6 +28,7 @@ import { parseBill, parseNotification } from "./parsers.ts";
 import { analyzeTask } from "./text-agent.ts";
 import { Monitor, iso } from "./monitor.ts";
 import { GitTimeline } from "./git-timeline.ts";
+import { skillCategory } from "../shared/skill-presentation.ts";
 import { sessionUsage } from "./session-usage.ts";
 import { sessionMetadata } from "./session-titles.ts";
 import { Codex } from "./codex.ts";
@@ -431,9 +432,13 @@ export async function startServer(
   });
   app.get('/api/overview',()=>{
     const month=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Shanghai'}).slice(0,7),data=business.state(),money={income:new Decimal(0),expense:new Decimal(0)};
-    for(const row of data.transactions||[])if(String(row.date).startsWith(month)&&['income','expense'].includes(row.kind))money[row.kind as 'income'|'expense']=money[row.kind as 'income'|'expense'].plus(String(row.amount));
+    let transactionCount=0;
+    for(const row of data.transactions||[])if(String(row.date).startsWith(month)&&['income','expense'].includes(row.kind)){
+      money[row.kind as 'income'|'expense']=money[row.kind as 'income'|'expense'].plus(String(row.amount));
+      transactionCount++;
+    }
     const usage=monitor.snapshot({scope:'codex',source:'codex',period:'7',valuation_enabled:!!valuation.status('codex').coverage,value_currency:'CNY'});
-    return {month,finance:{income:money.income.toFixed(2),expense:money.expense.toFixed(2),net:money.income.minus(money.expense).toFixed(2)},usage:{summary:usage.summary,daily:usage.daily,valuation:usage.valuation?.summary,range:usage.range},prompts:prompts.search({limit:1}).total,skills:skills.search({limit:1}).total};
+    return {month,finance:{transactionCount,income:money.income.toFixed(2),expense:money.expense.toFixed(2),net:money.income.minus(money.expense).toFixed(2)},usage:{summary:usage.summary,daily:usage.daily,valuation:usage.valuation?.summary,range:usage.range},prompts:prompts.search({limit:1}).total,skills:skills.search({limit:1}).total};
   });
   app.get("/api/control", () => control.public());
   app.post("/api/control/config", (request, reply) => {
@@ -721,10 +726,12 @@ export async function startServer(
       agentId = String(value.agent || "");
     const items = skillManager()
       .librarySkills()
+      .map(card=>({...card,category:skillCategory(card.name,card.displayName,card.tags)}))
       .filter((card) => {
         if (q && !(card.displayName + "\n" + card.displayDescription + "\n" + card.name + "\n" + card.description).toLowerCase().includes(q))
           return false;
         if (tag && !card.tags.includes(tag)) return false;
+        if (value.category && card.category !== value.category) return false;
         if (agentId && !card.agents.some((b) => b.agentId === agentId && b.deployed)) return false;
         return true;
       });
@@ -1348,7 +1355,7 @@ export async function startServer(
   app.get("/api/git/timeline/changes", (request, reply) => {
     if (!local(request)) return reply.code(403).send({error:"本机提交的代码差异仅在本机查看"});
     const params = qs(request);
-    return gitTimeline.localChanges(String(params.hash || ""), typeof params.file === "string" ? params.file : undefined);
+    return gitTimeline.changes(String(params.hash || ""), typeof params.file === "string" ? params.file : undefined);
   });
   const staticFile = async (request: any, reply: any) => {
     const route = new URL(request.url, "http://localhost").pathname,

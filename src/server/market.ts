@@ -5,7 +5,10 @@ import { Jobs, fetchJSON } from "./control.ts";
 import { hash, stamp, type JsonObject } from "./profile.ts";
 import { parseCSV } from "./files.ts";
 
+const CHINESE_SOURCE = { id: "lingxi-zh", name: "中文精选", repo: "", path: "", ref: "", format: "markdown", license: "MIT", bundled: true };
+
 const SOURCES = [
+  CHINESE_SOURCE,
   {
     id: "prompts-chat",
     name: "prompts.chat",
@@ -127,7 +130,7 @@ export class Market {
   }
   sync(id: string, expectedCommit?: string, previewSource?: JsonObject) {
     const source = previewSource || this.sources().find((s) => s.id === id);
-    if (!source) throw new Error("模板源不存在");
+    if (!source || source.bundled) throw new Error("请选择可同步的公开模板来源");
     const owner = this.prompts.profile.owner;
     return this.jobs.start(
       (previewSource ? "template-preview:" : "template-sync:") + id,
@@ -259,7 +262,16 @@ export class Market {
   }
   seed() {
     const p = this.prompts.profile;
-    if (p.db.prepare("SELECT 1 FROM template_catalog LIMIT 1").get()) return;
+    const curated = join(this.assets, "vendor", "prompt-market", "zh.json");
+    if (existsSync(curated) && !p.db.prepare("SELECT 1 FROM template_catalog WHERE source=? LIMIT 1").get(CHINESE_SOURCE.id)) {
+      const rows = JSON.parse(readFileSync(curated, "utf8")) as [string,string,string,string][];
+      const insert = p.db.prepare("INSERT OR IGNORE INTO template_catalog VALUES(?,?,?,?,?,?,?,?)");
+      p.transaction(() => {
+        for (const [id,title,tag,content] of rows)
+          insert.run(CHINESE_SOURCE.id,id,title,content,"markdown",JSON.stringify([tag]),JSON.stringify({source:CHINESE_SOURCE.id,id,license:"MIT",digest:hash(content)}),stamp());
+      });
+    }
+    if (p.db.prepare("SELECT 1 FROM template_catalog WHERE source!=? LIMIT 1").get(CHINESE_SOURCE.id)) return;
     const file = join(this.assets, "vendor", "prompt-market", "seed.json");
     if (!existsSync(file)) return;
     for (const r of JSON.parse(readFileSync(file, "utf8")).items)

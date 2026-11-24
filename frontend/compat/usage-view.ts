@@ -1,3 +1,4 @@
+import { formatCount, formatRate } from "../../src/shared/session-usage";
 // @ts-nocheck
 // Compatibility controller: retain the validated interactions during the React migration.
 (() => {
@@ -79,10 +80,6 @@
     const unknown=rows=>(rows||[]).map(row=>({...row,costUnknown:row.requests||1,pricedRequests:0,cost:null,costs:{CNY:null,USD:null}}));
     return {...state.snapshot,costCurrency:'CNY',cachedAvailable:false,activity:unknown(state.snapshot.activity),daily:unknown(state.snapshot.daily),groups:unknown(state.snapshot.groups),events:unknown(state.snapshot.events)};
   };
-  const modelTag = (row) => {
-    const brand = modelBrand(row && row.provider, row && row.model);
-    return `<span class="usage-model-tag" title="${e(brand.label)}"><i class="brand-dot" style="background:linear-gradient(135deg,${brand.color},${brand.colorStrong})"></i><em style="--brand:${brand.color};--brand-strong:${brand.colorStrong}">${e(brand.monogram)}</em></span>`;
-  };
   const chartIcon = (mode) =>
     '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 3v17h17" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>' +
     (mode === "bar"
@@ -137,7 +134,7 @@
           "Token",
           "请求 / 失败",
         ];
-    return `<section class="control-section usage-table-panel" data-usage-table><h3>${index ? "最近请求" : "来源与模型明细"}</h3><div class="usage-table-tools"><label>模型<select data-table-model aria-label="${index ? "请求" : "明细"}模型筛选"><option value="">全部模型</option></select></label><label>排序<select data-table-sort aria-label="${index ? "请求" : "明细"}排序"><option value="date-desc">日期 · 最近优先</option><option value="date-asc">日期 · 最早优先</option><option value="token-desc">Token · 从高到低</option><option value="token-asc">Token · 从低到高</option></select></label><span data-table-count></span></div><div class="control-table-wrap"><table class="control-table"><thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody></tbody></table></div></section>`;
+    return `<section class="control-section usage-table-panel" data-usage-table><h3>${index ? "最近请求" : "来源与模型明细"}</h3><div class="usage-table-tools"><span data-table-count></span></div><div class="control-table-wrap"><table class="control-table"><thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody></tbody></table></div></section>`;
   }
   function init(root) {
     if (states.has(root)) return states.get(root);
@@ -152,7 +149,7 @@
       )
       .join(
         "",
-      )}</div></div><div class="usage-heat-months"></div><div class="usage-heatmap"></div><div class="usage-axis"><span data-heat-start></span><span class="usage-heat-legend" aria-label="Token 活动颜色：从少到多">少 <i class="usage-heat-gradient" aria-hidden="true"></i> 多</span><span data-heat-end></span></div></section><div class="usage-charts"><section class="control-section"><div class="section-title usage-chart-heading"><button class="btn ghost usage-chart-mode" data-chart-mode="line" aria-label="切换为柱状图" title="切换为柱状图" aria-pressed="false">${chartIcon("line")}</button><h3>每日 Token 趋势</h3></div>${window.usageCharts.trend([])}<div class="usage-axis"><span data-trend-start></span><span data-trend-peak></span><span data-trend-end></span></div></section><section class="control-section"><h3>模型用量占比</h3><div class="usage-pie-layout usage-interactive-pie" data-models="[]"><div class="usage-donut interactive"><svg viewBox="0 0 200 200" role="group" aria-label="模型 Token 占比"></svg><strong>—</strong></div><div class="usage-legend"></div><div class="usage-pie-empty">暂无模型用量</div></div></section></div>${tableShell(0)}${tableShell(1)}<div class="usage-updated"></div>`;
+      )}</div></div><div class="usage-heat-months"></div><div class="usage-heatmap"></div><div class="usage-axis"><span data-heat-start></span><span class="usage-heat-legend" aria-label="Token 活动颜色：从少到多">少 <i class="usage-heat-gradient" aria-hidden="true"></i> 多</span><span data-heat-end></span></div></section><div class="usage-charts"><section class="control-section"><div class="section-title usage-chart-heading"><button class="btn ghost usage-chart-mode" data-chart-mode="line" aria-label="切换为柱状图" title="切换为柱状图" aria-pressed="false">${chartIcon("line")}</button><h3>每日 Token 趋势</h3></div>${window.usageCharts.trend([])}<div class="usage-axis"><span data-trend-start></span><span data-trend-peak></span><span data-trend-end></span></div></section><section class="control-section"><h3>模型用量占比</h3><div class="usage-pie-layout usage-interactive-pie" data-models="[]"><div class="usage-donut interactive"><svg viewBox="0 0 200 200" role="group" aria-label="模型 Token 占比"></svg><strong>—</strong></div><div class="usage-legend"></div><div class="usage-pie-empty">暂无模型用量</div></div></section></div>${tableShell(0)}${sessionShell()}${tableShell(1)}<div class="usage-updated"></div>`;
     const toolbar = root.parentElement.querySelector(".usage-toolbar");
     if (toolbar) q(".usage-lifetime", root).after(toolbar);
     const accountSlot = root.parentElement.querySelector(".usage-account-slot");
@@ -267,14 +264,13 @@
         window.usageRadios?.sync(root);
         table(root, state, i, true);
       };
-      window.usageFilters.models(
-        root,
-        q("[data-table-model]", section),
-        () => table(root, state, i, true),
-        () => "wb-usage-table-models:" + state.scope + ":" + i,
-      );
-      q("[data-table-sort]", section).onchange = () =>
-        table(root, state, i, true);
+      q("thead",section).onclick=event=>{
+        const button=event.target.closest("[data-sort-col]");
+        if(!button)return;
+        const column=Number(button.dataset.sortCol),previous=section._sort||[0,-1];
+        section._sort=[column,previous[0]===column?-previous[1]:column===0?-1:1];
+        table(root,state,i);
+      };
     });
     window.usageCharts.mount(root);
     window.usageRadios?.mount(root);
@@ -768,6 +764,80 @@
           : fmt(Math.max(0, ...known.map((r) => r.total)))
         : "—");
   }
+  function compareTable(a,b,direction,numeric=false){
+    if(a==null||b==null)return a==null?(b==null?0:1):-1;
+    if(numeric&&/^\d+$/.test(String(a))&&/^\d+$/.test(String(b))){
+      const first=BigInt(a),second=BigInt(b);
+      return (first>second?1:first<second?-1:0)*direction;
+    }
+    return (numeric?Number(a)-Number(b):String(a).localeCompare(String(b),"zh-CN",{numeric:true}))*direction;
+  }
+
+  function sortableHeaders(section,labels,column,direction){
+    const row=q("thead tr",section);
+    const signature=labels.join("\0");
+    if(row.dataset.labels!==signature){
+      row.innerHTML=labels.map((name,i)=>`<th scope="col"><button type="button" data-sort-col="${i}">${e(name)} <span aria-hidden="true"></span></button></th>`).join("");
+      row.dataset.labels=signature;
+    }
+    all("th",row).forEach((th,i)=>{
+      th.setAttribute("aria-sort",i===column?(direction===1?"ascending":"descending"):"none");
+      q("span",th).textContent=i===column?(direction===1?"↑":"↓"):"↕";
+    });
+  }
+
+  function sessionShell(){
+    return '<section class="control-section usage-table-panel" data-usage-sessions hidden><h3>会话</h3><p data-session-status aria-live="polite"></p><div class="control-table-wrap"><table class="control-table"><thead><tr></tr></thead><tbody></tbody></table></div></section>';
+  }
+
+  function updateSessions(root,query,version,available){
+    const section=q("[data-usage-sessions]",root);
+    const status=q("[data-session-status]",section),tbody=q("tbody",section);
+    section.hidden=!available;
+    if(!available){section._sessionRequest?.controller.abort();section._sessionRequest=null;return;}
+    const key=query+"|"+version;
+    if(section._sessionRequest?.key===key)return;
+    section._sessionRequest?.controller.abort();
+    const controller=new AbortController();
+    section._sessionRequest={key,controller};
+    tbody.replaceChildren();
+    status.textContent="正在读取会话…";
+    const params=new URLSearchParams(query);
+    params.set("limit","200");
+    window.workbenchRequest("GET","/api/usage/sessions?"+params,undefined,{signal:controller.signal}).then(data=>{
+      if(controller.signal.aborted||!root.isConnected)return;
+      const records=data.sessions||[];
+      const name=r=>r.title||(r.unknownIdentity?"未识别会话":r.session.slice(0,12));
+      const rate=r=>r.cacheCoverage<1&&r.cacheHitRate!=null?"已知 "+formatRate(r.cacheHitRate):formatRate(r.cacheHitRate);
+      const date=value=>value?dateFormat.format(new Date(value)):"—";
+      let sort=[4,-1],open=null;
+      const render=()=>{
+        const [column,direction]=sort;
+        sortableHeaders(section,["会话","Token","请求","缓存命中","最近活动"],column,direction);
+        const get=r=>[name(r),r.total,r.requests,r.cacheHitRate,r.lastAt][column];
+        tbody.innerHTML=[...records].sort((a,b)=>compareTable(get(a),get(b),direction,column>=1&&column<=3)).map((r,index)=>{
+          const expanded=open===r;
+          return `<tr><th scope="row"><button type="button" data-session-toggle="${records.indexOf(r)}" aria-expanded="${expanded}" aria-controls="usage-session-detail-${index}">${e(name(r))}</button></th><td>${r.unknownFields.total&&r.total!=null?"已知 ":""}${formatCount(r.total)}</td><td>${formatCount(r.requests)}</td><td>${rate(r)}</td><td>${date(r.lastAt)}</td></tr><tr id="usage-session-detail-${index}" class="usage-session-detail" ${expanded?"":"hidden"}><td colspan="5">${r.modelTotals.length?`<ul>${r.modelTotals.map(m=>`<li><span>${e([m.provider,m.model].filter(Boolean).join(" / ")||"未知模型")}</span><b>${formatCount(m.total)} Token</b><small>${formatCount(m.requests)} 次请求</small></li>`).join("")}</ul>`:"暂无模型明细"}</td></tr>`;
+        }).join("");
+      };
+      q("thead",section).onclick=event=>{
+        const button=event.target.closest("[data-sort-col]");if(!button)return;
+        const column=Number(button.dataset.sortCol);
+        sort=[column,sort[0]===column?-sort[1]:column===0?1:-1];render();
+      };
+      tbody.onclick=event=>{
+        const button=event.target.closest("[data-session-toggle]");if(!button)return;
+        const index=button.dataset.sessionToggle,row=records[index];
+        open=open===row?null:row;render();
+        q(`[data-session-toggle="${index}"]`,tbody)?.focus({preventScroll:true});
+      };
+      status.textContent=records.length?(data.truncated?`最近 ${records.length} 个会话 / 共 ${data.totalSessions} 个`:""):"所选范围暂无会话记录";
+      render();
+    }).catch(error=>{
+      if(!controller.signal.aborted&&root.isConnected){section._sessionRequest=null;status.textContent="会话读取失败："+error.message;}
+    });
+  }
+
   function table(root, state, index, animated = false) {
     const s = state.snapshot;
     if (!s) return;
@@ -775,8 +845,6 @@
       cash =
         index === 0 && !!valued && state.metrics["table" + index];
     const section = all("[data-usage-table]", root)[index],
-      model = q("[data-table-model]", section),
-      sort = q("[data-table-sort]", section),
       entries = index
         ? cash
           ? valued.events
@@ -810,47 +878,19 @@
             : ["输入", "输出", "缓存", "推理", "Token"]),
           "请求 / 失败",
         ];
-    all("th", section).forEach((th, i) => {
-      if (th.textContent !== headers[i]) th.textContent = headers[i];
-    });
-    [...sort.options]
-      .filter((o) => o.value.startsWith("token"))
-      .forEach((o) => {
-        o.textContent =
-          (cash ? "API 等价值" : "Token") +
-          (o.value.endsWith("asc") ? " · 从低到高" : " · 从高到低");
-      });
-    options(
-      model,
-      s.options.model || [...new Set(entries.map((r) => r.model))].sort(),
-      "全部模型",
-    );
-    model._modelPicker.load();
-    model._modelPicker.update(
-      s.options.model || [...new Set(entries.map((r) => r.model))],
-    );
-    const chosen = model._modelPicker.get();
-    const [key, direction] = sort.value.split("-"),
-      rows = entries
-        .filter((r) => !chosen.length || chosen.includes(r.model))
-        .sort((a, b) => {
-          const metric = (r) =>
-            cash
-              ? index
-                ? r.cost == null
-                  ? null
-                  : Number(r.cost)
-                : r.pricedRequests
-                  ? r.costs?.[valued.costCurrency]
-                  : null
-              : r.total;
-          const av = key === "date" ? Date.parse(a.at) : metric(a),
-            bv = key === "date" ? Date.parse(b.at) : metric(b);
-          if (av == null || !Number.isFinite(av))
-            return bv != null && Number.isFinite(bv) ? 1 : 0;
-          if (bv == null || !Number.isFinite(bv)) return -1;
-          return (av - bv) * (direction === "asc" ? 1 : -1);
-        });
+    const [column,direction]=section._sort||[0,-1];
+    sortableHeaders(section,headers,column,direction);
+    const metric=(row,i)=>{
+      if(i===0)return row.at||null;
+      if(index)return [null,row.agent,row.model,row.total,row.status,row.duration_ms][i]??null;
+      if(i===1)return [row.source,row.agent].filter(Boolean).join(" / ");
+      if(i===2)return [row.provider,row.model].filter(Boolean).join(" / ");
+      if(i===8)return s.aggregated?row.platformRequests:row.requests;
+      const field=(cash?["input","output","cached","write","total"]:["input","output","cached","reasoning","total"])[i-3];
+      if(cash)return row.pricedRequests?(field==="total"?row.costs?.[valued.costCurrency]:row.valueParts?.[field]):null;
+      return row.requests&&row.unknownFields?.[field]===row.requests?null:row[field];
+    };
+    const rows=[...entries].sort((a,b)=>compareTable(metric(a,column),metric(b,column),direction,column>=3&&(!index||column===3||column===5)));
     const amount = (row, k) =>
       row.unknownFields?.[k] === row.requests && row.requests
         ? "—"
@@ -874,7 +914,7 @@
     const html = rows
       .map(
         (r) =>
-          `<tr data-model="${e(r.model)}" data-at="${e(r.at)}" data-total="${r.total ?? ""}">${index ? `<td>${e(timestampFormat.format(new Date(r.at)))}</td><td>${e(r.agent)}</td><td>${modelTag(r)}${e(r.model)}${r.requested_model ? `<br><small>${e(r.requested_model)}</small>` : ""}</td><td title="${Number.isFinite(r.total) ? full(r.total) + " Token" : "未返回用量"}">${amount(r, "total")}</td><td>${r.status === "error" ? "失败" : "已记录"}</td><td>${r.duration_ms ? fmt(r.duration_ms) + " ms" : "—"}</td>` : `<td>${r.at ? e(dateFormat.format(new Date(r.at))) : "—"}</td><td>${e(r.source === "official-api" ? "官方 API" : r.source)}${r.agent ? " / " + e(r.agent) : ""}</td><td><span class="usage-model-cell">${modelTag(r)}<span>${e(r.provider)}<br><small>${e(r.model)}</small></span></span></td>${["input", "output", "cached", "reasoning", "total"].map((k) => `<td title="${Number.isFinite(r[k]) ? full(r[k]) : "未返回"}">${amount(r, k)}</td>`).join("")}<td>${s.aggregated ? (Number.isFinite(r.platformRequests) ? fmt(r.platformRequests) : "—") : fmt(r.requests) + " / " + fmt(r.failures)}</td>`}</tr>`,
+          `<tr data-model="${e(r.model)}" data-at="${e(r.at)}" data-total="${r.total ?? ""}">${index ? `<td>${e(timestampFormat.format(new Date(r.at)))}</td><td>${e(r.agent)}</td><td>${e(r.model)}${r.requested_model ? `<br><small>${e(r.requested_model)}</small>` : ""}</td><td title="${Number.isFinite(r.total) ? full(r.total) + " Token" : "未返回用量"}">${amount(r, "total")}</td><td>${r.status === "error" ? "失败" : "已记录"}</td><td>${r.duration_ms ? fmt(r.duration_ms) + " ms" : "—"}</td>` : `<td>${r.at ? e(dateFormat.format(new Date(r.at))) : "—"}</td><td>${e(r.source === "official-api" ? "官方 API" : r.source)}${r.agent ? " / " + e(r.agent) : ""}</td><td><span class="usage-model-cell"><span>${e(r.provider)}<br><small>${e(r.model)}</small></span></span></td>${["input", "output", "cached", "reasoning", "total"].map((k) => `<td title="${Number.isFinite(r[k]) ? full(r[k]) : "未返回"}">${amount(r, k)}</td>`).join("")}<td>${s.aggregated ? (Number.isFinite(r.platformRequests) ? fmt(r.platformRequests) : "—") : fmt(r.requests) + " / " + fmt(r.failures)}</td>`}</tr>`,
       )
       .join("");
     const signature = JSON.stringify([html, cash, valued?.costCurrency]);
@@ -1082,5 +1122,5 @@
     });
   }
   window.addEventListener("workbench:usage-enter",()=>{document.querySelectorAll("#usage-body").forEach(root=>{const state=states.get(root);if(state?.snapshot){state.entryPending=true;update(root,state.snapshot);}});});
-  window.usageView = { init, update, number, options, heatColor, policy };
+  window.usageView = { init, update, updateSessions, number, options, heatColor, policy };
 })();

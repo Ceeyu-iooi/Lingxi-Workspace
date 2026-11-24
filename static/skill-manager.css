@@ -3036,7 +3036,7 @@
 .skm-catalog .skm-page-head{border-bottom:1px solid var(--layer-border);padding-bottom:16px;margin-bottom:16px}
 .skm-catalog .skm-page-title{font-size:clamp(24px,3vw,34px);letter-spacing:-.035em;line-height:1.15}
 .skm-catalog .skm-card-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,245px),1fr));gap:14px}
-.skm-catalog .skm-card{background:var(--layer-panel);border-color:var(--layer-border);min-width:0}
+.skm-catalog .skm-card{background:color-mix(in srgb,var(--section-tint,var(--accent)) 6%,var(--layer-panel));border-color:var(--layer-border);border-top:3px solid color-mix(in srgb,var(--section-tint,var(--accent)) 64%,var(--line));min-width:0;min-height:0}
 .skm-catalog .skm-card:hover,.skm-catalog .skm-card:focus-visible{border-color:var(--accent)}
 .skm-catalog .skm-card-title{font-weight:650}
 .skm-catalog .skm-card-desc{line-height:1.65}

@@ -236,7 +236,7 @@
       expand(false);
       render();
       popup.hidden = false;
-      releaseOverlay=window.WorkbenchOverlay.follow(popup,button,panelWidth);
+      releaseOverlay=window.WorkbenchOverlay.follow(popup,button,panelWidth,()=>close());
       button.setAttribute("aria-expanded", "true");
     };
     select.addEventListener("change", () => {

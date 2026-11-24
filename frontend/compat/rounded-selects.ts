@@ -30,20 +30,21 @@
     owner = null;
   };
   function attach(select) {
+    const host=select.parentElement?.matches("[data-select-host]")?select.parentElement:null;
     if (
       select.hidden ||
       select.multiple ||
       select.size > 1 ||
-      select.closest(".wb-select") ||
+      (select.closest(".wb-select") && (!host || host.querySelector(":scope > button"))) ||
       getComputedStyle(select).display === "none"
     )
       return;
-    const wrapper = document.createElement("span");
+    const wrapper = host || document.createElement("span");
     wrapper.className = "wb-select";
-    select.before(wrapper);
-    wrapper.append(select);
+    if (!host) { select.before(wrapper); wrapper.append(select); }
     const button = document.createElement("button");
     button.type = "button";
+    button.className = "wb-select-trigger";
     button.setAttribute("aria-haspopup", "listbox");
     button.setAttribute("aria-expanded", "false");
     wrapper.append(button);
@@ -71,7 +72,7 @@
         item.setAttribute("aria-selected", String(option.selected));
         item.onclick = () => {
           const changed = select.selectedIndex !== index;
-          select.selectedIndex = index;
+          if(changed) Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,"value").set.call(select,option.value);
           close(true);
           if (changed) select.dispatchEvent(new Event("change", { bubbles: true }));
         };
@@ -79,8 +80,8 @@
       });
       const container=select.closest('dialog[open]')||document.body;
       container.append(popup);
-      releaseOverlay=window.WorkbenchOverlay.follow(popup,button,()=>button.getBoundingClientRect().width);
-      (popup.querySelector("[aria-selected=true]:not(:disabled)") || popup.querySelector("button:not(:disabled)"))?.focus();
+      releaseOverlay=window.WorkbenchOverlay.follow(popup,button,()=>button.getBoundingClientRect().width,()=>close());
+      (popup.querySelector("[aria-selected=true]:not(:disabled)") || popup.querySelector("button:not(:disabled)"))?.focus({preventScroll:true});
       popup.onkeydown = (e) => {
         const items = [...popup.querySelectorAll("button:not(:disabled)")],
           i = items.indexOf(document.activeElement);

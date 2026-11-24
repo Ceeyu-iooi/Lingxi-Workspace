@@ -109,3 +109,10 @@ The vendored stylesheet is a **design-language audit baseline only**; it is neve
 ## Windows Electron release
 
 The Windows installer bundles Electron, Chromium, Node.js and a Win32 taskbar helper. Electron and Chromium notices are included in the installation, and the Node distribution notice is in the bundled backend.
+
+### Agent 标识
+
+- OpenCode 的浅色和深色标识来自官方品牌资源。 [OpenCode 品牌规范](https://opencode.ai/brand)
+- Cursor 图标来自 Cursor 官方品牌资源中的 2.5D Cube。 [Cursor 品牌规范](https://cursor.com/brand)
+- Gemini 标识来自 Simple Icons，SVG 素材使用 CC0 1.0，标识权利归其各自所有者。 [Simple Icons](https://github.com/simple-icons/simple-icons)
+- Antigravity 彩色图标来自 Google 官方媒体资源。 [Google Antigravity 媒体资源](https://antigravity.google/press)

@@ -448,7 +448,12 @@ function httpsGet(url: string, headers: Record<string, string>): Promise<RemoteR
       },
       (response) => {
         const chunks: Buffer[] = [];
-        response.on("data", (chunk: Buffer) => chunks.push(chunk));
+        let bytes = 0;
+        response.on("data", (chunk: Buffer) => {
+          bytes += chunk.length;
+          if (bytes > 6 * 1024 * 1024) request.destroy(new Error("GitHub 响应超过读取上限"));
+          else chunks.push(chunk);
+        });
         response.on("end", () => {
           resolvePromise({
             status: response.statusCode ?? 0,
@@ -581,6 +586,40 @@ export class GitTimeline {
     const result = this.runGit(root, [...args,"--no-color",hash,"--",":(literal)" + file]);
     const patch = result.ok ? result.out.slice(0,200000) : null;
     return { available:true, files, patch, truncated:result.ok && result.out.length > 200000 };
+  }
+
+  private remoteChanges = new Map<string, Promise<{path: string; added: number | null; deleted: number | null; patch: string | null}[]>>();
+
+  async changes(hash: string, file?: string) {
+    const local = this.localChanges(hash, file);
+    if (local.available || this.hasLocalRepository()) return local;
+    const repository = this.remoteName();
+    if (!repository) return local;
+    const key = repository + ":" + hash;
+    let request = this.remoteChanges.get(key);
+    if (!request) {
+      if (this.remoteChanges.size >= 8) this.remoteChanges.delete(this.remoteChanges.keys().next().value!);
+      request = this.fetchCommitFiles(repository, hash);
+      this.remoteChanges.set(key,request);
+      void request.catch(() => this.remoteChanges.delete(key));
+    }
+    const entries = await request;
+    const selected = entries.find(entry => entry.path === file);
+    if (file !== undefined && !selected) throw Error("文件不在该提交的变更列表中");
+    const patch = selected?.patch ?? null;
+    return {available:true,files:entries.map(({path,added,deleted})=>({path,added,deleted})),patch:patch?.slice(0,200000)??null,truncated:!!patch&&patch.length>200000};
+  }
+
+  private async fetchCommitFiles(repository: string, hash: string) {
+    const response = await httpsGet(`${GITHUB_API}/repos/${repository}/commits/${hash}?per_page=100`, {
+      "User-Agent": "Lingxi-Workbench-Git-Timeline",
+      "X-GitHub-Api-Version":"2022-11-28",
+    });
+    if (response.status!==200) throw Error("GitHub 提交详情暂不可用（HTTP "+response.status+"）");
+    const result = JSON.parse(response.body) as {files?:{filename:string; additions?:number; deletions?:number; patch?:string}[]};
+    return (result.files??[]).filter(file=>typeof file.filename==="string").slice(0,100).map(file=>({
+      path:file.filename,added:file.additions??null,deleted:file.deletions??null,patch:typeof file.patch==="string"?file.patch:null,
+    }));
   }
 
   /** 解析出的远程仓库 `owner/repo`；没有时返回 null。 */
