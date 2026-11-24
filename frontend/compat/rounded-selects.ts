@@ -70,16 +70,17 @@
         item.setAttribute("role", "option");
         item.setAttribute("aria-selected", String(option.selected));
         item.onclick = () => {
+          const changed = select.selectedIndex !== index;
           select.selectedIndex = index;
-          select.dispatchEvent(new Event("change", { bubbles: true }));
           close(true);
+          if (changed) select.dispatchEvent(new Event("change", { bubbles: true }));
         };
         popup.append(item);
       });
       const container=select.closest('dialog[open]')||document.body;
       container.append(popup);
-      releaseOverlay=window.WorkbenchOverlay.follow(popup,button);
-      popup.querySelector("[aria-selected=true]:not(:disabled)")?.focus();
+      releaseOverlay=window.WorkbenchOverlay.follow(popup,button,()=>button.getBoundingClientRect().width);
+      (popup.querySelector("[aria-selected=true]:not(:disabled)") || popup.querySelector("button:not(:disabled)"))?.focus();
       popup.onkeydown = (e) => {
         const items = [...popup.querySelectorAll("button:not(:disabled)")],
           i = items.indexOf(document.activeElement);

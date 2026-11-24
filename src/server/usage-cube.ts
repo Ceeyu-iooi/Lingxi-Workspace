@@ -2,6 +2,7 @@ import { ExactSum } from './exact-sum.ts';
 import {compactEventProjection} from './usage-storage.ts';
 import { type ProfileStore, type JsonObject, encode, parseExact } from './profile.ts';
 import { FIELDS, addDays } from './usage-summary.ts';
+import { isLocalAgent, localAgentIds } from '../shared/local-agent-sources.ts';
 /** Incremental daily summaries; raw events and their evidence remain authoritative. */
 export class UsageCube {
  constructor(private profile:ProfileStore){
@@ -27,7 +28,9 @@ export class UsageCube {
   p.transaction(()=>{const remove=db.prepare('DELETE FROM usage_cube WHERE owner=? AND source=? AND day=?'),save=db.prepare('INSERT INTO usage_cube VALUES(?,?,?,?,?)'),clean=db.prepare('DELETE FROM usage_dirty WHERE owner=? AND source=? AND day=?');for(const item of dirty){remove.run(p.owner,item.source,item.day);for(const row of read(p.owner,item.source,addDays(item.day,-1)+'T16:00:00',item.day+'T16:00:00') as JsonObject[]){save.run(p.owner,item.source,item.day,encode([row.agent,row.provider,row.model,row.project,row.connection_id,row.actual_currency,row.usd_reason,row.cny_reason]),encode(row));}clean.run(p.owner,item.source,item.day);}});
  }
  rows(scope='',currency?:string):JsonObject[]{
-  this.flush();const p=this.profile,where=['owner=?'],args:any[]=[p.owner];if(['codex','zcode','dsh'].includes(scope)){where.push('source=?');args.push(scope);}else if(scope==='api')where.push("source NOT IN ('codex','zcode','dsh')");
+  this.flush();const p=this.profile,where=['owner=?'],args:any[]=[p.owner];
+  if(isLocalAgent(scope)){where.push('source=?');args.push(scope);}
+  else if(scope==='api'){where.push('source NOT IN ('+localAgentIds.map(()=>'?').join(',')+')');args.push(...localAgentIds);}
   return p.db.prepare('SELECT day,payload FROM usage_cube WHERE '+where.join(' AND ')+' ORDER BY day DESC').all(...args).map((saved:any)=>{const r=parseExact(saved.payload),base:any={source:r.source,agent:r.agent,provider:r.provider,model:r.model,project:r.project,connection_id:r.connection_id,at:r.at,local_date:saved.day,granularity:'summary',status:'observed',_aggregate:{observations:r.observations,pairedInput:r.paired_input,pairedCached:r.paired_cached,pairedRequests:r.paired_requests,failures:r.failures,unknownFields:Object.fromEntries(FIELDS.map(key=>[key,r['missing_'+key]])),unknown:r.missing_total}};
    for(const key of FIELDS){const n=BigInt(r[key]);base[key]=n<=BigInt(Number.MAX_SAFE_INTEGER)?Number(n):n;}
    const name=(currency||'').toLowerCase(),reason=r[name+'_reason'];base.currency=currency||r.actual_currency;base.cost=currency?r[name+'_cost']:r.actual_cost;base.valueParts=currency?Object.fromEntries(['input','cached','write','output'].map(key=>[key,r[name+'_'+key]])):{};base._aggregate.costUnknown=currency?r[name+'_unknown']:r.actual_unknown;base._aggregate.pricedRequests=r.observations-base._aggregate.costUnknown;base._aggregate.valueIssues=currency&&reason&&reason!=='priced'?{[reason]:base._aggregate.costUnknown}:{};

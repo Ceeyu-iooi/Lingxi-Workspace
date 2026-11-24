@@ -1,3 +1,4 @@
+import {isLocalAgent} from "../shared/local-agent-sources.ts";
 import { Decimal } from "decimal.js";
 import {
   ProfileStore,
@@ -323,10 +324,10 @@ export class Monitor {
     let dataset = !rowsOverride ? this.datasets.get(datasetKey) : undefined;
     if (!dataset) {
       let rows = readRows();
-      if (["codex", "zcode", "dsh"].includes(scope))
+      if (isLocalAgent(scope))
         rows = rows.filter((r) => r.source === scope);
       else if (scope === "api" && !rowsOverride)
-        rows = rows.filter((r) => !["codex", "zcode", "dsh"].includes(r.source));
+        rows = rows.filter((r) => !isLocalAgent(r.source));
       dataset = new Dataset(
         rows,
         params.cost_currency || "CNY",

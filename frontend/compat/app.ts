@@ -191,8 +191,6 @@ const tagClass = (name) => {
 const views = {
   overview: renderOverview,
   projects: renderProjects,
-  summary: renderSummary,
-  news: renderNews,
   finance: renderFinance,
   settings: renderSettings,
   usage: (root) => renderControl("usage", root),
@@ -279,8 +277,6 @@ function render() {
   $("#shell-page").textContent = {
     overview: "总览",
     projects: "项目",
-    summary: "月度总结",
-    news: "热点",
     finance: "记账",
     workspace: "AI 工作区",
     settings: "设置",
@@ -458,33 +454,6 @@ function renderOverview(root) {
   });
 }
 
-async function loadNewsPreview(el) {
-  try {
-    const news = await store.list("news");
-    const ranked = (news.baidu?.items || []).slice(0, 2);
-    const articles = Object.entries(news)
-      .filter(([id]) => id !== "baidu")
-      .flatMap(([, group]) => group.items || [])
-      .sort(
-        (a, b) =>
-          new Date(b.publishedAt || b.date) - new Date(a.publishedAt || a.date),
-      );
-    const items = [...ranked, ...articles].slice(0, 4);
-    el.className = "";
-    el.innerHTML = items.length
-      ? items
-          .map(
-            (n) =>
-              `<div class="news-item"><span class="time">${esc(n.capturedAt ? `热搜 #${n.rank}` : fmtTime(n.publishedAt || n.date))}</span>
-       <div><a href="${esc(n.link)}" target="_blank" rel="noopener noreferrer">${esc(n.title)}</a><small>${esc(n.source || "国内资讯")}</small></div></div>`,
-          )
-          .join("")
-      : `<div class="empty">暂时没有可验证时间的近期热点，<a href="#/news">查看平台入口</a></div>`;
-  } catch (e) {
-    el.className = "empty";
-    el.textContent = "热点加载失败：" + e.message;
-  }
-}
 /* ---------- 项目与待办 ---------- */
 function renderProjects(root) {
   window.projectsBoard.mount(root, {
@@ -501,36 +470,6 @@ function renderProjects(root) {
 }
 function statusText(s) {
   return { active: "进行中", waiting: "等待中", done: "已完成" }[s] || s;
-}
-
-/* ---------- 总结 ---------- */
-function renderSummary(root) {
-  window.summaryBoard.mount(root, {
-    state,
-    month: monthStr,
-    list: store.list.bind(store),
-    write: store.write.bind(store),
-    remove: store.remove.bind(store),
-    refresh: async () => {
-      await refresh();
-      return state;
-    },
-    storage: layoutStorage,
-    toast,
-  });
-}
-
-/* ---------- 热点 ---------- */
-function renderNews(root) {
-  if (root.querySelector(".hot-board")) return;
-  return window.newsBoard.render(root, {
-    load: (force) =>
-      api("GET", "/api/news" + (force ? "?force=1" : ""), undefined, {
-        signal: root._wbAbort?.signal,
-      }),
-    esc,
-    fmtTime,
-  });
 }
 
 /* ---------- 设置 ---------- */

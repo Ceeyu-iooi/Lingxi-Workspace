@@ -16,6 +16,17 @@
 
 选择一个资料文件夹（Profile）即可开始，无需注册灵犀账户。Windows 桌面版开箱即用；公开源码可自行运行网页版。两者的资料独立保存，不会自动合并。
 
+
+### 更多本机用量来源
+
+在「设置 → 用量采集」选择本机来源，分别设置是否采集与是否显示页签。
+
+- **Claude Code**：选择项目日志目录，默认读取本机 Claude Code 的 projects。
+- **GitHub Copilot**：优先选择本机 session-store.db。若使用 OTLP 导出，选择单独的导出目录，切勿把同一历史同时导入两种形式。
+- **OpenCode**：选择本机 opencode.db，或单独选择带用量的消息导出目录。
+- **Antigravity**：支持 CLI 完成步骤的 Token 记录。让 Antigravity CLI 输出 stream-json，将输出传入 node scripts/capture_antigravity_usage.mjs，把结果追加到一个 .jsonl 文件，并在设置中登记该目录。旧 IDE 会话和没有生成时间的历史不计入。采集脚本只输出用量字段，输入中的聊天正文不会写到采集记录。
+
+
 ## 支持的工具与来源
 
 | 来源 | 本机用量证据 | 余额、额度与账单 | 说明 |

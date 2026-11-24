@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { normalizeAvatar } from "./avatar.ts";
+import {extraAgentIds} from "../shared/local-agent-sources.ts";
 import {
   ProfileStore,
   uid,
@@ -20,6 +21,7 @@ const BOOL = [
   "codexEnabled",
   "zcodeEnabled",
   "dshEnabled",
+  ...extraAgentIds.flatMap(id => [id + "Enabled", id + "Visible"]),
   ...Object.keys(FEATURES),
   "reduceMotion",
   "closeToTray",
@@ -28,6 +30,7 @@ const PATHS = [
   "codexPath",
   "zcodePath",
   "dshPath",
+  ...extraAgentIds.map(id => id + "Path"),
   "defaultProvider",
   "defaultAgent",
   "browserDefault",
@@ -156,6 +159,11 @@ export class Control {
         process.env.DSH_HOME || join(home, ".dsh"),
         "sessions",
       ),
+      localAgentPaths: {
+        claude: join(process.env.CLAUDE_CONFIG_DIR || join(home, ".claude"), "projects"),
+        copilot: join(home, ".copilot", "session-store.db"),
+        opencode: join(process.env.XDG_DATA_HOME || join(home, ".local", "share"), "opencode", "opencode.db"),
+      },
       capabilities: {
         browserControl: false,
         computerUse: false,

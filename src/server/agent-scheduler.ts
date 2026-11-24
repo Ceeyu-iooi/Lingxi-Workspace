@@ -1,4 +1,4 @@
-type Scope='codex'|'zcode'|'dsh';
+import {localAgentIds, type LocalAgentSource as Scope} from "../shared/local-agent-sources.ts";
 /** Each source owns one incremental collection job; UI and timer share it. */
 export class AgentScheduler{
  private jobs=new Map<Scope,Promise<any>>();private stopped=false;private generation=0;
@@ -15,6 +15,6 @@ export class AgentScheduler{
     await new Promise(r=>setTimeout(r,50));
    }return result;}).catch(error=>{if(generation===this.generation)this.states.set(scope,{status:this.enabled(scope)?'error':'disabled',error:this.enabled(scope)?(error instanceof Error?error.message:'采集失败'):undefined});throw error;}).finally(()=>{if(this.jobs.get(scope)===job)this.jobs.delete(scope);});this.jobs.set(scope,job);return job;
  }
- trigger(){if(this.stopped)return;for(const scope of ['codex','zcode','dsh'] as Scope[])if(this.enabled(scope))void this.run(scope).catch(()=>{});else this.states.set(scope,{status:'disabled'});}
+ trigger(){if(this.stopped)return;for(const scope of localAgentIds)if(this.enabled(scope))void this.run(scope).catch(()=>{});else this.states.set(scope,{status:'disabled'});}
  close(){this.stopped=true;this.generation++;this.states.clear();}
 }

@@ -17,6 +17,8 @@ import {
 } from "./monitor.ts";
 import { hash, parseExact, uid, type JsonObject } from "./profile.ts";
 import { records, listFiles } from "./log-readers.ts";
+import { isExtraAgent, type ExtraAgentSource } from "../shared/local-agent-sources.ts";
+import { readLocalAgent } from "./local-agent-readers.ts";
 
 type ReadState = [string, JsonObject];
 export class Agents {
@@ -147,7 +149,7 @@ export class Agents {
   }
   sync(source: string, root: string) {
     const old=this.tasks.get(source);if(old)return old;
-    const task=Promise.resolve().then(()=>source==='dsh'?this.scanDSH(root):source==='zcode'?this.scanZcode(root):Promise.reject(Error('来源不正确')));
+    const task=Promise.resolve().then<JsonObject>(()=>source==='dsh'?this.scanDSH(root):source==='zcode'?this.scanZcode(root):isExtraAgent(source)?this.scanExtra(source, root):Promise.reject(Error('来源不正确')));
     this.tasks.set(source, task);
     task
       .finally(() => {
@@ -155,6 +157,55 @@ export class Agents {
       })
       .catch(() => {});
     return task;
+  }
+  private async scanExtra(source: ExtraAgentSource, root: string) {
+    if (!root) throw Error("请先配置本机用量文件或导出目录");
+    const { profile } = this.monitor;
+    const owner = profile.owner;
+    const canonicalRoot = realpathSync(root);
+    const valid = (p: string) => source === "opencode" ? /\.(json|db|sqlite)$/i.test(p)
+      : source === "copilot" ? /\.(json|jsonl|ndjson|db|sqlite)$/i.test(p) : /\.(jsonl|ndjson)$/i.test(p);
+    const files = statSync(canonicalRoot).isDirectory()
+      ? await listFiles(canonicalRoot, valid, 50000)
+      : valid(canonicalRoot) ? [canonicalRoot] : [];
+    if (files.length > 1 && files.some(file => /\.(db|sqlite)$/i.test(file)))
+      throw Error("请单独选择用量数据库，避免与导出文件重复采集");
+    const known = new Map<string, JsonObject>(profile.db.prepare("SELECT path,state FROM agent_reads WHERE owner=? AND source=?")
+      .all(owner, source).map(row => [String(row.path), parseExact(String(row.state))]));
+    const origin = files.some(file => /\.(db|sqlite)$/i.test(file)) ? "database" : "export";
+    if (source === "copilot" && [...known.values()].some(state => state.origin && state.origin !== origin))
+      throw Error("此资料已采集另一种 Copilot 来源，无法证明两种来源的记录互不重叠");
+    const signature = (file: string) => [file, file + "-wal"].map(name => {
+      const stats = statSync(name, { bigint: true, throwIfNoEntry: false });
+      return stats ? String(stats.size) + ":" + String(stats.mtimeNs) : "";
+    }).join("/");
+    const reads: ReadState[] = [];
+    const items: JsonObject[] = [];
+    const errors: JsonObject[] = [];
+    let pending = 0, scanned = 0;
+    for (const file of files) {
+      if (!this.allowed(source)) throw Error("日志监测已停止");
+      const version = signature(file), prior = known.get(file);
+      if (prior?.signature === version && (!prior.error || Date.now() - Number(prior.checkedAt) < 300000)) continue;
+      if (reads.length >= 32) { pending++; continue; }
+      const state: JsonObject = { signature: version, checkedAt: Date.now() };
+      try {
+        const result = await readLocalAgent(source, file);
+        if (signature(file) !== version) throw Error("文件仍在写入，下次重试");
+        items.push(...result.records);
+        state.origin = result.records.length ? origin : prior?.origin;
+        scanned++;
+        if (result.gaps) state.error = "部分记录缺少稳定的时间、用量或有证据冲突";
+      } catch (error) {
+        state.error = error instanceof Error ? error.message.slice(0, 160) : "读取失败";
+      }
+      if (state.error) errors.push({file:basename(file),error:state.error});
+      reads.push([file, state]);
+    }
+    if (!files.length) throw Error("目录中未发现支持的用量文件");
+    if (profile.owner !== owner) throw Error("Profile 已切换");
+    return { files:files.length, scanned, attempted:reads.length, ...this.store(source, items, reads),
+      errors, pending, truncated:pending > 0, syncedAt:iso() };
   }
   async parseDSH(file: string, metadata?: JsonObject) {
     const rows: JsonObject[] = [];

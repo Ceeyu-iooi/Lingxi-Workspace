@@ -34,8 +34,6 @@
   "businessModules": [
     "overview",
     "projects",
-    "summary",
-    "news",
     "finance",
     "usage",
     "prompts",
@@ -158,8 +156,6 @@
   "workspaceHierarchy": {
     "overview": "metrics-support-tasks",
     "projects": "project-directory-gantt-list-editor",
-    "summary": "history-editor",
-    "news": "sources-content",
     "finance": "summary-analysis-ledger",
     "prompts": "module-top-nav-filters-resources-actions",
     "skills": "module-top-nav-sources-resources-actions",
@@ -323,8 +319,6 @@
       "projects",
       "usage",
       "finance",
-      "summary",
-      "news",
       "prompts",
       "skills"
     ],

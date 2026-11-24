@@ -9,6 +9,8 @@ import React, {
 import { createRoot } from "react-dom/client";
 import "./motion";
 import "./surfaces";
+import "./overlay";
+import "../compat/rounded-selects";
 import type {
   GitTimelineCommit,
   GitTimelineRef,
@@ -116,7 +118,7 @@ function TimelineGraph({
   selected: string | null;
   onSelect: (hash: string) => void;
 }) {
-  const commits = result.commits;
+  const commits = useMemo(() => [...result.commits].reverse(), [result.commits]);
   const lanes = Math.max(1, result.summary.lanes);
   const laneHeight = 28;
   // Tags and branch pills ride above the lane graph, so the top lane needs headroom.
@@ -136,6 +138,14 @@ function TimelineGraph({
   }, []);
   const wanted = Math.max(1, Math.min(commits.length, 24));
   const nodeGap = Math.max(46, Math.min(132, Math.floor(viewport / wanted)));
+  const positions = useMemo(() => new Map(commits.map((item, index) => [item.hash,index])), [commits]);
+  useLayoutEffect(() => {
+    const index = selected ? positions.get(selected) : undefined;
+    const node = scroller.current;
+    if (index === undefined || !node) return;
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.motion === "reduced";
+    node.scrollTo({left:Math.max(0,20 + index * nodeGap - node.clientWidth / 2),behavior:reduced ? "instant" : "smooth"});
+  }, [selected, positions, nodeGap]);
   const graphWidth = Math.max(viewport, 40 + Math.max(0, commits.length - 1) * nodeGap);
   const graphHeight = lanes * laneHeight + topPad + 14;
   const y = (lane: number) => topPad + lane * laneHeight;
@@ -159,7 +169,7 @@ function TimelineGraph({
             const lane = commit.lane;
             const firstParent = commit.parents[0];
             const parentIndex = firstParent
-              ? commits.findIndex((c) => c.hash === firstParent)
+              ? (positions.get(firstParent) ?? -1)
               : -1;
             const segments: React.ReactNode[] = [];
             if (parentIndex >= 0) {
@@ -322,6 +332,65 @@ function CommitDetail({ commit }: { commit: GitTimelineCommit | null }) {
 
 /* ------------------------------------------------------------------------ page */
 
+interface CommitChanges {
+  available: boolean;
+  files: {path:string;added:number|null;deleted:number|null}[];
+  patch: string | null;
+  truncated?: boolean;
+}
+
+function ChangeWorkspace({commit}: {commit: GitTimelineCommit}) {
+  const [changes,setChanges] = useState<CommitChanges | null>(null);
+  const [choice,setChoice] = useState("");
+  const [query,setQuery] = useState("");
+  const [patch,setPatch] = useState<CommitChanges | null>(null);
+  const [error,setError] = useState("");
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/git/timeline/changes?hash="+commit.hash,{signal:controller.signal})
+      .then(async response => {
+        if (!response.ok) throw Error("本机变更列表不可用");
+        const value = await response.json() as CommitChanges;
+        setChanges(value);
+        setChoice(value.files[0]?.path || "");
+      }).catch(cause => { if (!controller.signal.aborted) setError(cause.message); });
+    return () => controller.abort();
+  }, [commit.hash]);
+  useEffect(() => {
+    if (!choice) return;
+    const controller = new AbortController();
+    const params = new URLSearchParams({hash:commit.hash,file:choice});
+    setPatch(null);
+    fetch("/api/git/timeline/changes?"+params,{signal:controller.signal})
+      .then(async response => { if (!response.ok) throw Error("代码差异不可用"); setPatch(await response.json()); })
+      .catch(() => { if (!controller.signal.aborted) setPatch({available:false,files:[],patch:null}); });
+    return () => controller.abort();
+  },[commit.hash,choice]);
+  if (error) return <p role="status">{error}</p>;
+  if (!changes) return <p role="status">正在读取提交变更…</p>;
+  if (!changes.available) return <p>当前仓库无法读取代码差异。</p>;
+  const files = changes.files.filter(file => file.path.toLowerCase().includes(query.trim().toLowerCase()));
+  return <section className="gt-changes" aria-label="提交变更">
+    <h2>变更文件 <small>{changes.files.length}</small></h2>
+    <div className="gt-change-columns">
+      <div className="gt-file-list">
+        <input type="search" aria-label="筛选变更文件" placeholder="按路径筛选" value={query} onChange={event => setQuery(event.target.value)} />
+        {files.map(file => <button type="button" key={file.path} aria-pressed={choice === file.path} onClick={() => setChoice(file.path)}>
+          <span title={file.path}>{file.path}</span><small>{file.added === null ? "二进制" : "+"+file.added+" / −"+file.deleted}</small>
+        </button>)}
+        {files.length === 0 && <p>没有匹配文件。</p>}
+      </div>
+      <div className="gt-diff-pane" aria-live="polite">
+        {choice && <h3>{choice}</h3>}
+        {patch?.truncated && <p>代码差异超过展示上限，已截断。</p>}
+        {patch?.patch ? <pre tabIndex={0}>{patch.patch.split("\n").map((line,index) =>
+          <span key={index} data-kind={line.startsWith("+") && !line.startsWith("+++") ? "added" : line.startsWith("-") && !line.startsWith("---") ? "deleted" : "context"}>{line+"\n"}</span>)}</pre>
+          : <p>{!choice ? "请选择变更文件。" : patch ? "此文件没有可显示的文本差异。" : "正在读取代码差异…"}</p>}
+      </div>
+    </div>
+  </section>;
+}
+
 function App() {
   const [result, setResult] = useState<GitTimelineResult | null>(null);
   const [error, setError] = useState("");
@@ -330,6 +399,7 @@ function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [activeLane, setActiveLane] = useState<number | null>(null);
   const [filter, setFilter] = useState("");
+  const [branch, setBranch] = useState("");
   const ticket = useRef(0);
 
   const load = useCallback(
@@ -346,7 +416,7 @@ function App() {
         if (own !== ticket.current) return;
         setResult(value);
         setSelected((current) =>
-          current && value.commits.some((c) => c.hash === current) ? current : null,
+          current && value.commits.some((c) => c.hash === current) ? current : value.commits[0]?.hash ?? null,
         );
       } catch (e) {
         if (own !== ticket.current) return;
@@ -401,6 +471,16 @@ function App() {
   }, [commits]);
 
   const maxDay = byDay.reduce((n, [, list]) => Math.max(n, list.length), 0);
+  const chronological = useMemo(() => [...commits].reverse(), [commits]);
+  const selectedPosition = Math.max(0, chronological.findIndex(commit => commit.hash === selected));
+  const branches = [...new Set((result?.commits || []).flatMap(commit =>
+    commit.refs.filter(ref => ref.kind === "branch" || ref.kind === "remote").map(ref => ref.name)))].sort();
+  const locate = (name: string) => {
+    setBranch(name);
+    if (!name) return;
+    const match = result?.commits.find(commit => commit.refs.some(ref => ref.name === name));
+    if (match) { setFilter(""); setSelected(match.hash); }
+  };
 
   return (
     <div className="gt-page">
@@ -438,7 +518,7 @@ function App() {
           <h2>暂无可用时间轴</h2>
           <p>{result.reason || "当前资料目录不是 Git 仓库"}</p>
           <p className="gt-muted">
-            时间轴只读取本机仓库元数据，不联网、不修改仓库配置，也不会上传提交信息。
+            可读取本机仓库或已配置的公开仓库。
           </p>
         </section>
       ) : null}
@@ -459,6 +539,13 @@ function App() {
           </section>
 
           <div className="gt-controls">
+            <label>
+              定位分支
+              <select value={branch} onChange={event => locate(event.target.value)}>
+                <option value="">全部历史</option>
+                {branches.map(name => <option key={name} value={name}>{name}</option>)}
+              </select>
+            </label>
             <label>
               显示条数
               <select
@@ -504,6 +591,22 @@ function App() {
                 selected={selected}
                 onSelect={setSelected}
               />
+              {chronological.length > 0 && <div className="gt-scrubber">
+                <button type="button" disabled={selectedPosition === 0} onClick={() => setSelected(chronological[selectedPosition - 1].hash)} aria-label="较早提交">‹</button>
+                <input type="range" min={0} max={chronological.length - 1} value={selectedPosition}
+                  aria-label="提交位置" aria-valuetext={chronological[selectedPosition]?.subject}
+                  onChange={event => setSelected(chronological[Number(event.target.value)].hash)} />
+                <button type="button" disabled={selectedPosition >= chronological.length - 1} onClick={() => setSelected(chronological[selectedPosition + 1].hash)} aria-label="较新提交">›</button>
+                <span>{selectedPosition + 1} / {chronological.length}</span>
+              </div>}
+              <div className="gt-commit-cards" aria-label="附近提交">
+                {chronological.slice(Math.max(0,selectedPosition-2),selectedPosition+3).map(commit =>
+                  <button type="button" key={commit.hash} aria-pressed={commit.hash === selected}
+                    title={commit.subject} style={{"--commit-color":laneColor(commit.lane)} as React.CSSProperties}
+                    onClick={() => setSelected(commit.hash)}>
+                    <small>{commit.shortHash} · {dayOf(commit.at)}</small><strong>{commit.subject}</strong>
+                  </button>)}
+              </div>
               {result.summary.truncated ? (
                 <p className="gt-muted gt-truncated">
                   仓库还有更早提交；提高“显示条数”可继续查看。变更统计仅在 60 条以内时计算。
@@ -512,6 +615,11 @@ function App() {
             </section>
             <CommitDetail commit={selectedCommit} />
           </div>
+
+          {selectedCommit && result.source === "local" &&
+            <ChangeWorkspace key={selectedCommit.hash} commit={selectedCommit} />}
+          {selectedCommit && result.source === "remote" && /^[\w.-]+\/[\w.-]+$/.test(result.summary.root) &&
+            <a className="gt-external-commit" href={`https://github.com/${result.summary.root}/commit/${selectedCommit.hash}`} target="_blank" rel="noopener noreferrer">在 GitHub 查看该提交的文件变更 ↗</a>}
 
           <div className="gt-bottom">
             <section className="gt-card" aria-label="按日期分布">

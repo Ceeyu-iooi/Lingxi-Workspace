@@ -9,8 +9,6 @@
   const routes = [
     { title: "总览", view: "overview" },
     { title: "项目与待办", view: "projects" },
-    { title: "月度总结", view: "summary" },
-    { title: "近期热点", view: "news" },
     { title: "记账", view: "finance" },
     { title: "用量监测", view: "usage" },
     { title: "提示词管理", view: "prompts" },

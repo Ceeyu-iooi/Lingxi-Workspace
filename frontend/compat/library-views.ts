@@ -68,7 +68,7 @@
       `<svg class="skm-ico ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${iconPaths[name] || ""}</svg>`;
 
     const state = {
-      view: "overview",
+      view: "library",
       overview: null,
       agents: [],
       workspaces: [],
@@ -283,7 +283,7 @@
         group(
           "agents",
           "Agents",
-          navItem("agents", "全部", "globe", null, "skm-nav-chip") +
+
             state.agents
               .map(
                 (a) => `<button class="skm-nav skm-nav-chip${state.view === "agent:" + a.id ? " is-active" : ""}" data-act="nav" data-view="agent:${esc(a.id)}" title="${esc(a.globalPath)}">
@@ -296,7 +296,7 @@
         group(
           "workspaces",
           "工作区",
-          navItem("workspaces", "全部", "folderOpen", null, "skm-nav-chip") +
+
             (project
               ? `<button class="skm-nav skm-nav-chip${state.view === "workspace:" + project.id ? " is-active" : ""}" data-act="nav" data-view="workspace:${esc(project.id)}" title="${esc(project.root)}">
             ${icon("folder", 13, "skm-nav-ico")}<span class="skm-nav-label">${esc(project.name)}</span><span class="skm-dot sm${project.exists ? " is-on" : ""}"></span></button>`
@@ -444,7 +444,7 @@
       const tagChips = tags.map((t) => `<button class="skm-chip${l.tag === t.name ? " is-active" : ""}" data-act="tag" data-tag="${esc(t.name)}" aria-pressed="${l.tag === t.name}">${esc(t.name)}<span>${nf(t.count)}</span></button>`).join("");
       const preset = l.preset ? state.presets.find((p) => p.id === l.preset) : null;
       return `<div class="skm-page">
-        ${pageHead("技能库", { badge: nf(l.total), sub: "浏览中央库中的技能快照。搜索与预览只读取文本，不会执行技能内容。", actions: `<button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="refresh" title="刷新数据">${icon("refresh", 15)}刷新</button><button class="skm-btn skm-btn-primary skm-btn-sm" data-act="scan">${icon("scan", 15)}扫描本机</button>` })}
+        ${pageHead("技能库", { badge: nf(l.total), actions: `<button class="skm-btn skm-btn-primary skm-btn-sm" data-act="scan">${icon("scan", 15)}扫描本机</button>` })}
         ${preset ? `<div class="skm-filter-banner">正在查看预设「${esc(preset.name)}」<button class="skm-link" data-act="clear-preset">退出预设</button></div>` : ""}
         <div class="skm-toolbar-wrap">
         <div class="skm-toolbar">
@@ -1364,7 +1364,7 @@
 
     injectCss();
     root.classList.add("wb-fixed-layout");
-    root.innerHTML = `<div class="skm-app" data-skm>
+    root.innerHTML = `<div class="skm-app skm-catalog" data-skm>
       <header class="skm-topbar" data-skm-topbar aria-label="技能管理导航"></header>
       <div class="skm-subnav" data-skm-subnav aria-label="技能管理二级导航"></div>
       <main class="skm-main" data-skm-main><div class="skm-main-scroll"><div data-skm-page></div></div></main>

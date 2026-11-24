@@ -104,7 +104,7 @@
     if (!current(root, owner)) return;
     root.classList.add("wb-fixed-layout");
     injectCss();
-    root.innerHTML = `<div class="skm-app skm-app-prompts" data-skm>
+    root.innerHTML = `<div class="skm-app skm-catalog skm-app-prompts" data-skm>
       <header class="skm-topbar" data-skm-topbar aria-label="提示词管理导航"></header>
       <div class="skm-subnav" data-skm-subnav aria-label="提示词筛选"></div>
       <main class="skm-main" data-skm-main><div class="skm-main-scroll"><div data-skm-page></div></div></main>
@@ -216,7 +216,7 @@
         <div class="skm-card-head"><div class="skm-card-titles"><div class="skm-card-title">${esc(item.title)}</div><div class="skm-card-zh">${esc(item.origin?.repo || item.source)}</div></div></div>
         <p class="skm-card-desc">${esc(item.excerpt || "")}</p>
         <div class="skm-card-foot"><span class="skm-card-source">${icon("globe", 13, "skm-ico")}公开模板</span>
-          <span class="skm-card-actions"><button class="skm-btn skm-btn-ghost skm-btn-sm" data-act="market-open">预览</button><button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="market-apply">创建副本</button></span>
+          <span class="skm-card-actions"><button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="market-apply">创建副本</button></span>
         </div>
       </article>`;
     }
@@ -237,7 +237,7 @@
         <header class="skm-page-head">
           <div class="skm-page-head-main">
             <h1 class="skm-page-title">${isMarket ? "模板市场" : "我的提示词"}<span class="skm-badge" data-count>${nf(result?.total ?? 0)}</span></h1>
-            <p class="skm-page-sub">${isMarket ? "公开模板先预览再创建副本；内容不会执行脚本。" : "保存、整理与改进你的提示词；搜索覆盖标题、正文与标签。"}</p>
+            ${isMarket ? '<p class="skm-page-sub">预览模板后创建副本。</p>' : ""}
           </div>
           <div class="skm-page-actions">
             ${isMarket ? `<button class="skm-btn skm-btn-secondary" data-act="market-sync">${icon("refresh", 14)}同步模板</button>` : ""}

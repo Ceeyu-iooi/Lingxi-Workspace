@@ -3028,3 +3028,17 @@
     justify-content: flex-start;
   }
 }
+
+/* Catalog hierarchy shared by prompts and skills. */
+.skm-catalog .skm-topbar{background:var(--skm-surface);padding:10px 18px;min-height:56px}
+.skm-catalog .skm-subnav{background:var(--layer-panel);border-inline-end:1px solid var(--layer-border)}
+.skm-catalog .skm-main-scroll{background:var(--layer-panel)}
+.skm-catalog .skm-page-head{border-bottom:1px solid var(--layer-border);padding-bottom:16px;margin-bottom:16px}
+.skm-catalog .skm-page-title{font-size:clamp(24px,3vw,34px);letter-spacing:-.035em;line-height:1.15}
+.skm-catalog .skm-card-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,245px),1fr));gap:14px}
+.skm-catalog .skm-card{background:var(--layer-panel);border-color:var(--layer-border);min-width:0}
+.skm-catalog .skm-card:hover,.skm-catalog .skm-card:focus-visible{border-color:var(--accent)}
+.skm-catalog .skm-card-title{font-weight:650}
+.skm-catalog .skm-card-desc{line-height:1.65}
+.skm-catalog .skm-toolbar-wrap{background:var(--layer-panel)}
+@media(max-width:700px){.skm-catalog .skm-topbar{flex-wrap:wrap;gap:8px;padding:8px 12px}.skm-catalog .skm-brand{border:0}.skm-catalog .skm-nav-primary{order:3;flex-basis:100%}}

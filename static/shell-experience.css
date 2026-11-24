@@ -11,7 +11,7 @@
 :is(.side,.kit-nav-preview) .nav-item{min-height:44px;font-size:calc(var(--ui-font-size,14px) + 1px);padding:10px 12px;gap:10px;margin-bottom:4px;border-radius:12px}
 :is(.side,.kit-nav-preview) .nav-item .ico{width:20px;height:20px;flex:0 0 20px}
 :is(.side,.kit-nav-preview) .nav-item :is(.ico svg,svg){width:20px;height:20px}
-:is(.side .nav-item.active,.kit-nav-preview .nav-item.active,.side .nav-item.on,.settings-center-content .settings-nav-item.selected){background:var(--color-selected,#f2f2f3);color:var(--ink);font-weight:400;box-shadow:none}
+:is(.side .nav-item.active,.kit-nav-preview .nav-item.active,.side .nav-item.on,.settings-center-content .settings-nav-item.selected){background:var(--color-selected,#f2f2f3);color:var(--ink);font-weight:600;box-shadow:inset 2px 0 var(--accent)}
 :is(.side .nav-item.active,.kit-nav-preview .nav-item.active,.side .nav-item.on,.settings-center-content .settings-nav-item.selected) svg{color:var(--accent)}
 .settings-center-content .settings-nav-item{min-height:44px;font-size:calc(var(--ui-font-size,14px) + 1px)}
 .settings-center-content .settings-nav-item svg{width:20px;height:20px}
@@ -79,3 +79,17 @@
 @media(max-width:600px){.dsh-setting-row>div:has(#appearance-brightness){min-width:120px;width:150px;max-width:55%}}
 /* Module cards keep the shared fixed responsive layout. */
 .card,.sum-card{resize:none!important}
+
+/* Press feedback uses the same scale for controls in the shell and module surfaces. */
+:is(.layout,.lingxi-dialog) :is(.nav-item,.btn,.skm-btn,.skm-icon-btn,.settings-nav-item,.usage-filter-button,.wb-select>button,summary) {
+  transition:scale 160ms ease-out, background-color 160ms ease-out, color 160ms ease-out;
+}
+:is(.layout,.lingxi-dialog) :is(.nav-item,.btn,.skm-btn,.skm-icon-btn,.settings-nav-item,.usage-filter-button,.wb-select>button,summary):active:not(:disabled) {
+  scale:.976;
+  transition-duration:70ms;
+}
+@media(prefers-reduced-motion:reduce){
+  :is(.layout,.lingxi-dialog) :is(.nav-item,.btn,.skm-btn,.skm-icon-btn,.settings-nav-item,.usage-filter-button,.wb-select>button,summary){transition:none;scale:1}
+}
+html[data-motion=reduced] :is(.nav-item,.btn,.skm-btn,.skm-icon-btn,.settings-nav-item,.usage-filter-button,.wb-select>button,summary){transition:none;scale:1}
+.side .nav-item>svg{flex:none;color:var(--ink-2)}

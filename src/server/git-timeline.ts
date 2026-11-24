@@ -564,6 +564,25 @@ export class GitTimeline {
     return this.resolveRoot() !== null;
   }
 
+  /** Only tracked commit content, with literal pathspecs and bounded reads. */
+  localChanges(hash: string, file?: string) {
+    if (!/^[a-f0-9]{40}$/.test(hash)) throw Error("提交编号不正确");
+    const root = this.resolveRoot();
+    if (!root) return { available:false, files:[], patch:null };
+    const args = ["show", "--first-parent", "--format=", "--no-renames", "--no-ext-diff", "--no-textconv"];
+    const names = this.runGit(root, [...args,"--numstat","-z",hash,"--"]);
+    if (!names.ok) return { available:false, files:[], patch:null };
+    const files = names.out.split("\0").filter(Boolean).map(row => {
+      const match = /^(\d+|-)\t(\d+|-)\t([\s\S]+)$/.exec(row);
+      return match ? { path:match[3], added:match[1] === "-" ? null : Number(match[1]), deleted:match[2] === "-" ? null : Number(match[2]) } : null;
+    }).filter(row => row !== null).slice(0,500);
+    if (file !== undefined && !files.some(row => row.path === file)) throw Error("文件不在该提交的变更列表中");
+    if (file === undefined) return { available:true, files, patch:null };
+    const result = this.runGit(root, [...args,"--no-color",hash,"--",":(literal)" + file]);
+    const patch = result.ok ? result.out.slice(0,200000) : null;
+    return { available:true, files, patch, truncated:result.ok && result.out.length > 200000 };
+  }
+
   /** 解析出的远程仓库 `owner/repo`；没有时返回 null。 */
   remoteName(): string | null {
     const configured = parseRemoteRepository(this.options.remote);

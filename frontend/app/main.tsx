@@ -7,6 +7,8 @@ import "./surfaces";
 import "./overlay";
 import "./updates";
 import "./resources";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { DashboardSquare01Icon, Task01Icon, Wallet01Icon, Analytics01Icon, TextAlignLeftIcon, PuzzleIcon } from "@hugeicons/core-free-icons";
 import React, { useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 import { installRuntime } from "virtual:lingxi-runtime";
@@ -30,14 +32,14 @@ declare global {
   }
 }
 const routes = [
-  ["overview", "总览", "home"],
-  ["projects", "项目与待办", "list"],
-  ["summary", "总结", "book"],
-  ["news", "热点", "fire"],
-  ["finance", "记账", "finance"],
-  ["usage", "用量监测", "list"],
-  ["prompts", "提示词管理", "book"],
-  ["skills", "技能管理", "list"],
+  ["overview", "总览", DashboardSquare01Icon],
+  ["projects", "项目与待办", Task01Icon],
+
+
+  ["finance", "记账", Wallet01Icon],
+  ["usage", "用量监测", Analytics01Icon],
+  ["prompts", "提示词管理", TextAlignLeftIcon],
+  ["skills", "技能管理", PuzzleIcon],
 ] as const;
 const subscribe = (notify: () => void) => {
   window.addEventListener("hashchange", notify);
@@ -71,12 +73,6 @@ function OverviewPage({ ready }: { ready: boolean }) {
 function ProjectsPage({ ready }: { ready: boolean }) {
   return <Page route="projects" ready={ready} />;
 }
-function SummaryPage({ ready }: { ready: boolean }) {
-  return <Page route="summary" ready={ready} />;
-}
-function NewsPage({ ready }: { ready: boolean }) {
-  return <Page route="news" ready={ready} />;
-}
 function FinancePage({ ready }: { ready: boolean }) {
   return <Page route="finance" ready={ready} />;
 }
@@ -95,8 +91,6 @@ function SettingsPage({ ready }: { ready: boolean }) {
 const pages: Record<string, React.ComponentType<{ ready: boolean }>> = {
   overview: OverviewPage,
   projects: ProjectsPage,
-  summary: SummaryPage,
-  news: NewsPage,
   finance: FinancePage,
   usage: UsagePage,
   prompts: PromptsPage,
@@ -281,7 +275,7 @@ function App() {
               className={"nav-item" + (route === view ? " on active" : "")}
               key={view}
             >
-              <span className={"ico ico-" + icon} />
+              <HugeiconsIcon icon={icon} size={20} strokeWidth={1.7} aria-hidden="true" />
               <span className="nav-label">{label}</span>
             </a>
           ))}

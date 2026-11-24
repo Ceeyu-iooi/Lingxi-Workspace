@@ -101,7 +101,6 @@
 .wb-redesign .login-actions{gap:12px}
 .wb-redesign .login-actions button{flex:1}
 .wb-redesign .login-sub{margin:16px 0 24px;color:var(--ink-2)}
-.wb-redesign .wb-select>button{background:var(--surface);color:var(--ink);border-radius:10px;min-height:36px}
 .wb-redesign [hidden]:not(.ws-tree-toggle){display:none!important}
 @keyframes wb-number-out{to{transform:translateY(-110%)}}
 @keyframes wb-chart-in{from{transform:scaleY(.94)}to{transform:scaleY(1)}}

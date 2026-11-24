@@ -19,8 +19,6 @@
   "profile-management.ts",
   "workbench-design.ts",
   "projects-board.ts",
-  "summary-board.ts",
-  "news-board.ts",
   "overview-board.ts",
   "finance-workspace.ts",
   "app.ts",

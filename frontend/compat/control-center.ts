@@ -1,4 +1,5 @@
 // @ts-nocheck
+import {extraAgentSources, extraAgentIds, isExtraAgent} from "../../src/shared/local-agent-sources.ts";
 // Compatibility controller: retain the validated interactions during the React migration.
 /* Shared settings and usage adapters, scoped to the current account. */
 (() => {
@@ -176,7 +177,7 @@
         '<div class="settings-layout"><aside class="settings-nav"></aside><section id="settings-panel" class="settings-panel"></section></div>';
     paint(
       q(".settings-nav", root),
-      `<div class="settings-nav-top"><a href="#/overview" class="btn ghost">‹ 返回工作台</a><h2>设置</h2></div><input type="search" id="settings-search" placeholder="搜索设置" aria-label="搜索设置"><div class="settings-nav-list">${groups
+      `${root.closest("dialog") ? "" : '<div class="settings-nav-top"><a href="#/overview" class="btn ghost">‹ 返回工作台</a></div>'}<input type="search" id="settings-search" placeholder="搜索设置" aria-label="搜索设置"><div class="settings-nav-list">${groups
         .map(
           ([id, name]) =>
             `<section class="settings-group"><h3>${name}</h3>${sections
@@ -230,22 +231,25 @@
     if (selected[0] === "shortcuts") return shortcuts(panel);
 
   }
+  const extraScopes = extraAgentIds.map(id => [id, extraAgentSources[id].label]);
+  const logPath = id => data.config[id + "Path"] ?? data.localAgentPaths?.[id] ?? data[{codex:"defaultCodexPath",zcode:"defaultZcodePath",dsh:"defaultDshPath"}[id]] ?? "";
   function usageSettings(root) {
     const scopes = [
       ["codex", "Codex"],
       ["zcode", "ZCode"],
       ["dsh", "DeepSeek Harness"],
+      ...extraScopes,
     ];
-    const body = viewHeader(root, "用量采集", "管理本机日志连接与自动采集。");
+    const body = viewHeader(root, "用量采集", "");
     body.innerHTML =
       '<form class="control-section" data-log-settings>' +
       scopes
         .map(
           ([scope, name]) =>
-            `<fieldset><legend>${name}</legend>${field(scope + "Path", "日志目录", data.config[scope + "Path"] || data[{ codex: "defaultCodexPath", zcode: "defaultZcodePath", dsh: "defaultDshPath" }[scope]] || "")}<label class="control-checkbox"><input name="${scope}Enabled" type="checkbox" ${data.config[scope + "Enabled"] ? "checked" : ""}>启用自动采集</label></fieldset>`,
+            `<fieldset><legend>${name}</legend>${field(scope + "Path", extraAgentSources[scope]?.input || "日志目录", logPath(scope))}<label class="control-checkbox"><input name="${scope}Enabled" type="checkbox" ${data.config[scope + "Enabled"] ? "checked" : ""}>启用自动采集</label>${isExtraAgent(scope) ? `<label class="control-checkbox"><input name="${scope}Visible" type="checkbox" ${data.config[scope + "Visible"] !== false ? "checked" : ""}>在用量监测显示</label>` : ""}</fieldset>`,
         )
         .join("") +
-      '<p class="control-form-error" role="alert"></p><div class="wb-save-state"><span>修改后保存</span><button type="submit" class="btn">保存采集设置</button></div></form><a href="#/usage" class="btn ghost">打开用量监测与 API供应商管理</a>';
+      '<p class="control-form-error" role="alert"></p><div class="wb-save-state"><button type="submit" class="btn">保存采集设置</button></div></form><a href="#/usage" class="btn ghost">打开用量监测与 API供应商管理</a>';
     const form = q("form", body);
     root._wbUnsaved = () => !!form.querySelector("[data-wb-dirty=true]");
     const feature = document.createElement("section");
@@ -269,7 +273,7 @@
       .join(
         "",
       )}<p class="wb-inline-error" data-feature-error role="alert"></p><a class="btn ghost" href="prices.html" data-price-page>查看模型价格与汇率 ↗</a>`;
-    body.prepend(feature);
+    body.append(feature);
     qa("[data-feature]", feature).forEach(
       (input) =>
         (input.onchange = async () => {
@@ -308,6 +312,7 @@
       scopes.forEach(([scope]) => {
         config[scope + "Path"] = values.get(scope + "Path");
         config[scope + "Enabled"] = values.has(scope + "Enabled");
+        if (isExtraAgent(scope)) config[scope + "Visible"] = values.has(scope + "Visible");
       });
       button.disabled = true;
       try {
@@ -501,7 +506,7 @@
       )
       .join(
         "",
-      )}</div><select id="appearance-theme" hidden aria-hidden="true" tabindex="-1"><option value="system">跟随系统</option><option value="zai-light">浅色</option><option value="zai-dark">深色</option></select></fieldset><label class="dsh-setting-row"><span>浅色主题预设</span><select id="appearance-preset">${window.workbenchAppearance.presets.map(p=>'<option value="'+p.id+'">'+p.name+'</option>').join('')}</select></label><div class="dsh-setting-row"><div><label for="appearance-font">界面字号</label><p>编辑内容字号单独设置</p></div><div class="appearance-range"><input type="range" id="appearance-font" min="12" max="18" step="2" aria-label="界面字号"><output data-font-value></output></div></div><div class="dsh-setting-row"><div><label for="page-zoom">页面缩放</label><p>即时保存，切换模块保持比例</p></div><div class="appearance-range"><input type="range" id="page-zoom" min="60" max="160" step="5" aria-label="页面缩放"><output id="page-zoom-value"></output><button type="button" class="btn ghost" data-zoom-reset>100%</button></div></div><label class="dsh-setting-row"><span>强调色</span><select id="appearance-accent"><option value="preset">主题默认</option><option value="blue">蓝色</option><option value="violet">紫色</option><option value="teal">青绿色</option><option value="orange">橙色</option></select></label><label class="dsh-setting-row"><span>界面亮度 <small class="wb-muted">只调整项目界面</small></span><div><input id="appearance-brightness" type="range" min="85" max="110" step="1" aria-label="界面亮度"><output data-brightness></output></div></label><label class="wb-setting-switch"><span>减少动画<small>保留选中与加载状态，减少动态效果。</small></span><input type="checkbox" id="appearance-motion"></label><label class="dsh-setting-row"><span>界面模式</span><select id="interface-mode"><option value="office">办公</option><option value="coding">编程</option></select></label><label class="dsh-setting-row"><span>菜单语言</span><select id="menu-locale"><option value="zh-CN">简体中文</option><option value="en-US">English</option><option value="system">跟随系统</option></select></label><p class="meta dsh-preview-hint">修改即时预览，保存后保留；放弃会恢复原设置。</p><button type="button" class="btn ghost" data-appearance-reset>恢复默认草稿</button><p class="control-form-error" role="alert"></p><div class="settings-unsaved-bar" hidden><span role="status" aria-live="polite">有未保存的修改</span><div><button type="button" class="btn ghost" data-appearance-discard>放弃修改</button><button type="submit" class="btn">保存修改</button></div></div></form>`;
+      )}</div><select id="appearance-theme" hidden aria-hidden="true" tabindex="-1"><option value="system">跟随系统</option><option value="zai-light">浅色</option><option value="zai-dark">深色</option></select></fieldset><label class="dsh-setting-row"><span>浅色主题预设</span><select id="appearance-preset">${window.workbenchAppearance.presets.map(p=>'<option value="'+p.id+'">'+p.name+'</option>').join('')}</select></label><div class="dsh-setting-row"><div><label for="appearance-font">界面字号</label></div><div class="appearance-range"><input type="range" id="appearance-font" min="12" max="18" step="2" aria-label="界面字号"><output data-font-value></output></div></div><div class="dsh-setting-row"><div><label for="page-zoom">页面缩放</label></div><div class="appearance-range"><input type="range" id="page-zoom" min="60" max="160" step="5" aria-label="页面缩放"><output id="page-zoom-value"></output><button type="button" class="btn ghost" data-zoom-reset>100%</button></div></div><label class="dsh-setting-row"><span>强调色</span><select id="appearance-accent"><option value="preset">主题默认</option><option value="blue">蓝色</option><option value="violet">紫色</option><option value="teal">青绿色</option><option value="orange">橙色</option></select></label><label class="dsh-setting-row"><span>界面亮度</span><div><input id="appearance-brightness" type="range" min="85" max="110" step="1" aria-label="界面亮度"><output data-brightness></output></div></label><label class="wb-setting-switch"><span>减少动画</span><input type="checkbox" id="appearance-motion"></label><label class="dsh-setting-row"><span>界面模式</span><select id="interface-mode"><option value="office">办公</option><option value="coding">编程</option></select></label><label class="dsh-setting-row"><span>菜单语言</span><select id="menu-locale"><option value="zh-CN">简体中文</option><option value="en-US">English</option><option value="system">跟随系统</option></select></label><p class="meta dsh-preview-hint">修改即时预览，保存后保留；放弃会恢复原设置。</p><button type="button" class="btn ghost" data-appearance-reset>恢复默认草稿</button><p class="control-form-error" role="alert"></p><div class="settings-unsaved-bar" hidden><span role="status" aria-live="polite">有未保存的修改</span><div><button type="button" class="btn ghost" data-appearance-discard>放弃修改</button><button type="submit" class="btn">保存修改</button></div></div></form>`;
     const form = q("form", body),
       appearance = window.workbenchAppearance,
       identity = user.username;
@@ -852,6 +857,7 @@
     });
   }
   function usageIcon(id) {
+    if(isExtraAgent(id)) return `<img class="usage-tab-icon" src="assets/agent-${id}.svg" alt="">`;
     if(id==="dsh")return '<img class="usage-tab-icon usage-dsh-logo" src="assets/dsh-logo.svg" alt="">';
     if (id === "codex")
       return '<img class="usage-tab-icon usage-codex-logo" src="assets/openai-blossom-black.svg" alt="">';
@@ -902,7 +908,7 @@
         while (cache.size > 32) cache.delete(cache.keys().next().value);
       };
     let accountsGeneration = 0;
-    if (!["codex", "zcode", "dsh", "api"].includes(scope)) scope = "codex";
+    if (!["codex", "zcode", "dsh", "api", ...extraAgentIds.filter(id => data.config[id + "Visible"] !== false)].includes(scope)) scope = "codex";
     window.usageCharts.track(root, () => {
       generation++;
       accountsGeneration++;
@@ -918,6 +924,7 @@
       ["codex", "Codex"],
       ["zcode", "ZCode"],
       ["dsh", "DeepSeek Harness"],
+      ...extraScopes.filter(([id]) => data.config[id + "Visible"] !== false),
       ["api", "API供应商"],
     ]
       .map(
@@ -938,7 +945,7 @@
       )
       .join(
         "",
-      )}</select></label><label class="usage-source-slot"><span id="usage-source-label">来源</span><select id="usage-source"><option value="">全部</option></select><span class="usage-account-select" hidden><img class="usage-provider-logo" alt="" hidden><select id="usage-account"><option value="">选择连接</option></select></span></label>${["provider", "project", "model"].map((k) => `<label>${{ provider: "服务商", model: "模型", project: "工作区" }[k]}<select id="usage-${k}"><option value="">全部</option></select></label>`).join("")}</div><div id="usage-body"></div><section class="control-section usage-connect"><label class="control-field">日志目录<input id="codex-path"></label><div class="control-actions">${button("连接日志", "codex-connect", false)}${button("断开", "codex-disconnect")}</div><p id="usage-sync-result" class="meta"></p></section></div>`;
+      )}</select></label><label class="usage-source-slot"><span id="usage-source-label">来源</span><select id="usage-source"><option value="">全部</option></select><span class="usage-account-select" hidden><img class="usage-provider-logo" alt="" hidden><select id="usage-account"><option value="">选择连接</option></select></span></label>${["provider", "project", "model"].map((k) => `<label>${{ provider: "服务商", model: "模型", project: "工作区" }[k]}<select id="usage-${k}"><option value="">全部</option></select></label>`).join("")}</div><p id="usage-source-notice" class="usage-source-notice" role="status" hidden></p><div id="usage-body"></div><section class="control-section usage-connect"><label class="control-field">日志目录<input id="codex-path"></label><div class="control-actions">${button("连接日志", "codex-connect", false)}${button("断开", "codex-disconnect")}</div><p id="usage-sync-result" class="meta"></p></section></div>`;
     const body = q("#usage-body", root),
       accounts = q("#usage-accounts", root);
     window.usageView.init(body);
@@ -1009,6 +1016,11 @@
         select("source").value = "codex";
       remember();
       drawUsage(body, result);
+      const notice = q("#usage-source-notice", root);
+      if (isExtraAgent(scope) && !result.summary?.observations) {
+        notice.hidden = false;
+        notice.textContent = data.config[scope + "Enabled"] ? "所选范围暂无已核验的用量记录。" : "尚未连接本机用量来源。";
+      } else notice.hidden = true;
       body.dataset.bindingMs = (performance.now() - bindingStarted).toFixed(3);
       paintedKey = key;
       body.dataset.snapshotKey = key;
@@ -1178,6 +1190,7 @@
           `${result.imported} 条新增${result.corrected ? " · " + result.corrected + " 条历史重算" : result.updated ? " · " + result.updated + " 条更新" : ""}${result.errors.length ? " · " + result.errors.length + " 个读取问题" : ""}`;
     };
     const configure = () => {
+      q("#usage-source-notice", root).hidden = true;
       root.dataset.usageScope = scope;
       body.dataset.usageScope = scope;
       window.usageAccounts.scope?.(accounts);
@@ -1206,16 +1219,8 @@
       keySlot.hidden = scope !== "api";
       select("project").disabled = scope === "api";
       const local = scope === "api" ? "codex" : scope;
-      q("#codex-path", root).value =
-        data.config[local + "Path"] ||
-        data[
-          {
-            codex: "defaultCodexPath",
-            zcode: "defaultZcodePath",
-            dsh: "defaultDshPath",
-          }[local]
-        ] ||
-        "";
+      q("#codex-path", root).value = logPath(local);
+      q("#codex-path", root).parentElement.firstChild.textContent = extraAgentSources[local]?.input || "日志目录";
       q("#codex-path", root).disabled = scope === "api";
       q("#codex-connect", root).textContent = data.config[local + "Enabled"]
         ? "同步日志"

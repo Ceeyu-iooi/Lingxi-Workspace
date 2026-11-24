@@ -1,3 +1,4 @@
+import {isLocalAgent, isExtraAgent, extraAgentIds, localAgentIds} from "../shared/local-agent-sources.ts";
 import Fastify from "fastify";
 import {RuntimeResources} from "./runtime-resources.ts";
 import {AgentScheduler} from "./agent-scheduler.ts";
@@ -23,7 +24,6 @@ import { ProfileBackups } from "./backups.ts";
 import { Prompts, Conflict, renderTemplate, plain } from "./prompts.ts";
 import { Skills } from "./skills.ts";
 import { Market } from "./market.ts";
-import { News } from "./news.ts";
 import { parseBill, parseNotification } from "./parsers.ts";
 import { analyzeTask } from "./text-agent.ts";
 import { Monitor, iso } from "./monitor.ts";
@@ -90,8 +90,7 @@ export async function startServer(
     prompts: Prompts,
     jobs: Jobs,
     skills: Skills,
-    market: Market,
-    news: News;
+    market: Market;
   let monitor: Monitor,
     codex: Codex,
     agents: Agents,
@@ -110,7 +109,8 @@ export async function startServer(
       accounts.claim("codex", config.codexPath || pub.defaultCodexPath);
       return sources.sync(config.codexPath || pub.defaultCodexPath);
     }
-    if (!["dsh", "zcode"].includes(scope)) throw new Error("计价工具不正确");
+    if (isExtraAgent(scope)) return agents.sync(scope, config[scope + "Path"] || pub.localAgentPaths[scope as keyof typeof pub.localAgentPaths] || "");
+    if (!["dsh", "zcode"].includes(scope)) throw new Error("来源不正确");
     const path =
       config[scope + "Path"] ||
       pub[scope === "dsh" ? "defaultDshPath" : "defaultZcodePath"];
@@ -134,7 +134,6 @@ export async function startServer(
     prompts = new Prompts(profile);
     skills = new Skills(profile, jobs);
     market = new Market(prompts, jobs, assets);
-    news = new News(business);
     monitor = new Monitor(profile);
     codex = new Codex(monitor,()=>!closing&&control.state().config.codexEnabled===true);
     agents = new Agents(monitor,scope=>!closing&&control.state().config[scope+"Enabled"]===true);
@@ -165,7 +164,7 @@ export async function startServer(
     monitor.accounting = (scope) =>
       scope === "codex"
         ? codex.coverage()
-        : ["zcode", "dsh"].includes(scope)
+        : isLocalAgent(scope)
           ? agents.coverage(scope)
           : { incomplete: false, message: "仅统计实际采集和导入的用量" };
     queueMicrotask(()=>{if(!options.preview&&process.env.WORKBENCH_PREVIEW!=="1")scheduler.trigger();});
@@ -430,17 +429,17 @@ export async function startServer(
     );
     return { ok: true };
   });
-  app.get("/api/news", (request) => news.get(qs(request).force === "1"));
   app.get('/api/overview',()=>{
     const month=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Shanghai'}).slice(0,7),data=business.state(),money={income:new Decimal(0),expense:new Decimal(0)};
     for(const row of data.transactions||[])if(String(row.date).startsWith(month)&&['income','expense'].includes(row.kind))money[row.kind as 'income'|'expense']=money[row.kind as 'income'|'expense'].plus(String(row.amount));
-    const cached=profile.read<JsonObject>('news_cache',{}),headlines=Object.values(cached).flatMap((s:any)=>(s.items||[]).slice(0,1)).slice(0,3);
     const usage=monitor.snapshot({scope:'codex',source:'codex',period:'7',valuation_enabled:!!valuation.status('codex').coverage,value_currency:'CNY'});
-    return {month,finance:{income:money.income.toFixed(2),expense:money.expense.toFixed(2),net:money.income.minus(money.expense).toFixed(2)},usage:{summary:usage.summary,daily:usage.daily,valuation:usage.valuation?.summary,range:usage.range},prompts:prompts.search({limit:1}).total,skills:skills.search({limit:1}).total,headlines,newsCached:true};
+    return {month,finance:{income:money.income.toFixed(2),expense:money.expense.toFixed(2),net:money.income.minus(money.expense).toFixed(2)},usage:{summary:usage.summary,daily:usage.daily,valuation:usage.valuation?.summary,range:usage.range},prompts:prompts.search({limit:1}).total,skills:skills.search({limit:1}).total};
   });
   app.get("/api/control", () => control.public());
-  app.post("/api/control/config", (request) => {
+  app.post("/api/control/config", (request, reply) => {
     const value = body(request);
+    if (!local(request) && extraAgentIds.some(id => id + "Enabled" in value || id + "Path" in value))
+      return reply.code(403).send({error:"本机用量来源仅可在本机配置"});
     if (
       Object.entries(value).some(
         ([k, v]) =>
@@ -450,7 +449,7 @@ export async function startServer(
       )
     )
       throw new Error("请通过滑动确认准备历史计价后开启");
-    const result=control.saveConfig(value);if(Object.keys(value).some(k=>/^(codex|zcode|dsh)(Enabled|Path)$/.test(k)))scheduler.trigger();return result;
+    const result=control.saveConfig(value);if(Object.keys(value).some(k=>localAgentIds.some(scope => k === scope + "Enabled" || k === scope + "Path")))scheduler.trigger();return result;
   });
   app.post("/api/control/provider", (request) =>
     control.provider(body(request)),
@@ -1009,7 +1008,7 @@ export async function startServer(
     "/api/usage/connection/test",
   ])
     app.post(route, (request) => accounts.sync(body(request).id));
-  for (const scope of ["codex", "zcode", "dsh"])
+  for (const scope of localAgentIds)
     app.post(
       scope === "codex" ? "/api/usage/sync" : "/api/usage/" + scope + "/sync",
       () => {
@@ -1315,7 +1314,7 @@ export async function startServer(
   app.get("/api/usage/sessions", (request, reply) => {
     const params = qs(request),
       scope = params.scope || "codex";
-    if (!["codex", "zcode", "dsh", "api", ""].includes(scope))
+    if (!isLocalAgent(scope) && scope !== "api" && scope !== "")
       throw new Error("来源不正确");
     // Reuse the same filtered rows as /api/usage so session totals always reconcile with
     // the daily summary; there is no second accounting path.
@@ -1345,6 +1344,11 @@ export async function startServer(
     // readAsync falls back to the remote repository (GitHub API) when no local work tree
     // is readable, which is the case inside the packaged desktop app.
     return gitTimeline.readAsync({ limit: params.limit, force: params.force === "1" });
+  });
+  app.get("/api/git/timeline/changes", (request, reply) => {
+    if (!local(request)) return reply.code(403).send({error:"本机提交的代码差异仅在本机查看"});
+    const params = qs(request);
+    return gitTimeline.localChanges(String(params.hash || ""), typeof params.file === "string" ? params.file : undefined);
   });
   const staticFile = async (request: any, reply: any) => {
     const route = new URL(request.url, "http://localhost").pathname,
