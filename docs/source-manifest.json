@@ -1,5 +1,5 @@
 {
-  "version": "0.1.46",
+  "version": "0.1.47",
   "files": [
     {
       "file": "README.md",
@@ -11,7 +11,7 @@
     },
     {
       "file": "THIRD_PARTY_NOTICES.md",
-      "sha256": "965d1747fbcbcce1ee45f2c53adfa5c4bcb176f3a0b04093289b37d89eec4fc2"
+      "sha256": "557672ed876ed37ba43adc1859af1365c08574af1ec2d7db41fd169fa41f70f6"
     },
     {
       "file": "TOKEN_ACCOUNTING.md",
@@ -19,7 +19,7 @@
     },
     {
       "file": "UI_DESIGN.md",
-      "sha256": "749aea553992da284f881f3d3152fdab1b385040f88c523b614710c34337740b"
+      "sha256": "e1e635217217f4f998d835f7e2790e3aadf85a5fbfcece17a28bf8c28fcca2b5"
     },
     {
       "file": "ARCHITECTURE.md",
@@ -35,11 +35,11 @@
     },
     {
       "file": "VERSION",
-      "sha256": "c1e40add794a52b012ead4401c354662b2eaea818eab9cbc5806ed88ff10abb9"
+      "sha256": "339576cb65d219c73663037939204654d18f39683f3b38ed72ecd3edba722f57"
     },
     {
       "file": "DESIGN.md",
-      "sha256": "9fae76bb1b55414c91e32c411036b0ea0d37d820605ad0fdddcb234772af8cb8"
+      "sha256": "940f422220229c0c117525faab821c65d2ab34aaae0896df4eef2d69bec6039c"
     },
     {
       "file": "start.bat",
@@ -135,7 +135,7 @@
     },
     {
       "file": "src/server/git-timeline.ts",
-      "sha256": "f0c5cfce19176760e38925fc0f1810694afbc03b8eef15afdbff078aa15b4ea2"
+      "sha256": "832bbc1e0054f488a5e97c07d8507d11563c56488403290e2fb7a04b890ebf0d"
     },
     {
       "file": "src/server/lmu.ts",
@@ -379,7 +379,7 @@
     },
     {
       "file": "frontend/app/git-timeline.tsx",
-      "sha256": "8e401cb23b0e161df67c22ce700b52b8e722ae8610a0ab8011cd0dabbf6b77e7"
+      "sha256": "4522d451b2dfa5c2ca79578e9d2c115b1f58437631ee207e7386cb1dc9c2b9ef"
     },
     {
       "file": "frontend/app/index.html",
@@ -391,7 +391,7 @@
     },
     {
       "file": "frontend/app/motion.ts",
-      "sha256": "4302f2398ab72f6ffb648fa1ba579cbc6dce133edb0c9067f2cdf4514dbe3558"
+      "sha256": "b5f43c35bfc5ddd67b49ebef27837b1dcfb64488f343e55d4419528b16ce8775"
     },
     {
       "file": "frontend/app/number-motion.css",
@@ -419,7 +419,7 @@
     },
     {
       "file": "frontend/app/preview.ts",
-      "sha256": "03e341d6d1cddbadfcc4337e7480187d767dcab78a9d4eaf5b64382c7b1ecb52"
+      "sha256": "b0069c2343ec17391e156e86cea6482ec22cf62134436fd99b65f449d075e3e1"
     },
     {
       "file": "frontend/app/prices.html",
@@ -447,7 +447,7 @@
     },
     {
       "file": "frontend/app/surfaces.ts",
-      "sha256": "baa36bf694320f512d6958928a746dfeac1ccf8028e418daf05f275a6a3a7c8a"
+      "sha256": "d3a6d55a2db12f6e20193e7bc95fc6dff6910f9e2eb8c1abfec2b96805bcbf78"
     },
     {
       "file": "frontend/app/taskbar-settings-host.ts",
@@ -491,7 +491,7 @@
     },
     {
       "file": "frontend/compat/dialogs.ts",
-      "sha256": "7b79a2fb1c8d5b943858c235349ad299a8735207629a736a3b19355e9994ca30"
+      "sha256": "61aaa9edc26707472e9dedcdb393261328450a4fec98e0bea03ae6cad5a8ce53"
     },
     {
       "file": "frontend/compat/finance-workspace.ts",
@@ -503,7 +503,7 @@
     },
     {
       "file": "frontend/compat/library-views.ts",
-      "sha256": "9ae2954e8f781cd0736d3a62b73b1858e8aaed343677ef43f75494d814cff1ad"
+      "sha256": "be279429360be450492d9fddec46526bea886adeef14acd4c9468db24d713cb6"
     },
     {
       "file": "frontend/compat/lingxi-design.ts",
@@ -531,7 +531,7 @@
     },
     {
       "file": "frontend/compat/prompts-module.ts",
-      "sha256": "0dbd61bda03d3affe2477d42b54f4f3ca3c1350a543854d24da969f5ba366b87"
+      "sha256": "206335c95a7cac49e843361787bde1a2b129b3638ca05535c2b002dca1506dd6"
     },
     {
       "file": "frontend/compat/rounded-selects.ts",
@@ -539,7 +539,7 @@
     },
     {
       "file": "frontend/compat/settings-center.ts",
-      "sha256": "a17cc3298d75dbf955bbd7e97972e29a0b7286069b04613f66cd870cc2683403"
+      "sha256": "b15b6f05307caa2ea1bf2e4e634efbc5d0d8e237ca66f6c71e25c252f0734a11"
     },
     {
       "file": "frontend/compat/shell-navigation.ts",
@@ -795,15 +795,15 @@
     },
     {
       "file": "static/entrance-motion.css",
-      "sha256": "332ac288f23c2d3083fcb33043004ab5114700d16f84e65aefc00b4945b03528"
+      "sha256": "54ae33a83c53eeb0487e21f84bd1d1cc92be467ffc39a0a6cba02848ab5cdfdf"
     },
     {
       "file": "static/git-timeline-snapshot.json",
-      "sha256": "68e91d7f13ecc38edc7c43a046273bf631f1f76514b6e152307f6357725e0606"
+      "sha256": "d3d6ae9bbbf249eef003456a0a265e45277cda4b42a4465fc045372c57d5a7b6"
     },
     {
       "file": "static/git-timeline.css",
-      "sha256": "ee60bf71a79a1c059b69356db6c8e3e5d5d4b411075d8a03bf90b153abe0ea34"
+      "sha256": "659ca7fbfdc3652f396065daf2da90ff08314dff8bfa7bf836dc5341b7fa168d"
     },
     {
       "file": "static/index.html",
@@ -811,7 +811,7 @@
     },
     {
       "file": "static/interaction-surfaces.css",
-      "sha256": "74745177744be5473c9939343997d4173e28eb27fe459c226b7b0df5516f7884"
+      "sha256": "c5cf7895149e6aded3b4542e27b1ee72f071ad9aba4038697ec2610671ea1653"
     },
     {
       "file": "static/lingxi-design.css",
@@ -863,11 +863,11 @@
     },
     {
       "file": "static/shell-experience.css",
-      "sha256": "79e42750077b3305730d3facea4082c41a53ed94150ff79ff19227cb49179c2a"
+      "sha256": "689d4efb13f5922376a3719d46ed9daa299723d4b190b044baebdd637417f489"
     },
     {
       "file": "static/skill-manager.css",
-      "sha256": "f5663bd5ab32cb11943d4dee7855d797f736d8a89014104100cc55a9682dc45f"
+      "sha256": "41e7f84adb8635bbfe2f1fafed14feefb66068e24c0625221882aa216ac71b9e"
     },
     {
       "file": "static/startup.css",
@@ -1003,7 +1003,7 @@
     },
     {
       "file": "docs/design-coverage.json",
-      "sha256": "14064bdc2650e740ae81e2da4d250ef1baed38f8b50a995a486382ec18716ba6"
+      "sha256": "5c01a707b4ba0848f5c1565ad628d9a1d09e3f427abddd6c6c555b7ff7ad21c8"
     },
     {
       "file": "docs/design-reference-audit.json",
@@ -1064,6 +1064,10 @@
     {
       "file": "scripts/capture_antigravity_usage.mjs",
       "sha256": "42b4e8838a40ed66bc538fbd72f703637cf02ca1e7427bb6959c7cb360d80f07"
+    },
+    {
+      "file": "frontend/app/git-presentation.ts",
+      "sha256": "cea51e3c862a37e07b9c6f38b4620b5576fa87bcde4aea9a2d66388af1b73e67"
     }
   ]
 }

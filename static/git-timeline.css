@@ -760,3 +760,7 @@ body[data-page="git-timeline"] {
 .gt-diff-scroll tr[data-kind=added]{background:color-mix(in srgb,#2fa76f 17%,var(--surface))}
 .gt-diff-scroll tr[data-kind=deleted]{background:color-mix(in srgb,#e55b69 17%,var(--surface))}
 @media(max-width:640px){.gt-history{grid-template-columns:78px minmax(0,1fr)}.gt-track-labels>div{padding-inline:5px}.gt-track-labels strong{overflow:hidden;text-overflow:ellipsis}.gt-track-labels small{font-size:10px}}
+
+.gt-freshness { margin:0; color:var(--ink-2); font-size:13px; }
+.gt-page :is(button, input, select, a, [tabindex="0"]):focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.gt-history .gt-graph-scroll:focus-visible { outline-offset:-2px; }

@@ -106,14 +106,12 @@
     injectCss();
     root.innerHTML = `<div class="skm-app skm-catalog skm-app-prompts" data-skm>
       <header class="skm-topbar" data-skm-topbar aria-label="提示词管理导航"></header>
-      <div class="skm-subnav" data-skm-subnav aria-label="提示词筛选"></div>
       <main class="skm-main" data-skm-main><div class="skm-main-scroll"><div data-skm-page></div></div></main>
       <div class="skm-sheet" data-skm-sheet hidden></div>
       <div class="skm-live" aria-live="polite"></div>
     </div>`;
     const app = q("[data-skm]", root),
       top = q("[data-skm-topbar]", root),
-      sub = q("[data-skm-subnav]", root),
       page = q("[data-skm-page]", root),
       sheet = q("[data-skm-sheet]", root),
       content = page;
@@ -137,7 +135,7 @@
     function navItem(view, label, ico, count, extra = "") {
       const active =
         mode === view || (view === "market" && mode === "market");
-      return `<button class="skm-nav${active ? " is-active" : ""}${extra}" data-act="mode" data-mode="${view}"${active ? ' aria-current="page"' : ""}>${icon(ico, 15, "skm-nav-ico")}<span class="skm-nav-label">${esc(label)}</span>${count == null ? "" : `<span class="skm-nav-count">${count}</span>`}</button>`;
+      return `<button class="skm-nav${active ? " is-active" : ""}${extra}" data-act="mode" data-mode="${view}" aria-label="${esc(label)}"${active ? ' aria-current="page"' : ""}>${icon(ico, 15, "skm-nav-ico")}<span class="skm-nav-label">${esc(label)}</span>${count == null ? "" : `<span class="skm-nav-count">${count}</span>`}</button>`;
     }
     function topbarHTML() {
       return `<span class="skm-brand"><span class="skm-brand-mark">${icon("fileText", 15)}</span><span class="skm-brand-name">提示词管理</span></span>
@@ -149,39 +147,69 @@
           <button class="skm-btn skm-btn-primary skm-btn-sm" data-act="create">${icon("plus", 14)}新建提示词</button>
         </div>`;
     }
-    function subnavHTML() {
-      if (mode === "stats") return "";
-      if (mode === "market") {
-        const sources = result?.sources || [];
-        if (!sources.length) return "";
-        return `<div class="skm-subnav-group"><span class="skm-subnav-label">模板来源</span><div class="skm-subnav-track">
-          <button class="skm-nav skm-nav-chip${!params.source ? " is-active" : ""}" data-act="source" data-source="">全部来源</button>
-          ${sources.map((s) => `<button class="skm-nav skm-nav-chip${params.source === s.id ? " is-active" : ""}" data-act="source" data-source="${esc(s.id)}">${icon("globe", 13, "skm-nav-ico")}${esc(s.name)}</button>`).join("")}
-          <button class="skm-nav skm-nav-chip" data-act="source-add">${icon("plus", 13, "skm-nav-ico")}添加来源</button>
-        </div></div>`;
+    function paintFilter() {
+      const filter = q("[data-prompt-filters]", page);
+      if (!filter) return;
+      const isMarket = mode === "market";
+      const key = isMarket ? "source" : "folder";
+      const label = isMarket ? "来源" : "分类";
+      const items = (isMarket ? result?.sources : result?.folders) || [];
+      if (!q("select", filter)) {
+        filter.innerHTML = `<label class="skm-field is-inline">${label}<select class="skm-input skm-select" data-prompt-filter="${key}"></select></label>
+          <button class="skm-icon-btn" data-act="${key}-add" title="添加${label}" aria-label="添加${label}">${icon("plus", 14)}</button>`;
       }
-      const folders = result?.folders || [],
-        tags = result?.tags || [];
-      const chip = (act, value, label, active, count) =>
-        `<button class="skm-nav skm-nav-chip${active ? " is-active" : ""}" data-act="${act}" data-value="${esc(value)}">${esc(label)}${count == null ? "" : `<span class="skm-nav-count">${count}</span>`}</button>`;
-      return `<div class="skm-subnav-group"><span class="skm-subnav-label">分类</span><div class="skm-subnav-track">
-          ${chip("folder", "", "全部", !params.folder)}
-          ${folders.map((f) => chip("folder", f.id, f.name, params.folder === f.id)).join("")}
-          <button class="skm-icon-btn" data-act="folder-add" title="新建分类" aria-label="新建分类">${icon("plus", 13)}</button>
-        </div></div>
-        <div class="skm-subnav-group"><span class="skm-subnav-label">标签</span><div class="skm-subnav-track">
-          ${tags.length ? tags.slice(0, 12).map((t) => chip("tag", t, t, params.tags.includes(t))).join("") : '<span class="skm-subnav-empty">暂无标签</span>'}
-        </div></div>
-        <div class="skm-subnav-group"><span class="skm-subnav-label">状态</span><div class="skm-subnav-track">
-          ${chip("flag", "favorite", "仅收藏", params.favorite)}
-          ${chip("flag", "trash", "回收站", params.trash)}
-        </div></div>`;
+      const select = q("select", filter);
+      const options = `<option value="">全部${label}</option>${items.map(item =>
+        `<option value="${esc(item.id)}">${esc(item.name)}</option>`).join("")}`;
+      if (select.dataset.rendered !== options) {
+        select.innerHTML = options;
+        select.dataset.rendered = options;
+      }
+      const value = params[key] || "";
+      if (select.value !== value) select.value = value;
     }
+
+    const filterChip = (act, value, label, active) =>
+      `<button class="skm-chip${active ? " is-active" : ""}" data-act="${act}" data-value="${esc(value)}" aria-pressed="${!!active}">${esc(label)}</button>`;
+    function advancedFiltersHTML() {
+      if (mode === "market") return "";
+      return `<details class="skm-prompt-more" data-prompt-more${advancedOpen ? " open" : ""}>
+        <summary>更多筛选</summary>
+        <div class="skm-chip-row">
+          ${filterChip("flag", "favorite", "仅收藏", params.favorite)}
+          ${filterChip("flag", "trash", "回收站", params.trash)}
+          <span class="skm-prompt-tags" data-prompt-tags></span>
+          <label class="skm-field is-inline">格式<select class="skm-input skm-select" data-format><option value="">全部格式</option>${Object.entries(FORMATS).map(([key, label]) => `<option value="${key}"${params.format === key ? " selected" : ""}>${label}</option>`).join("")}</select></label>
+        </div>
+      </details>`;
+    }
+    function paintAdvancedFilters() {
+      const host = q("[data-prompt-more]", page);
+      if (!host) return;
+      const summary = q("summary", host);
+      const count = params.tags.length + Number(!!params.favorite) + Number(!!params.trash) + Number(!!params.format);
+      summary.textContent = count ? `更多筛选 · ${count}` : "更多筛选";
+      const tags = [...new Set([...params.tags, ...(result?.tags || []).slice(0, 12)])];
+      const seat = q("[data-prompt-tags]", host);
+      const markup = tags.map(tag => filterChip("tag", tag, tag, params.tags.includes(tag))).join("");
+      if (seat.dataset.rendered === markup) return;
+      const activeTag = seat.contains(document.activeElement) ? document.activeElement.dataset.value : "";
+      seat.innerHTML = markup;
+      seat.dataset.rendered = markup;
+      if (activeTag) (q(`[data-value="${CSS.escape(activeTag)}"]`, seat) || summary).focus({preventScroll:true});
+    }
+    let advancedOpen = false;
+    let renderedTop = "";
     function paintTop() {
       const html = topbarHTML();
-      if (top.innerHTML !== html) top.innerHTML = html;
-      const subHTML = subnavHTML();
-      if (sub.innerHTML !== subHTML) sub.innerHTML = subHTML;
+      if (renderedTop !== html) {
+        const activeMode = top.contains(document.activeElement) ? document.activeElement.dataset.mode : "";
+        top.innerHTML = html;
+        renderedTop = html;
+        if (activeMode) q(`[data-mode="${CSS.escape(activeMode)}"]`, top)?.focus({preventScroll:true});
+      }
+      paintFilter();
+      paintAdvancedFilters();
     }
     const FORMAT_LABEL = (f) => FORMATS[f] || f;
     function promptCard(item) {
@@ -239,7 +267,7 @@
 
           </div>
           <div class="skm-page-actions">
-            ${isMarket && params.source !== "lingxi-zh" ? `<button class="skm-btn skm-btn-secondary" data-act="market-sync">${icon("refresh", 14)}同步模板</button>` : ""}
+            ${isMarket ? `<button class="skm-btn skm-btn-secondary" data-act="market-sync"${params.source === "lingxi-zh" ? " hidden" : ""}>${icon("refresh", 14)}同步模板</button>` : ""}
             <select class="skm-input skm-select" data-sort aria-label="排序方式">
               <option value="updated"${params.sort === "updated" ? " selected" : ""}>最近更新</option>
               <option value="created"${params.sort === "created" ? " selected" : ""}>创建时间</option>
@@ -250,8 +278,8 @@
         </header>
         <div class="skm-toolbar-wrap"><div class="skm-toolbar"><div class="skm-toolbar-main">
           <label class="skm-search">${icon("search", 15)}<input class="skm-input" type="search" data-search maxlength="300" value="${esc(params.q)}" placeholder="搜索标题、正文或标签" aria-label="搜索提示词"></label>
-          ${isMarket ? "" : `<label class="skm-field is-inline">格式<select class="skm-input" data-format aria-label="格式筛选"><option value="">全部格式</option>${Object.entries(FORMATS).map(([k, v]) => `<option value="${k}"${params.format === k ? " selected" : ""}>${v}</option>`).join("")}</select></label>`}
-        </div></div></div>
+          <div class="skm-prompt-filters" data-prompt-filters></div>
+        </div></div>${advancedFiltersHTML()}</div>
         <div class="skm-bulk-bar" data-bulk-bar hidden><span data-selected-count></span>
           <button class="skm-btn skm-btn-ghost skm-btn-sm" data-bulk="favorite">收藏</button>
           <button class="skm-btn skm-btn-ghost skm-btn-sm" data-bulk="move">移动分类</button>
@@ -1407,6 +1435,7 @@
       editor?.forceClose();
       modeParams[mode] = { ...params, tags: [...params.tags] };
       mode = value;
+      result = null;
       params = {
         q: "",
         sort: "updated",
@@ -1420,6 +1449,11 @@
       draw();
       load();
     }
+    app.addEventListener("toggle", (event) => {
+      if (event.target.matches("[data-prompt-more]") && event.target.isConnected) {
+        advancedOpen = event.target.open;
+      }
+    }, true);
     app.addEventListener("click", (ev) => {
       const modeButton = ev.target.closest("[data-act='mode']");
       if (modeButton) {
@@ -1443,12 +1477,6 @@
       if (act === "import") return importDialog();
       if (act === "export") return exportDialog();
       if (act === "create") return editPrompt();
-      if (act === "folder") {
-        params.folder = button.dataset.value;
-        params.offset = 0;
-        draw();
-        return load();
-      }
       if (act === "tag") {
         const tag = button.dataset.value;
         params.tags = params.tags.includes(tag)
@@ -1456,6 +1484,7 @@
           : [...params.tags, tag];
         params.offset = 0;
         draw();
+        q(`[data-act="tag"][data-value="${CSS.escape(tag)}"]`, page)?.focus();
         return load();
       }
       if (act === "flag") {
@@ -1463,12 +1492,7 @@
         params[key] = params[key] ? "" : "1";
         params.offset = 0;
         draw();
-        return load();
-      }
-      if (act === "source") {
-        params.source = button.dataset.source;
-        params.offset = 0;
-        draw();
+        q(`[data-act="flag"][data-value="${CSS.escape(key)}"]`, page)?.focus();
         return load();
       }
       if (act === "source-add") return sourceDialog();
@@ -1488,6 +1512,15 @@
       }
     });
     app.addEventListener("change", (ev) => {
+      if (ev.target.matches("[data-prompt-filter]")) {
+        params[ev.target.dataset.promptFilter] = ev.target.value;
+        params.offset = 0;
+        if (mode === "market") {
+          const sync = q("[data-act=market-sync]", page);
+          if (sync) sync.hidden = params.source === "lingxi-zh";
+        }
+        return load();
+      }
       if (ev.target.matches("[data-sort]")) {
         params.sort = ev.target.value;
         params.offset = 0;

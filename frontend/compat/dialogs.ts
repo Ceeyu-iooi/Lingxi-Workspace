@@ -3,9 +3,8 @@
 (() => {
   if(window.WorkbenchDialogs)return;
   const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  function open({title,body='',size='medium',actions=[],beforeClose,initialFocus,origin,closeOrigin}={}){
+  function open({title,body='',size='medium',actions=[],beforeClose,initialFocus}={}){
     const focus=document.activeElement,d=document.createElement('dialog');let closed=false,busy=false;
-    d._openAnchor=origin;d._closeAnchor=closeOrigin;
     d.className='control-dialog lingxi-dialog wb-editor-dialog';d.dataset.dialogSize=size;d.setAttribute('aria-label',title);
     d.innerHTML=`<header class="control-dialog-head wb-dialog-head"><div class="dialog-brand-title"><img class="lingxi-window-logo" src="assets/lingxi-logo.svg" alt="灵犀"><h2>${escape(title)}</h2></div><button type="button" class="lingxi-dialog-close btn ghost" data-modal-close aria-label="关闭">×</button></header><div class="lingxi-dialog-body wb-dialog-body">${body}</div><p class="lingxi-dialog-error" role="alert" hidden></p><footer class="control-dialog-actions wb-dialog-foot"></footer>`;
     const close=(force=false)=>{if(closed)return true;if(!force&&busy)return false;if(!force&&beforeClose){const accepted=beforeClose();if(accepted&&typeof accepted.then==='function'){accepted.then(value=>{if(value!==false)close(true);});return false;}if(accepted===false)return false;}closed=true;d.close();return true;};

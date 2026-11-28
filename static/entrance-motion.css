@@ -1,18 +1,6 @@
-/* Shared press feedback for every interactive surface in the app shell. */
-.main-shell :is(button, .btn, [role="button"], summary) {
-  transition: transform 120ms cubic-bezier(.22, 1, .36, 1), background 140ms ease, color 140ms ease, border-color 140ms ease;
-}
-.main-shell :is(button, .btn, [role="button"], summary):active {
-  transform: scale(.965);
-}
-.main-shell .nav-item:active { transform: scale(.985); }
 .main-shell :is(button, .btn, [role="button"]):focus-visible {
-  outline: 2px solid var(--color-usage-chart-1, #3b82f6);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .main-shell :is(button, .btn, [role="button"], summary) { transition: none; }
-  .main-shell :is(button, .btn, [role="button"], summary):active { transform: none; }
-}
 .module-load-error { display:flex; align-items:center; gap:12px; padding:16px; }

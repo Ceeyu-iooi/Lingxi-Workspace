@@ -19,7 +19,7 @@
 
 ## 工作区与供应商层级
 
-用量监测保持成熟结构，不采用其他工作区的布局重构。总览将关键数量置于轻量统计带，项目与趋势作为辅助，待办队列作为主操作区；项目页左侧项目目录、右侧任务工作区，待办支持搜索与完成状态筛选；总结左侧历史月份，右侧长文本编辑和保存。热点采用来源栏、搜索和内容列表；记账复用用量日期、JellyRadio、图表及表格，趋势与分布各占一行，日期、分类、收支、金额和关键词共同控制当前分析与明细，默认时间最新在前。提示词与技能使用低对比筛选栏、独立工具条、主体资源卡与记录操作栏。
+用量监测保持成熟结构，不采用其他工作区的布局重构。总览将关键数量置于轻量统计带，项目与趋势作为辅助，待办队列作为主操作区；项目页左侧项目目录、右侧任务工作区，待办支持搜索与完成状态筛选；总结左侧历史月份，右侧长文本编辑和保存。热点采用来源栏、搜索和内容列表；记账复用用量日期、JellyRadio、图表及表格，趋势与分布各占一行，日期、分类、收支、金额和关键词共同控制当前分析与明细，默认时间最新在前。提示词与技能共用一级页签、低对比工具栏和资源卡。提示词的低频筛选按需展开；技能预设在库内切换。
 
 ## 一致性的实现归属
 
@@ -30,7 +30,7 @@
 | 主题、缩放 | Profile设置；共享主题预设与唯一缩放写入口 | 应用外壳及共享Token；页面只消费变量 | 浅深、125%缩放、保存／放弃、多窗口修订冲突 |
 | 用量筛选 | 主应用和任务栏插件各自筛选；响应绑定已提交查询 | 现有日期／模型控件，禁止另做相似控件 | 模型或／其他条件且；快速切换、失败保留快照身份 |
 | 会话用量 | `/api/usage/sessions` 复用 `/api/usage` 同一份已筛选行；`src/shared/session-usage.ts` 为唯一契约 | 服务端 `src/server/session-usage.ts`；插件 `frontend/private/floating/sessions.tsx` 与 `style.css`；布局语义取 `.bs-scope` 适配层 | 合计与日汇总对账、未识别会话归并、未知字段标注、项目和会话用同一五列表头，真实标题，模型条仅显示 Token |
-| Git 时间轴 | `/api/git/timeline` 只读 `git log`／`branch`／`tag`；`src/shared/git-timeline.ts` 契约 | 服务端 `src/server/git-timeline.ts`；页面 `frontend/app/git-timeline.tsx`；样式 `static/git-timeline.css` | 泳道推导、节点密度自适应、变更统计上限、未知项中文说明、浅深与窄屏 |
+| Git 时间轴 | `/api/git/timeline` 只读 `git log`／`branch`／`tag`；`src/shared/git-timeline.ts` 契约 | 服务端 `src/server/git-timeline.ts`；页面 `frontend/app/git-timeline.tsx`；样式 `static/git-timeline.css` | Semanote-Agent 分支图与逐行差异、来源与离线时间、变更统计上限、浅深与窄屏 |
 | 图表交互 | 数据宿主维护结果，usageCharts维护绘图和提示 | `frontend/compat/usage-charts.ts`；沿用图表令牌 | 鼠标／键盘提示、空数据、缩放、离页观察器与监听释放 |
 | 技能资源 | 登记目录的只读索引；本地中文词目与Profile展示覆盖 | library-views、skillIdentity、ui-system及workspace-layout | 原名主标题、英文下方中文副标题、中文搜索、快速分页／失败快照、来源隔离、详情保存不改原文件 |
 | 任务栏配置 | 主进程带修订号配置为权威；设置持有未保存草稿 | frontend/app/taskbar-settings.tsx与taskbar-settings.css；两入口共用严格类型组件及轻量样式预览 | 双窗口修改、保存失败和放弃、旧响应不覆盖新编辑 |

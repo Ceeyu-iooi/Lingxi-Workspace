@@ -37,9 +37,8 @@
 
 :root{--window-titlebar-height:40px;--window-radius:4px}
 .lingxi-dialog,.control-dialog:not(.valuation-modal),.wb-editor-dialog,.usage-value-dialog{border-radius:var(--window-radius)!important}
-.lingxi-dialog>:is(.control-dialog-head,.settings-center-head),.lingxi-dialog-form>.control-dialog-head,.usage-supplier-manager>.control-dialog-head{height:var(--window-titlebar-height)!important;min-height:var(--window-titlebar-height)!important;max-height:var(--window-titlebar-height)!important;padding:0 16px!important;gap:12px;margin:0!important;box-sizing:border-box;cursor:grab;touch-action:none;-webkit-app-region:no-drag}
+.lingxi-dialog>:is(.control-dialog-head,.settings-center-head),.lingxi-dialog-form>.control-dialog-head,.usage-supplier-manager>.control-dialog-head{height:var(--window-titlebar-height)!important;min-height:var(--window-titlebar-height)!important;max-height:var(--window-titlebar-height)!important;padding:0 16px!important;gap:12px;margin:0!important;box-sizing:border-box;cursor:default;touch-action:none;-webkit-app-region:no-drag}
 .lingxi-dialog :is(.control-dialog-head,.settings-center-head) :is(h2,h3){font-size:15px!important;line-height:24px}
-.lingxi-dialog[data-dragging] :is(.control-dialog-head,.settings-center-head){cursor:grabbing}
 .lingxi-dialog>.lingxi-dialog-body{padding:20px}
 .lingxi-dialog-form .lingxi-dialog-body{padding:20px}
 .lingxi-dialog-close,.settings-center-head>button{width:32px!important;height:32px!important;min-height:32px!important;min-width:32px!important}

@@ -80,16 +80,15 @@
 /* Module cards keep the shared fixed responsive layout. */
 .card,.sum-card{resize:none!important}
 
-/* Press feedback uses the same scale for controls in the shell and module surfaces. */
-:is(.layout,.lingxi-dialog) :is(.nav-item,.btn,.skm-btn,.skm-icon-btn,.settings-nav-item,.usage-filter-button,.wb-select>button,summary) {
-  transition:scale 160ms ease-out, background-color 160ms ease-out, color 160ms ease-out;
+/* One press transition for shell, dialog, and module controls. */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-motion="reduced"]) :where(.layout, .lingxi-dialog) :is(button, [role="button"], summary) {
+    transition: scale 120ms cubic-bezier(.22, 1, .36, 1), background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+  }
+
+  :root:not([data-motion="reduced"]) :where(.layout, .lingxi-dialog) :is(button, [role="button"], summary):active:not(:disabled, [aria-disabled="true"]) {
+    scale: .976;
+  }
 }
-:is(.layout,.lingxi-dialog) :is(.nav-item,.btn,.skm-btn,.skm-icon-btn,.settings-nav-item,.usage-filter-button,.wb-select>button,summary):active:not(:disabled) {
-  scale:.976;
-  transition-duration:70ms;
-}
-@media(prefers-reduced-motion:reduce){
-  :is(.layout,.lingxi-dialog) :is(.nav-item,.btn,.skm-btn,.skm-icon-btn,.settings-nav-item,.usage-filter-button,.wb-select>button,summary){transition:none;scale:1}
-}
-html[data-motion=reduced] :is(.nav-item,.btn,.skm-btn,.skm-icon-btn,.settings-nav-item,.usage-filter-button,.wb-select>button,summary){transition:none;scale:1}
+
 .side .nav-item>svg{flex:none;color:var(--ink-2)}

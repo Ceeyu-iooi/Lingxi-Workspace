@@ -2,6 +2,7 @@ import React, {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -11,6 +12,7 @@ import "./motion";
 import "./surfaces";
 import "./overlay";
 import "../compat/rounded-selects";
+import { buildGitGraph, gitColumnWidth, gitGroups, gitLaneHeight, parseDiffHunks } from "./git-presentation";
 import type {
   GitTimelineCommit,
   GitTimelineRef,
@@ -24,17 +26,6 @@ import type {
  * Every value comes from `/api/git/timeline`; nothing is synthesized. Counts that the
  * server could not determine stay `null` and render as "—".
  */
-
-const LANE_COLORS = [
-  "var(--git-lane-0)",
-  "var(--git-lane-1)",
-  "var(--git-lane-2)",
-  "var(--git-lane-3)",
-  "var(--git-lane-4)",
-  "var(--git-lane-5)",
-];
-
-const laneColor = (lane: number) => LANE_COLORS[Math.max(0, Math.min(5, lane))];
 
 const refLabel: Record<GitTimelineRef["kind"], string> = {
   head: "HEAD",
@@ -56,65 +47,61 @@ function countText(value: number | null): string {
   return value == null ? "—" : value.toLocaleString("zh-CN");
 }
 
-const refFamily = (name: string) => name.replace(/^origin\//, "").split("/")[0];
-const branchName: Record<string,string> = {master:"发布主线",main:"发布主线",develop:"开发集成",feature:"功能开发",release:"版本准备",hotfix:"紧急修复"};
-
-function TimelineGraph({commits, history, lanes, selected, onSelect}: {
+function TimelineGraph({ commits, history, selected, onSelect }: {
   commits: GitTimelineCommit[];
   history: GitTimelineCommit[];
-  lanes: number;
   selected: string | null;
   onSelect: (hash: string) => void;
 }) {
-  const column=204, trackHeight=42, mapHeight=lanes*trackHeight+22;
-  const x=(index:number)=>index*column+column/2;
-  const y=(lane:number)=>lane*trackHeight+26;
-  const order=useMemo(()=>new Map(commits.map((commit,i)=>[commit.hash,i])),[commits]);
-  const scroll=useRef<HTMLDivElement>(null);
-  const index=selected?order.get(selected):undefined;
-  useLayoutEffect(()=>{
-    const node=scroll.current;
-    if(!node||index===undefined)return;
-    const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches||document.documentElement.dataset.motion==="reduced";
-    node.scrollTo({left:Math.max(0,x(index)-node.clientWidth/2),behavior:reduced?"instant":"smooth"});
-  },[index,commits]);
-  const labels = Array.from({length:lanes},(_,lane)=>{
-    const names=[...new Set(history.filter(c=>c.lane===lane).flatMap(c=>c.refs.filter(ref=>ref.kind==="branch"||ref.kind==="remote").map(ref=>ref.name)))];
-    const family=names.map(refFamily).find(name=>branchName[name]);
-    return {names, family};
-  });
-  const width=Math.max(column,commits.length*column);
+  const graph = useMemo(() => buildGitGraph(history, commits), [history, commits]);
+  const scroll = useRef<HTMLDivElement>(null);
+  const completed = useId();
+  const selectedNode = selected ? graph.positions.get(selected) : undefined;
+  const selectedX = selectedNode?.x ?? graph.width;
+
+  useLayoutEffect(() => {
+    const viewport = scroll.current;
+    if (!viewport || !selectedNode) return;
+    viewport.scrollTo({left: selectedNode.x - viewport.clientWidth / 2, behavior: "instant"});
+  }, [selectedNode]);
+
   return <div className="gt-history">
     <aside aria-label="分支轨道" className="gt-track-labels">
-      {labels.map(({names,family},lane)=><div key={lane} style={{height:trackHeight,"--commit-color":laneColor(lane)} as React.CSSProperties}>
-        <strong>{family||names[0]||`轨道 ${lane+1}`}</strong>
-        <small title={names.join(" / ")}>{family?branchName[family]:names.slice(1).join(" / ")}</small>
-      </div>)}
+      {graph.lanes.map(({group, names}) => (
+        <div key={group} style={{height: gitLaneHeight, "--commit-color": gitGroups[group].color} as React.CSSProperties}>
+          <strong>{gitGroups[group].name}</strong>
+          <small title={names.join(" / ")}>{names.length ? names.join(" / ") : "历史路径"}</small>
+        </div>
+      ))}
     </aside>
     <div className="gt-graph-scroll" ref={scroll} tabIndex={0} aria-label="提交时间轴，左侧较早，右侧较新">
-      <div className="gt-track" style={{width}}>
-        <svg width={width} height={mapHeight} aria-hidden="true">
-          {labels.map((_,lane)=><line key={lane} x1={0} x2={width} y1={y(lane)} y2={y(lane)} stroke="var(--line)" />)}
-          {commits.flatMap((commit,to)=>commit.parents.map((parent,parentNumber)=>{
-            const from=order.get(parent);
-            if(from===undefined)return null;
-            const px=x(from),cx=x(to),py=y(commits[from].lane),cy=y(commit.lane),mid=(px+cx)/2;
-            const reached=index===undefined||to<=index;
-            return <path key={commit.hash+parent} d={`M${px} ${py} C${mid} ${py},${mid} ${cy},${cx} ${cy}`}
-              fill="none" stroke={laneColor(commits[from].lane)} strokeWidth={reached?3:2} opacity={reached?1:.24} strokeDasharray={parentNumber>0?"5 4":undefined}/>;
-          }))}
-          {index!==undefined&&<line className="gt-track-marker" x1={x(index)} x2={x(index)} y1={0} y2={mapHeight} />}
-          {commits.map((commit,i)=><circle key={commit.hash} cx={x(i)} cy={y(commit.lane)} r={i===index?7:4} fill={laneColor(commit.lane)} opacity={index!==undefined&&i>index?0.32:1}/>)}
+      <div className="gt-track" style={{width: graph.width}}>
+        <svg width={graph.width} height={graph.height} aria-hidden="true">
+          <defs><clipPath id={completed}><rect width={selectedX} height={graph.height} /></clipPath></defs>
+          {graph.lanes.map(lane => <line key={lane.group} x1={0} x2={graph.width} y1={lane.y} y2={lane.y} stroke="var(--line)" />)}
+          <g opacity=".25">
+            {graph.edges.map(edge => <path key={edge.id} d={edge.d} fill="none" stroke={gitGroups[edge.group].color} strokeWidth={2} />)}
+          </g>
+          <g clipPath={`url(#${completed})`}>
+            {graph.edges.map(edge => <path key={edge.id} d={edge.d} fill="none" stroke={gitGroups[edge.group].color} strokeWidth={3} />)}
+          </g>
+          {selectedNode && <line className="gt-track-marker" x1={selectedX} x2={selectedX} y1={0} y2={graph.height} />}
+          {graph.nodes.map(({commit, group, x, y}) => (
+            <circle key={commit.hash} cx={x} cy={y} r={commit.hash === selected ? 7 : 4}
+              fill={gitGroups[group].color} opacity={x > selectedX ? .35 : 1} />
+          ))}
         </svg>
-        <div className="gt-track-cards" style={{gridTemplateColumns:`repeat(${Math.max(1,commits.length)},${column}px)`}}>
-          {commits.map((commit,i)=><button type="button" key={commit.hash} aria-pressed={commit.hash===selected}
-            className={index!==undefined&&i>index?"is-upcoming":undefined}
-            style={{"--commit-color":laneColor(commit.lane)} as React.CSSProperties} onClick={()=>onSelect(commit.hash)}>
-            <span><b>{commit.kind==="merge"?"合并":"提交"}</b><time dateTime={commit.at||undefined}>{dayOf(commit.at)}</time></span>
-            <strong title={commit.subject}>{commit.subject}</strong>
-            <small>{commit.shortHash}</small>
-            {commit.refs.length>0&&<span className="gt-card-refs">{commit.refs.slice(0,3).map(ref=><i key={ref.kind+ref.name} title={ref.name}>{ref.name}</i>)}</span>}
-          </button>)}
+        <div className="gt-track-cards" style={{gridTemplateColumns: `repeat(${graph.nodes.length}, ${gitColumnWidth}px)`}}>
+          {graph.nodes.map(({commit, group, x}) => (
+            <button type="button" key={commit.hash} aria-pressed={commit.hash === selected}
+              className={x > selectedX ? "is-upcoming" : undefined}
+              style={{"--commit-color": gitGroups[group].color} as React.CSSProperties} onClick={() => onSelect(commit.hash)}>
+              <span><b>{gitGroups[group].name}</b><time dateTime={commit.at || undefined}>{dayOf(commit.at)}</time></span>
+              <strong title={commit.subject}>{commit.subject}</strong>
+              <small>{commit.shortHash}{commit.kind === "merge" ? " · 合并" : ""}</small>
+              {commit.refs.length > 0 && <span className="gt-card-refs">{commit.refs.slice(0, 3).map(ref => <i key={ref.kind + ref.name} title={ref.name}>{ref.name}</i>)}</span>}
+            </button>
+          ))}
         </div>
       </div>
     </div>
@@ -134,8 +121,6 @@ function CommitDetail({ commit }: { commit: GitTimelineCommit | null }) {
       <header>
         <span className="gt-detail-kind">{commit.kind === "merge" ? "合并提交" : "提交"}</span>
         <code title={commit.hash}>{commit.shortHash}</code>
-        <i className="gt-detail-lane" style={{ background: laneColor(commit.lane) }} aria-hidden="true" />
-        <small>L{commit.lane + 1}</small>
       </header>
       <h2>{commit.subject}</h2>
       {commit.body ? <p className="gt-detail-body">{commit.body}</p> : null}
@@ -185,42 +170,44 @@ interface CommitChanges {
 
 function ChangeWorkspace({commit}: {commit: GitTimelineCommit}) {
   const [changes,setChanges] = useState<CommitChanges | null>(null);
-  const [choice,setChoice] = useState("");
+  const [filePreference, setFilePreference] = useState("");
   const [query,setQuery] = useState("");
-  const [patch,setPatch] = useState<CommitChanges | null>(null);
+  const [loadedPatch, setPatch] = useState<{path: string; value: CommitChanges | null} | null>(null);
   const [error,setError] = useState("");
+  const files = (changes?.files ?? []).filter(file => file.path.toLowerCase().includes(query.trim().toLowerCase()));
+  const choice = files.find(file => file.path === filePreference)?.path ?? files[0]?.path ?? "";
+  const selectedPatch = loadedPatch?.path === choice ? loadedPatch : null;
+  const patch = selectedPatch?.value;
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/git/timeline/changes?hash="+commit.hash,{signal:controller.signal})
       .then(async response => {
         if (!response.ok) throw Error((await response.json().catch(()=>null))?.error || "变更列表不可用");
         const value = await response.json() as CommitChanges;
-        setChanges(value);
-        setChoice(value.files[0]?.path || "");
+        if (!controller.signal.aborted) setChanges(value);
       }).catch(cause => { if (!controller.signal.aborted) setError(cause.message); });
     return () => controller.abort();
   }, [commit.hash]);
   useEffect(() => {
-    if (!choice) return;
+    if (!choice) { setPatch(null); return; }
     const controller = new AbortController();
     const params = new URLSearchParams({hash:commit.hash,file:choice});
     setPatch(null);
     fetch("/api/git/timeline/changes?"+params,{signal:controller.signal})
-      .then(async response => { if (!response.ok) throw Error("代码差异不可用"); setPatch(await response.json()); })
-      .catch(() => { if (!controller.signal.aborted) setPatch({available:false,files:[],patch:null}); });
+      .then(async response => { if (!response.ok) throw Error("代码差异不可用"); const value = await response.json() as CommitChanges; if (!controller.signal.aborted) setPatch({path: choice, value}); })
+      .catch(() => { if (!controller.signal.aborted) setPatch({path: choice, value: null}); });
     return () => controller.abort();
   },[commit.hash,choice]);
   if (error) return <p role="status">{error}</p>;
   if (!changes) return <p role="status">正在读取提交变更…</p>;
   if (!changes.available) return <p>当前仓库无法读取代码差异。</p>;
-  const files = changes.files.filter(file => file.path.toLowerCase().includes(query.trim().toLowerCase()));
   const fileStatus=(file:CommitChanges["files"][number])=>file.added==null?"二进制":"变更";
   return <section className="gt-changes" aria-label="提交变更">
     <h2>变更文件 <small>{changes.files.length}</small></h2>
     <div className="gt-change-columns">
       <div className="gt-file-list">
         <input type="search" aria-label="筛选变更文件" placeholder="按路径筛选" value={query} onChange={event => setQuery(event.target.value)} />
-        {files.map(file => <button type="button" key={file.path} aria-pressed={choice === file.path} onClick={() => setChoice(file.path)}>
+        {files.map(file => <button type="button" key={file.path} aria-pressed={choice === file.path} onClick={() => setFilePreference(file.path)}>
           <span title={file.path}><small>{fileStatus(file)}</small> {file.path}</span><small>{file.added === null ? "—" : "+"+file.added+" / −"+file.deleted}</small>
         </button>)}
         {files.length === 0 && <p>没有匹配文件。</p>}
@@ -229,23 +216,27 @@ function ChangeWorkspace({commit}: {commit: GitTimelineCommit}) {
         {choice && <h3>{choice}</h3>}
         {patch?.truncated && <p>代码差异超过展示上限，已截断。</p>}
         {patch?.patch ? <DiffView patch={patch.patch}/> :
-          <p>{!choice ? "请选择变更文件。" : patch ? "此文件没有可显示的文本差异。" : "正在读取代码差异…"}</p>}
+          <p>{!choice ? "请选择变更文件。" : selectedPatch?.value === null ? "代码差异读取失败。" : patch ? "此文件没有可显示的文本差异。" : "正在读取代码差异…"}</p>}
       </div>
     </div>
   </section>;
 }
 
-function DiffView({patch}:{patch:string}){
-  let oldLine=0,newLine=0,inHunk=false;
-  return <div className="gt-diff-scroll" tabIndex={0} aria-label="逐行代码差异"><table><tbody>{patch.split("\n").map((line,i)=>{
-    const hunk=/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(line);
-    if(hunk){oldLine=Number(hunk[1]);newLine=Number(hunk[2]);inHunk=true;return <tr key={i} data-kind="hunk"><td colSpan={4}>{line}</td></tr>;}
-    if(!inHunk||(!line&&i>0)||line.startsWith("\\"))return null;
-    const added=line.startsWith("+"),deleted=line.startsWith("-");
-    return <tr key={i} data-kind={added?"added":deleted?"deleted":"context"}>
-      <td>{added?"":oldLine++}</td><td>{deleted?"":newLine++}</td><td>{line[0]}</td><td>{line.slice(1)}</td>
-    </tr>;
-  })}</tbody></table></div>;
+function DiffView({patch}: {patch: string}) {
+  const hunks = useMemo(() => parseDiffHunks(patch), [patch]);
+  if (!hunks.length) return <p>此文件没有可显示的文本差异。</p>;
+  return <div className="gt-diff-scroll" tabIndex={0} aria-label="逐行代码差异">
+    <table aria-label="差异行：原行号、新行号、类型、内容">
+      {hunks.map((hunk, index) => <tbody key={index}>
+        <tr data-kind="hunk"><td colSpan={4}>{hunk.header}</td></tr>
+        {hunk.lines.map((line, index) => <tr key={index} data-kind={{add: "added", delete: "deleted", note: "note", context: "context"}[line.kind]}>
+          <td>{line.oldNumber}</td><td>{line.newNumber}</td>
+          <td>{line.kind === "add" ? "+" : line.kind === "delete" ? "−" : ""}</td>
+          <td><code>{line.text || " "}</code></td>
+        </tr>)}
+      </tbody>)}
+    </table>
+  </div>;
 }
 
 function App() {
@@ -256,29 +247,34 @@ function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [branch, setBranch] = useState("");
+  const pending = useRef<AbortController | null>(null);
   const ticket = useRef(0);
 
   const load = useCallback(
     async (nextLimit: number, force = false) => {
       const own = ++ticket.current;
+      pending.current?.abort();
+      const request = new AbortController();
+      pending.current = request;
       setLoading(true);
       setError("");
       try {
         const response = await fetch(
           `/api/git/timeline?limit=${nextLimit}${force ? "&force=1" : ""}`,
+          { signal: request.signal, cache: "no-store" },
         );
         if (!response.ok) throw new Error("Git 时间轴读取失败");
         const value = (await response.json()) as GitTimelineResult;
-        if (own !== ticket.current) return;
+        if (own !== ticket.current || request.signal.aborted) return;
         setResult(value);
         setSelected((current) =>
           current && value.commits.some((c) => c.hash === current) ? current : value.commits[0]?.hash ?? null,
         );
       } catch (e) {
-        if (own !== ticket.current) return;
+        if (own !== ticket.current || request.signal.aborted) return;
         setError((e as Error).message);
       } finally {
-        if (own === ticket.current) setLoading(false);
+        if (own === ticket.current && !request.signal.aborted) setLoading(false);
       }
     },
     [],
@@ -294,6 +290,7 @@ function App() {
       })
       .catch(() => {});
     void load(limit);
+    return () => pending.current?.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -319,6 +316,7 @@ function App() {
   const selectedPosition = Math.max(0, chronological.findIndex(commit => commit.hash === selectedCommit?.hash));
   const branches = [...new Set((result?.commits || []).flatMap(commit =>
     commit.refs.filter(ref => ref.kind === "branch" || ref.kind === "remote").map(ref => ref.name)))].sort();
+  const branchSelection = branches.includes(branch) ? branch : "";
   const locate = (name: string) => {
     setBranch(name);
     if (!name) return;
@@ -369,10 +367,13 @@ function App() {
 
       {result?.available ? (
         <>
+          <p className="gt-freshness" role="status">
+            {result.sourceLabel} · {result.stale ? "离线记录" : result.cached ? "缓存" : "读取于"} {new Date(result.cachedAt ?? result.generatedAt).toLocaleString("zh-CN", { hour12: false })}
+          </p>
           <div className="gt-controls">
             <label>
               定位分支
-              <span className="wb-select" data-select-host=""><select value={branch} onChange={event => locate(event.target.value)}>
+              <span className="wb-select" data-select-host=""><select value={branchSelection} onChange={event => locate(event.target.value)}>
                 <option value="">全部历史</option>
                 {branches.map(name => <option key={name} value={name}>{name}</option>)}
               </select></span>
@@ -408,7 +409,7 @@ function App() {
 
           <div className="gt-body">
             <section className="gt-main" aria-label="时间轴">
-              {chronological.length ? <TimelineGraph commits={chronological} history={result.commits} lanes={Math.max(1,result.summary.lanes)} selected={selectedCommit?.hash??null} onSelect={setSelected} /> : <p className="gt-muted">没有匹配的提交</p>}
+              {chronological.length ? <TimelineGraph commits={chronological} history={result.commits} selected={selectedCommit?.hash??null} onSelect={setSelected} /> : <p className="gt-muted">没有匹配的提交</p>}
               {chronological.length > 0 && <div className="gt-scrubber">
                 <button type="button" disabled={selectedPosition === 0} onClick={() => setSelected(chronological[selectedPosition - 1].hash)} aria-label="较早提交">‹</button>
                 <input type="range" min={0} max={chronological.length - 1} value={selectedPosition}
@@ -428,8 +429,8 @@ function App() {
           {selectedCommit && <section className="gt-selected">
             <CommitDetail commit={selectedCommit} />
             <ChangeWorkspace key={selectedCommit.hash} commit={selectedCommit} />
-            {result.source === "remote" && /^[\w.-]+\/[\w.-]+$/.test(result.summary.root) &&
-              <a className="gt-external-commit" href={`https://github.com/${result.summary.root}/commit/${selectedCommit.hash}`} target="_blank" rel="noopener noreferrer">在 GitHub 打开提交 ↗</a>}
+            {result.source === "remote" && result.remote && /^[\w.-]+\/[\w.-]+$/.test(result.remote) &&
+              <a className="gt-external-commit" href={`https://github.com/${result.remote}/commit/${selectedCommit.hash}`} target="_blank" rel="noopener noreferrer">在 GitHub 打开提交 ↗</a>}
           </section>}
           {result.unverified?.length ? (
             <section className="gt-notes" aria-label="未核验项">

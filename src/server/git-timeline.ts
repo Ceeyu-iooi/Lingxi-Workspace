@@ -1112,41 +1112,31 @@ export class GitTimeline {
               error instanceof Error ? error.message : String(error),
             );
       const fallback = this.readDiskCache(remote, limit, { ignoreAge: true });
-      if (fallback) {
-        // 有旧缓存时优先展示旧缓存，同时把失败原因写进未核验项。
-        const stale: GitTimelineResult = {
-          ...fallback.result,
-          stale: true,
-          cached: true,
-          cachedAt: fallback.at.toISOString(),
-          code: failure.code,
-        };
-        stale.unverified = [
-          ...(stale.unverified ?? []),
-          `${GIT_TIMELINE_FAILURES[failure.code].reason}（${failure.message}）；当前展示 ${fallback.at.toLocaleString("zh-CN", { hour12: false })} 读取的缓存。`,
-        ];
-        return this.finalize(stale, this.signatureOf(stale), started);
-      }
-      // The installed package has no worktree, and an unauthenticated GitHub
-      // request may be rate-limited on its very first use. Only use the bundled
-      // snapshot when it is explicitly for the requested public repository.
+      // Upgrading a desktop install can leave an older cache beside the new
+      // bundled snapshot. Choose the most recently captured eligible history.
+      let saved: GitTimelineResult | undefined;
       try {
         const file = this.options.snapshotFile;
         if (file) {
           const bundle = JSON.parse(readFileSync(file, "utf8")) as {
             repository?: string; snapshots?: Record<string, GitTimelineResult>;
           };
-          const saved = bundle.repository === remote ? bundle.snapshots?.[String(limit)] : undefined;
-          if (saved?.available && Array.isArray(saved.commits) && saved.summary) {
-            const snapshot: GitTimelineResult = {
-              ...saved, cached: true, stale: true, code: failure.code,
-              unverified: [...(saved.unverified ?? []), `实时读取失败：${failure.message}`],
-            };
-            return this.finalize(snapshot, this.signatureOf(snapshot), started);
-          }
+          const candidate = bundle.repository === remote ? bundle.snapshots?.[String(limit)] : undefined;
+          if (candidate?.available && Array.isArray(candidate.commits) && candidate.summary) saved = candidate;
         }
       } catch {
         // A missing or malformed snapshot must not mask the original error.
+      }
+
+      const useDisk = fallback && (!saved || fallback.at.getTime() >= Date.parse(saved.cachedAt ?? saved.generatedAt));
+      const cached = useDisk ? fallback.result : saved;
+      if (cached) {
+        const cachedAt = useDisk ? fallback.at.toISOString() : cached.cachedAt ?? cached.generatedAt;
+        const stale: GitTimelineResult = {
+          ...cached, cached: true, stale: true, cachedAt, code: failure.code,
+          unverified: [...(cached.unverified ?? []), `实时读取失败：${failure.message}`],
+        };
+        return this.finalize(stale, this.signatureOf(stale), started);
       }
       const failed = unavailableGitTimeline(
         GIT_TIMELINE_FAILURES[failure.code].reason,

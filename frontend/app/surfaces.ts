@@ -13,7 +13,6 @@ const esc=(text:string)=>text.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>'
 async function mount(kind:SurfaceKind, origin?:Element|null) {
   const dialog=document.createElement('dialog');dialog.className='lingxi-surface';dialog.dataset.page=kind==='prices'?'prices':'preview';dialog.setAttribute('aria-label',kind==='prices'?'模型价格与汇率':kind==='design'?'设计规范':'设计系统预览');
   const layer:Layer={kind,dialog,focus:origin||document.activeElement};
-  (dialog as any)._openAnchor=origin;(dialog as any)._closeAnchor=origin;
   const body=document.createElement('div');body.className=kind.startsWith('preview')?'lingxi-preview':'lingxi-surface-content';dialog.append(body);
   dialog.addEventListener('cancel',event=>{event.preventDefault();back();});
   dialog.addEventListener('close',()=>{layer.dispose?.();dialog.remove();w.WorkbenchReact?.cleanup();},{once:true});

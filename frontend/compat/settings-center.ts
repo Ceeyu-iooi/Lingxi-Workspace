@@ -48,7 +48,6 @@
       focus = document.activeElement;
       const d = document.createElement("dialog");
       d.className = "control-dialog wb-redesign settings-center-modal lingxi-dialog";
-      d._closeAnchor=document.querySelector("#control-profile .account-avatar")||document.getElementById("control-profile");
       d.addEventListener("close",()=>d.remove(),{once:true});
       d.id = "settings-center-dialog";
       d.dataset.dialogSize="settings";

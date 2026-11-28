@@ -116,3 +116,29 @@ The Windows installer bundles Electron, Chromium, Node.js and a Win32 taskbar he
 - Cursor 图标来自 Cursor 官方品牌资源中的 2.5D Cube。 [Cursor 品牌规范](https://cursor.com/brand)
 - Gemini 标识来自 Simple Icons，SVG 素材使用 CC0 1.0，标识权利归其各自所有者。 [Simple Icons](https://github.com/simple-icons/simple-icons)
 - Antigravity 彩色图标来自 Google 官方媒体资源。 [Google Antigravity 媒体资源](https://antigravity.google/press)
+
+## Semanote-Agent Git 时间轴
+
+分支泳道、提交卡交互和差异解析移植自 Ceeyu-iooi/Semanote-Agent 的 GitTimeline.vue 与 gitPresentation.js（cd8842d）。
+
+MIT License
+
+Copyright (c) 2026 Ceeyu-iooi and Semanote-Agent contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

@@ -7,32 +7,30 @@ const quiet = () => document.documentElement.dataset.motion === 'reduced' || mat
 const ease = 'cubic-bezier(.22,1,.36,1)';
 const nativeShow = HTMLDialogElement.prototype.showModal;
 const nativeClose = HTMLDialogElement.prototype.close;
-const origins = new WeakMap<HTMLDialogElement, DOMRect>();
 const closing = new WeakSet<HTMLDialogElement>();
-let trigger: Element | null = null,triggerRect:DOMRect|null=null,triggerAt=0;
-document.addEventListener('click', event => { triggerAt=performance.now(); trigger = event.target instanceof Element ? event.target.closest('button,a,label,[role=button]') : null;triggerRect=anchor(trigger); }, true);
-function anchor(element: Element | DOMRect | null | undefined) {
-  if (element instanceof DOMRect) return element;
-  if (!element?.isConnected) return null;
-  const rect = element.getBoundingClientRect();
-  return rect.width && rect.height ? rect : null;
-}
-function expand(node: HTMLElement, origin: DOMRect | null, leaving = false) {
-  if (quiet()) return Promise.resolve();
-  const rect = node.getBoundingClientRect();
-  const x = origin ? origin.left + origin.width / 2 - rect.left - rect.width / 2 : 0;
-  const y = origin ? origin.top + origin.height / 2 - rect.top - rect.height / 2 : 8;
-  const start = { opacity: 0, transform: origin ? `translate(${x}px,${y}px) scale(.08)` : 'translateY(8px) scale(.98)' };
-  const end = { opacity: 1, transform: 'translate(0,0) scale(1)' };
-  node.getAnimations().forEach(animation => animation.cancel());
-  return node.animate(leaving ? [end,start] : [start,end], { duration: leaving ? 200 : 260, easing: ease }).finished.catch(() => {});
+let pointerActivation = false;
+let activationTimer = 0;
+document.addEventListener('click', event => {
+  pointerActivation = event.detail > 0;
+  clearTimeout(activationTimer);
+  activationTimer = window.setTimeout(() => { pointerActivation = false; }, 0);
+}, true);
+
+function animateDialog(dialog: HTMLDialogElement, leaving = false) {
+  const rest = { opacity: 1, transform: 'scale(1)' };
+  const faded = { opacity: 0, transform: 'scale(.98)' };
+  dialog.getAnimations().forEach(animation => animation.cancel());
+  return dialog.animate(leaving ? [rest, faded] : [faded, rest], {
+    duration: leaving ? 120 : 180,
+    easing: ease,
+  }).finished.catch(() => {});
 }
 const dragDisposers=new WeakMap<HTMLDialogElement,()=>void>();
 function draggable(dialog:HTMLDialogElement,header:HTMLElement){
  dragDisposers.get(dialog)?.();let x=0,y=0,startX=0,startY=0,baseX=0,baseY=0,id:number|null=null,frame=0;
  const abort=new AbortController();
  const paint=()=>{frame=0;const rect=dialog.getBoundingClientRect(),scale=rect.width/Math.max(1,dialog.offsetWidth)||1;dialog.style.translate=`${x/scale}px ${y/scale}px`;};
- const clamp=()=>{if(!dialog.open||closing.has(dialog)||(dialog as any)._motionFrame||dialog.getAnimations().some(animation=>animation.pending||animation.playState==='running'))return;const rect=dialog.getBoundingClientRect();x+=Math.max(12-rect.left,Math.min(0,innerWidth-12-rect.right));y+=Math.max(12-rect.top,Math.min(0,innerHeight-12-rect.bottom));paint();};
+ const clamp=()=>{if(!dialog.open||closing.has(dialog)||dialog.getAnimations().some(animation=>animation.pending||animation.playState==='running'))return;const rect=dialog.getBoundingClientRect();x+=Math.max(12-rect.left,Math.min(0,innerWidth-12-rect.right));y+=Math.max(12-rect.top,Math.min(0,innerHeight-12-rect.bottom));paint();};
  header.addEventListener('pointerdown',event=>{if(event.button!==0||(event.target as Element).closest('button,a,input,select,textarea,summary,[role=button]'))return;dialog.getAnimations().forEach(animation=>animation.cancel());startX=event.clientX;startY=event.clientY;baseX=x;baseY=y;id=event.pointerId;header.setPointerCapture(id);dialog.dataset.dragging='';event.preventDefault();},{signal:abort.signal});
  header.addEventListener('pointermove',event=>{if(id!==event.pointerId)return;const rect=dialog.getBoundingClientRect();x=Math.max(x+12-rect.left,Math.min(baseX+event.clientX-startX,x+innerWidth-12-rect.right));y=Math.max(y+12-rect.top,Math.min(baseY+event.clientY-startY,y+innerHeight-12-rect.bottom));if(!frame)frame=requestAnimationFrame(paint);},{signal:abort.signal});
  const finish=()=>{id=null;delete dialog.dataset.dragging;};header.addEventListener('pointerup',finish,{signal:abort.signal});header.addEventListener('pointercancel',finish,{signal:abort.signal});header.addEventListener('lostpointercapture',finish,{signal:abort.signal});window.addEventListener('resize',clamp,{signal:abort.signal});
@@ -50,22 +48,21 @@ HTMLDialogElement.prototype.showModal = function () {
   this.querySelectorAll('.control-dialog-actions,.wb-dialog-foot').forEach(footer=>{const buttons=[...footer.children].filter(child=>child instanceof HTMLButtonElement);buttons.sort((a,b)=>Number(a.classList.contains('btn')&&!a.classList.contains('ghost')&&!a.classList.contains('danger'))-Number(b.classList.contains('btn')&&!b.classList.contains('ghost')&&!b.classList.contains('danger'))).forEach(button=>footer.append(button));});
   nativeShow.call(this);
   const clamp=header&&!this.classList.contains('valuation-modal')?draggable(this,header):undefined;
-  const origin = anchor((this as any)._openAnchor || (performance.now()-triggerAt<1000?triggerRect:null) || document.activeElement);
-  if (origin) origins.set(this, origin);
-  if (!(this as any)._skipMotion && !quiet()) {this.style.opacity='0';(this as any)._motionFrame=requestAnimationFrame(()=>{(this as any)._motionFrame=0;this.style.removeProperty('opacity');if(this.open&&!closing.has(this))void expand(this,origin).then(()=>clamp?.());});}
+  if (pointerActivation && !(this as any)._skipMotion && !quiet()) {
+    void animateDialog(this).then(() => clamp?.());
+  } else clamp?.();
 };
 HTMLDialogElement.prototype.close = function (value?: string) {
   if (!this.open || closing.has(this)) return;
-  closing.add(this);cancelAnimationFrame((this as any)._motionFrame);(this as any)._motionFrame=0;this.style.removeProperty("opacity");
-  const destination = anchor((this as any)._closeAnchor) || origins.get(this) || null;
+  closing.add(this);
   const finish = () => { closing.delete(this); if (this.open) nativeClose.call(this, value); };
-  if (quiet() || (this as any)._skipMotion) finish();
-  else void expand(this, destination, true).then(finish);
+  if (!pointerActivation || quiet() || (this as any)._skipMotion) finish();
+  else void animateDialog(this, true).then(finish);
 };
 function rows(root: HTMLElement, scrolling = false, keepVisible = false) {
   if (quiet()) return () => {};
-  const selector = '.lingxi-about-card,.usage-managed-key,.resource-summary,.resource-group,.lingxi-carousel,[data-motion-row],.preview-card,.preview-swatch,.wb-library-toolbar,.library-toolbar,.wb-library-head,.wb-empty,.empty,.usage-toolbar,.preview-type-row,.preview-section>h2,.preview-section>.preview-lead,.card,.hot-card,.ob-panel,.ob-stats>article,.control-section,.sum-card,.wb-library-card,.resource-row,.workspace-browser,.workspace-files,.dsh-setting-row,.wb-setting-switch,.usage-summary>article,.usage-lifetime>article,.lingxi-account-details>section,.account-quota-window';
-  const selected = [...root.querySelectorAll<HTMLElement>(selector)].filter(node=>node.offsetHeight && !node.parentElement?.closest('.lingxi-carousel') && !(node.matches('.control-section')&&node.querySelector('.dsh-setting-row,.wb-setting-switch')));
+  const selector = '.lingxi-about-card,.usage-managed-key,.resource-summary,.resource-group,.lingxi-carousel,[data-motion-row],.preview-card,.preview-swatch,.wb-library-toolbar,.library-toolbar,.wb-library-head,.wb-empty,.empty,.preview-type-row,.preview-section>h2,.preview-section>.preview-lead,.card,.hot-card,.ob-panel,.ob-stats>article,.control-section,.sum-card,.wb-library-card,.resource-row,.workspace-browser,.workspace-files,.dsh-setting-row,.wb-setting-switch,.usage-summary>article,.usage-lifetime>article,.lingxi-account-details>section,.account-quota-window';
+  const selected = [...root.querySelectorAll<HTMLElement>(selector)].filter(node=>node.offsetHeight && !node.closest('.usage-toolbar,.skm-toolbar-wrap,.wb-library-toolbar,.library-toolbar,[data-overlay-portal]') && !node.parentElement?.closest('.lingxi-carousel') && !(node.matches('.control-section')&&node.querySelector('.dsh-setting-row,.wb-setting-switch')));
   const ancestors=new Set(selected);
   const candidates=selected.filter(node=>{for(let parent=node.parentElement;parent&&parent!==root;parent=parent.parentElement)if(ancestors.has(parent))return false;return true;});
   const grouped = candidates.map(node => ({node, top:node.getBoundingClientRect().top})).sort((a,b) => a.top-b.top);
@@ -96,5 +93,5 @@ function rows(root: HTMLElement, scrolling = false, keepVisible = false) {
   const preferences=new MutationObserver(restore);preferences.observe(document.documentElement,{attributes:true,attributeFilter:['data-motion']});
   return () => {observer?.disconnect();preferences.disconnect();media.removeEventListener('change',restore);running.forEach(animation=>animation.cancel());running.clear();originalOpacity.forEach((opacity,node)=>{node.style.opacity=opacity;});};
 }
-(window as any).WorkbenchMotion = {rows,quiet,anchor,closeNow(dialog: HTMLDialogElement){(dialog as any)._skipMotion=true;nativeClose.call(dialog);delete (dialog as any)._skipMotion;}};
+(window as any).WorkbenchMotion = {rows,quiet,closeNow(dialog: HTMLDialogElement){(dialog as any)._skipMotion=true;nativeClose.call(dialog);delete (dialog as any)._skipMotion;}};
 export { rows, quiet };

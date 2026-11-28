@@ -363,6 +363,7 @@
     "route": "/api/git/timeline",
     "page": "/git-timeline.html",
     "contract": "src/shared/git-timeline.ts",
+    "presentation": "frontend/app/git-presentation.ts",
     "server": "src/server/git-timeline.ts",
     "styles": "static/git-timeline.css",
     "readOnly": true

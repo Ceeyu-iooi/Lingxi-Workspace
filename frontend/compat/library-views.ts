@@ -73,7 +73,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       view: "library",
       overview: null,
       agents: [],
-      workspaces: [],
       presets: [],
       tags: [],
       activity: [],
@@ -85,7 +84,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       },
       agentCounts: {},
       agentSkills: {},
-      entries: {},
       detail: null,
       error: "",
       busy: false,
@@ -238,10 +236,10 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       return { total, synced };
     }
 
-    // 模块内上部横向导航：一级页签 + 二级横向分组，取代 skills-manager 的 220px 应用侧栏。
+    // 模块页签。Agent 详情从 Agents 列表进入。
     function navItem(view, label, ico, count, cls = "") {
-      const active = state.view === view || (view === "agents" && state.view.startsWith("agent:")) || (view === "workspaces" && state.view.startsWith("workspace:"));
-      return `<button class="skm-nav${active ? " is-active" : ""}${cls ? " " + cls : ""}" data-act="nav" data-view="${view}"${active ? ' aria-current="page"' : ""}>
+      const active = state.view === view || (view === "agents" && state.view.startsWith("agent:"));
+      return `<button class="skm-nav${active ? " is-active" : ""}${cls ? " " + cls : ""}" data-act="nav" data-view="${view}" aria-label="${esc(label)}"${active ? ' aria-current="page"' : ""}>
         ${icon(ico, 15, "skm-nav-ico")}<span class="skm-nav-label">${esc(label)}</span>${count != null ? `<span class="skm-nav-count">${nf(count)}</span>` : ""}</button>`;
     }
 
@@ -254,66 +252,11 @@ import { skillCategories } from "../../src/shared/skill-presentation";
           ${navItem("overview", "概览", "dashboard")}
           ${navItem("library", "技能库", "layers", state.overview?.libraryTotal ?? state.library.total)}
           ${navItem("agents", "Agents", "bot")}
-          ${navItem("workspaces", "工作区", "folderOpen")}
         </nav>
         <div class="skm-topbar-actions">
           <button class="skm-icon-btn" data-act="refresh" aria-label="刷新数据" title="刷新数据">${icon("refresh", 16)}</button>
           ${navItem("settings", "设置", "settings", null, "skm-nav-settings")}
         </div>`;
-    }
-
-    function subnavHTML() {
-      const groupHead = (label, open, key) =>
-        `<button class="skm-subnav-label" data-act="group" data-group="${key}" aria-expanded="${open ? "true" : "false"}" title="${open ? "收起" : "展开"}${esc(label)}">${icon(open ? "chevronDown" : "chevronRight", 12, "skm-chev")}<span>${esc(label)}</span></button>`;
-      const open = state.groups || (state.groups = { presets: true, agents: true, workspaces: true });
-      const presets = state.presets || [];
-      const linked = state.workspaces.filter((w) => w.kind === "linked");
-      const project = state.workspaces.find((w) => w.kind === "project");
-      const group = (key, label, body) => `<div class="skm-subnav-group${open[key] ? "" : " is-collapsed"}">
-          ${groupHead(label, open[key], key)}
-          ${open[key] ? `<div class="skm-subnav-track">${body}</div>` : ""}
-        </div>`;
-      return [
-        group(
-          "presets",
-          "预设",
-          presets
-            .map(
-              (p) => `<button class="skm-nav skm-nav-chip${state.library.preset === p.id ? " is-active" : ""}" data-act="preset" data-preset="${esc(p.id)}" title="${esc(p.description || p.name)}">
-            <span class="skm-nav-ico skm-preset-mark" aria-hidden="true">${icon("spark", 12)}</span><span class="skm-nav-label">${esc(p.name)}</span><span class="skm-nav-count">${nf((p.skillIds || []).length)}</span></button>`,
-            )
-            .join("") +
-            `<button class="skm-nav skm-nav-chip is-muted" data-act="new-preset">${icon("plus", 13, "skm-nav-ico")}<span class="skm-nav-label">新建预设</span></button>`,
-        ),
-        group(
-          "agents",
-          "Agents",
-
-            state.agents
-              .map(
-                (a) => `<button class="skm-nav skm-nav-chip${state.view === "agent:" + a.id ? " is-active" : ""}" data-act="nav" data-view="agent:${esc(a.id)}" title="${esc(a.globalPath)}">
-            ${agentTile(a, 18)}<span class="skm-nav-label">${esc(a.name)}</span>
-            <span class="skm-nav-count">${state.agentCounts[a.id] == null ? "…" : nf(state.agentCounts[a.id])}</span>
-            <span class="skm-dot sm${a.exists ? " is-on" : ""}" title="${a.exists ? "目录已创建" : "目录未创建"}"></span></button>`,
-              )
-              .join(""),
-        ),
-        group(
-          "workspaces",
-          "工作区",
-
-            (project
-              ? `<button class="skm-nav skm-nav-chip${state.view === "workspace:" + project.id ? " is-active" : ""}" data-act="nav" data-view="workspace:${esc(project.id)}" title="${esc(project.root)}">
-            ${icon("folder", 13, "skm-nav-ico")}<span class="skm-nav-label">${esc(project.name)}</span><span class="skm-dot sm${project.exists ? " is-on" : ""}"></span></button>`
-              : "") +
-            linked
-              .map(
-                (w) => `<button class="skm-nav skm-nav-chip${state.view === "workspace:" + w.id ? " is-active" : ""}" data-act="nav" data-view="workspace:${esc(w.id)}" title="${esc(w.root)}">
-            ${icon("link", 13, "skm-nav-ico")}<span class="skm-nav-label">${esc(w.name)}</span><span class="skm-dot sm${w.exists ? " is-on" : ""}"></span></button>`,
-              )
-              .join(""),
-        ),
-      ].join("");
     }
 
     function overviewHTML() {
@@ -322,7 +265,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
         return `<div class="skm-page is-narrow">${pageHead("概览")}${alertBox(state.error || "正在读取技能管理数据…", false)}</div>`;
       }
       const agents = o.agents || [];
-      const workspaces = o.workspaces || [];
       const missingAgents = agents.filter((a) => !a.exists);
       const connected = agents.filter((a) => a.exists && a.enabled);
       const { total, synced } = coverCount();
@@ -331,7 +273,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       const dirRows = [
         { name: "中央技能库", path: o.library?.root, ok: true, tag: "中央库" },
         ...agents.map((a) => ({ name: a.name, path: a.globalPath, ok: a.exists, tag: a.origin === "builtin" ? "内置 Agent" : "自定义 Agent", agent: a.id })),
-        ...workspaces.filter((w) => w.kind !== "global").map((w) => ({ name: w.name, path: w.root, ok: w.exists, tag: w.kind === "project" ? "项目工作区" : "关联目录", ws: w.id })),
       ];
       const recentHTML = recent.length
         ? `<section class="skm-section">
@@ -346,7 +287,7 @@ import { skillCategories } from "../../src/shared/skill-presentation";
           </section>`
         : "";
       return `<div class="skm-page is-narrow">
-        ${pageHead("你好！", { sub: `技能库中 ${nf(total)} 个技能 · 已接入 ${nf(connected.length)} 个 Agent · ${nf(workspaces.length)} 个工作区` })}
+        ${pageHead("概览", { sub: `技能库中 ${nf(total)} 个技能 · 已接入 ${nf(connected.length)} 个 Agent` })}
         ${state.error ? alertBox(state.error) : ""}
         ${missingAgents.length ? `<div class="skm-setup-card">
           <span class="skm-setup-ico">${icon("alert", 18)}</span>
@@ -360,16 +301,15 @@ import { skillCategories } from "../../src/shared/skill-presentation";
         </div>
         <div class="skm-actions">
           <button class="skm-btn skm-btn-primary" data-act="scan">${icon("scan", 16)}扫描本机目录</button>
-          <button class="skm-btn skm-btn-secondary" data-act="new-workspace">${icon("plus", 16)}关联工作区目录</button>
         </div>
         <section class="skm-section">
           <h2 class="skm-section-title">登记目录</h2>
           <div class="skm-panel skm-dir-list">
             ${dirRows.map((row) => `<div class="skm-dir-row">
-              <span class="skm-dir-ico">${icon(row.agent ? "bot" : row.ws ? "folder" : "layers", 15)}</span>
+              <span class="skm-dir-ico">${icon(row.agent ? "bot" : "layers", 15)}</span>
               <div class="skm-dir-main"><div class="skm-dir-name">${esc(row.name)}<span class="skm-mini-pill">${esc(row.tag)}</span></div><code class="skm-path" title="${esc(row.path)}">${esc(row.path || "—")}</code></div>
               <span class="skm-status ${row.ok ? "is-ok" : "is-muted"}"><span class="skm-dot sm${row.ok ? " is-on" : ""}"></span>${row.ok ? "已创建" : "目录未创建"}</span>
-              ${row.agent ? `<button class="skm-icon-btn" data-act="nav" data-view="agent:${esc(row.agent)}" title="查看 Agent">${icon("chevronRight", 15)}</button>` : row.ws ? `<button class="skm-icon-btn" data-act="nav" data-view="workspace:${esc(row.ws)}" title="查看工作区">${icon("chevronRight", 15)}</button>` : ""}
+              ${row.agent ? `<button class="skm-icon-btn" data-act="nav" data-view="agent:${esc(row.agent)}" title="查看 Agent">${icon("chevronRight", 15)}</button>` : ""}
             </div>`).join("")}
           </div>
         </section>
@@ -377,7 +317,7 @@ import { skillCategories } from "../../src/shared/skill-presentation";
           <h2 class="skm-section-title">索引与只读边界</h2>
           <div class="skm-panel skm-readonly">
             <div class="skm-readonly-row">${icon("lock", 16)}<div><b>不会执行技能内容</b><span>预览只读取 SKILL.md 文本；不会运行其中的脚本、命令或任何安装步骤。</span></div></div>
-            <div class="skm-readonly-row">${icon("folder", 16)}<div><b>只扫描已登记目录</b><span>中央库、Agent 目录与项目工作区；不会遍历整块磁盘。</span></div></div>
+            <div class="skm-readonly-row">${icon("folder", 16)}<div><b>只扫描已登记目录</b><span>只读取已登记的目录。</span></div></div>
             <div class="skm-readonly-row">${icon("fileText", 16)}<div><b>索引状态</b><span>${o.scan ? `上次索引 ${esc(fmtTime(o.scan.at))} · 收录 ${nf(o.scan.count)} 项 · 新吸收 ${nf(o.scan.absorbed)} 项` : "尚未建立索引。首次扫描会生成只读快照。"}</span></div></div>
           </div>
         </section>
@@ -414,11 +354,11 @@ import { skillCategories } from "../../src/shared/skill-presentation";
         return emptyState({
           title: totalZero ? "技能库还没有技能" : "没有可显示的 Skills",
           hint: totalZero
-            ? "中央技能库为空。可以扫描本机已登记的 Agent 目录，或先把已有技能目录登记为工作区。"
+            ? "中央技能库为空。扫描本机已登记的 Agent 目录以收录技能。"
             : "当前筛选条件下没有匹配的技能。可以清除筛选，或换一个关键词。",
           action: filtered
             ? '<button class="skm-btn skm-btn-secondary" data-act="clear-filters">清除筛选</button>'
-            : '<div class="skm-empty-actions"><button class="skm-btn skm-btn-primary" data-act="scan">扫描本机目录</button><button class="skm-btn skm-btn-secondary" data-act="new-workspace">关联工作区</button></div>',
+            : '<div class="skm-empty-actions"><button class="skm-btn skm-btn-primary" data-act="scan">扫描本机目录</button></div>',
         });
       }
       const body = l.view === "grid"
@@ -450,14 +390,17 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       const preset = l.preset ? state.presets.find((p) => p.id === l.preset) : null;
       return `<div class="skm-page">
         ${pageHead("技能库", { badge: nf(l.total), actions: `<button class="skm-btn skm-btn-primary skm-btn-sm" data-act="scan">${icon("scan", 15)}扫描本机</button>` })}
-        ${preset ? `<div class="skm-filter-banner">正在查看预设「${esc(preset.name)}」<button class="skm-link" data-act="clear-preset">退出预设</button></div>` : ""}
         <div class="skm-toolbar-wrap">
         <div class="skm-toolbar">
           <div class="skm-toolbar-main">
             <label class="skm-search">${icon("search", 16)}<input class="skm-input" type="search" data-lib-search placeholder="搜索技能名称或简介" value="${esc(l.q)}" aria-label="搜索技能" autocomplete="off" spellcheck="false"></label>
             <div class="skm-segmented" role="group" aria-label="按部署状态筛选">${seg}</div>
+            <label class="skm-field is-inline">预设<select class="skm-input skm-select" data-library-preset>
+              <option value="">全部预设</option>${state.presets.map(item => `<option value="${esc(item.id)}"${preset?.id === item.id ? " selected" : ""}>${esc(item.name)}</option>`).join("")}
+            </select></label>
           </div>
           <div class="skm-toolbar-actions">
+            <button class="skm-btn skm-btn-ghost skm-btn-sm" data-act="new-preset">${icon("plus", 14)}新建预设</button>
             <div class="skm-segmented is-icon" role="group" aria-label="视图">
               <button class="skm-seg skm-seg-icon${l.view === "grid" ? " is-active" : ""}" data-act="lib-view" data-view="grid" aria-pressed="${l.view === "grid"}" title="网格视图">${icon("grid", 15)}</button>
               <button class="skm-seg skm-seg-icon${l.view === "list" ? " is-active" : ""}" data-act="lib-view" data-view="list" aria-pressed="${l.view === "list"}" title="列表视图">${icon("list", 15)}</button>
@@ -502,7 +445,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       const a = state.agents.find((x) => x.id === id);
       if (!a) return `<div class="skm-page">${pageHead("Agent 未找到")}${emptyState({ title: "没有这个 Agent", hint: "它可能已被移除，或链接已失效。", action: '<button class="skm-btn skm-btn-secondary" data-act="nav" data-view="agents">返回 Agents</button>' })}</div>`;
       const skills = state.agentSkills[id];
-      const bindings = state.workspaces.filter((w) => (w.agentIds || []).includes(id));
       return `<div class="skm-page">
         <header class="skm-page-head">
           <div class="skm-page-head-main">
@@ -523,12 +465,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
           <div class="skm-kv"><span>项目相对目录</span><b class="skm-mono">${esc(a.projectRelative || "无")}</b></div>
         </div>
         <section class="skm-section">
-          <h2 class="skm-section-title">工作区绑定</h2>
-          <div class="skm-panel skm-bind-list">
-            ${bindings.length ? bindings.map((w) => `<button class="skm-bind-row" data-act="nav" data-view="workspace:${esc(w.id)}"><span class="skm-dir-ico">${icon(w.kind === "linked" ? "link" : "globe", 15)}</span><span>${esc(w.name)}</span><span class="skm-mini-pill">${w.kind === "global" ? "全局" : w.kind === "project" ? "项目" : "关联"}</span>${icon("chevronRight", 14)}</button>`).join("") : '<p class="skm-inline-note">尚未绑定到任何工作区。</p>'}
-          </div>
-        </section>
-        <section class="skm-section">
           <div class="skm-section-head"><h2 class="skm-section-title">此 Agent 的技能</h2><button class="skm-btn skm-btn-ghost skm-btn-sm" data-act="refresh-agent" data-id="${esc(a.id)}">${icon("refresh", 14)}刷新</button></div>
           ${skills
             ? (skills.items.length
@@ -536,98 +472,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
               : emptyState({ title: "这个 Agent 目录还没有技能", hint: a.exists ? "目录存在，但其中没有检测到 SKILL.md。" : "目录尚未创建，因此没有任何技能可读取。", action: `<button class="skm-btn skm-btn-secondary" data-act="edit-agent" data-id="${esc(a.id)}">检查目录路径</button>` }))
             : `<div class="skm-skeleton">${Array.from({ length: 3 }).map(() => '<div class="skm-skeleton-card"></div>').join("")}</div>`}
         </section>
-      </div>`;
-    }
-
-    function workspaceCard(w) {
-      const kindLabel = w.kind === "global" ? "全局" : w.kind === "project" ? "项目" : "关联";
-      const ico = w.kind === "global" ? "globe" : w.kind === "project" ? "folder" : "link";
-      return `<button class="skm-ws-card" data-act="nav" data-view="workspace:${esc(w.id)}">
-        <span class="skm-ws-ico">${icon(ico, 18)}</span>
-        <div class="skm-ws-main">
-          <div class="skm-ws-name">${esc(w.name)}<span class="skm-mini-pill">${kindLabel}</span><span class="skm-status ${w.exists ? "is-ok" : "is-muted"}"><span class="skm-dot sm${w.exists ? " is-on" : ""}"></span>${w.exists ? "目录已创建" : "目录未创建"}</span></div>
-          <code class="skm-path" title="${esc(w.root || "由各 Agent 的全局目录组成")}">${esc(w.root || "由各 Agent 的全局目录组成")}</code>
-          <p class="skm-ws-meta">${nf((w.agentIds || []).length)} 个 Agent${w.kind === "global" ? ` · 中央库 ${nf(state.overview?.libraryTotal ?? 0)} 个技能` : ""}</p>
-        </div>
-        ${icon("chevronRight", 16, "skm-ws-chev")}
-      </button>`;
-    }
-
-    function workspacesHTML() {
-      const linked = state.workspaces.filter((w) => w.kind === "linked");
-      const project = state.workspaces.filter((w) => w.kind === "project");
-      return `<div class="skm-page">
-        ${pageHead("工作区", { badge: nf(state.workspaces.length), sub: "技能在中央库与各 Agent 目录之间的映射。关联目录只读取已存在的绝对路径。", actions: `<button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="refresh-workspaces">${icon("refresh", 15)}刷新</button><button class="skm-btn skm-btn-primary skm-btn-sm" data-act="new-workspace">${icon("plus", 15)}关联目录</button>` })}
-        ${state.error ? alertBox(state.error) : ""}
-        <section class="skm-section">
-          <h2 class="skm-section-title">全局工作区</h2>
-          <div class="skm-ws-grid">${state.workspaces.filter((w) => w.kind === "global").map(workspaceCard).join("")}</div>
-        </section>
-        <section class="skm-section">
-          <h2 class="skm-section-title">项目工作区</h2>
-          ${project.length ? `<div class="skm-ws-grid">${project.map(workspaceCard).join("")}</div>` : emptyState({ title: "没有项目工作区", hint: "项目工作区来自当前工作目录，目录不存在时也会如实显示。" })}
-        </section>
-        <section class="skm-section">
-          <div class="skm-section-head"><h2 class="skm-section-title">关联目录（${nf(linked.length)}）</h2><button class="skm-btn skm-btn-ghost skm-btn-sm" data-act="new-workspace">${icon("plus", 14)}关联目录</button></div>
-          ${linked.length ? `<div class="skm-ws-grid">${linked.map(workspaceCard).join("")}</div>` : `<div class="skm-panel skm-empty-inline"><span>${icon("link", 18)}</span><p>尚未关联任何目录。关联后可浏览其中的技能条目，并与中央库对照。</p><button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="new-workspace">关联目录</button></div>`}
-        </section>
-      </div>`;
-    }
-
-    function entryHTML(item) {
-      const zh = zhName(item);
-      const desc = zhDescription(item) || String(item.description || "").trim();
-      const missing = item.missingLocalization;
-      return `<div class="skm-entry">
-        <span class="skm-entry-ico">${icon("fileText", 16)}</span>
-        <div class="skm-entry-main">
-          <div class="skm-entry-name">${esc(item.name)}${zh ? `<span class="skm-row-zh">${esc(zh)}</span>` : ""}${missing ? '<span class="skm-mini-pill is-warn">缺少中文资料</span>' : ""}</div>
-          ${desc ? `<p class="skm-entry-desc">${esc(desc)}</p>` : ""}
-          <code class="skm-path" title="${esc(item.path)}">${esc(item.path)}</code>
-          <div class="skm-entry-pills">
-            <span class="skm-mini-pill ${item.inLibrary ? "is-ok" : ""}">${item.inLibrary ? "已在技能库" : "未收录"}</span>
-            <span class="skm-mini-pill">${deployText(item.deployStatus)}</span>
-            ${(item.tags || []).map((t) => `<span class="skm-tag">${esc(t)}</span>`).join("")}
-          </div>
-        </div>
-        <span class="skm-entry-agent" title="${esc(agentName(item.agentId))}">${agentTile({ id: item.agentId }, 24)}<span>${esc(agentName(item.agentId))}</span></span>
-      </div>`;
-    }
-
-    function workspaceDetailHTML(id) {
-      const w = state.workspaces.find((x) => x.id === id);
-      if (!w) return `<div class="skm-page">${pageHead("工作区未找到")}${emptyState({ title: "没有这个工作区", hint: "它可能已被移除。", action: '<button class="skm-btn skm-btn-secondary" data-act="nav" data-view="workspaces">返回工作区</button>' })}</div>`;
-      const cache = state.entries[id];
-      const data = cache?.data;
-      const items = data?.items || [];
-      const rows = data?.rows || [];
-      const actionLabel = { "add-to-workspace": "待加入工作区", "add-to-library": "待收录到库", "in-sync": "已同步", "differs": "内容不同", external: "外部目录" };
-      return `<div class="skm-page">
-        <header class="skm-page-head">
-          <div class="skm-page-head-main">
-            <h1 class="skm-page-title skm-title-with-tile">${icon(w.kind === "linked" ? "link" : w.kind === "global" ? "globe" : "folder", 20)}${esc(w.name)}<span class="skm-badge">${data ? nf(items.length) : "…"}</span><span class="skm-mini-pill">${w.kind === "global" ? "全局" : w.kind === "project" ? "项目" : "关联"}</span></h1>
-            <p class="skm-page-sub skm-path-line">${icon("folder", 13)}<code class="skm-path" title="${esc(w.root || "由各 Agent 的全局目录组成")}">${esc(w.root || "由各 Agent 的全局目录组成")}</code><span class="skm-status ${w.exists ? "is-ok" : "is-muted"}"><span class="skm-dot sm${w.exists ? " is-on" : ""}"></span>${w.exists ? "目录已创建" : "目录未创建"}</span></p>
-          </div>
-          <div class="skm-page-actions">
-            <button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="ws-refresh" data-id="${esc(w.id)}">${icon("refresh", 14)}重新读取</button>
-            ${w.kind === "linked" ? `<button class="skm-btn skm-btn-ghost skm-btn-sm is-danger" data-act="ws-delete" data-id="${esc(w.id)}">${icon("trash", 14)}移除</button>` : ""}
-          </div>
-        </header>
-        ${state.error ? alertBox(state.error) : ""}
-        <div class="skm-agent-chips">${(w.agentIds || []).map((aid) => `<span class="skm-agent-chip">${agentTile({ id: aid }, 20)}${esc(agentName(aid))}</span>`).join("") || '<span class="skm-inline-note">没有绑定 Agent</span>'}</div>
-        <section class="skm-section">
-          <h2 class="skm-section-title">工作区目录条目</h2>
-          ${!cache || cache.loading ? `<div class="skm-skeleton">${Array.from({ length: 3 }).map(() => '<div class="skm-skeleton-card"></div>').join("")}</div>`
-            : cache.error ? alertBox(cache.error)
-            : items.length ? `<div class="skm-panel skm-entry-list">${items.map(entryHTML).join("")}</div>`
-            : emptyState({ title: w.exists ? "目录中没有技能" : "目录尚未创建", hint: w.exists ? "已读取该工作区，但没有在已登记的 Agent 目录中发现 SKILL.md。" : "工作区路径尚不存在。关联目录只读取本机已存在的绝对路径，不会创建目录。", action: w.kind === "linked" ? "" : `<button class="skm-btn skm-btn-secondary" data-act="nav" data-view="agents">检查 Agent 目录</button>` })}
-        </section>
-        ${data && rows.length ? `<section class="skm-section">
-          <h2 class="skm-section-title">库与工作区对照</h2>
-          <div class="skm-panel skm-table-wrap"><table class="skm-table"><thead><tr><th>技能</th><th>技能库</th><th>工作区</th><th>部署状态</th><th>建议动作</th></tr></thead><tbody>
-            ${rows.map((r) => `<tr><td>${esc(r.name)}${zhName(r) ? `<span class="skm-row-zh">${esc(zhName(r))}</span>` : ""}</td><td>${r.library ? "已收录" : "未收录"}</td><td>${r.workspace ? "存在" : "缺失"}</td><td>${esc(deployText(r.deployStatus))}</td><td><span class="skm-mini-pill">${esc(actionLabel[r.action] || r.action)}</span></td></tr>`).join("")}
-          </tbody></table></div>
-        </section>` : ""}
       </div>`;
     }
 
@@ -665,7 +509,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
               </div></div>
             </div>
             <div class="skm-set-row">
-              <div class="skm-set-label"><b>项目工作区路径</b><p>项目工作区中的技能目录会按 Agent 的项目相对目录解析。</p><code class="skm-path" title="${esc(s?.workspacePath || "")}">${esc(s?.workspacePath || "读取中…")}</code></div>
             </div>
             <div class="skm-set-row">
               <div class="skm-set-label"><b>索引状态</b><p>${scan ? `上次索引 ${esc(fmtTime(scan.at))}，读取 ${nf(scan.visited)} 个目录，收录 ${nf(scan.count)} 项。` : "尚未建立索引。扫描只读取已登记目录，不会执行技能内容。"}</p>${scan ? `<span class="skm-mini-pill ${scan.limited ? "is-warn" : "is-ok"}">${scan.limited ? "达到扫描上限" : "只读索引完成"}</span>` : ""}</div>
@@ -677,7 +520,7 @@ import { skillCategories } from "../../src/shared/skill-presentation";
           <h2 class="skm-section-title">只读与安全边界</h2>
           <div class="skm-panel skm-readonly">
             <div class="skm-readonly-row">${icon("lock", 16)}<div><b>不执行任何技能内容</b><span>SKILL.md 只作为文本预览；不会运行脚本、命令、安装器或 MCP 服务。</span></div></div>
-            <div class="skm-readonly-row">${icon("folder", 16)}<div><b>只扫描已登记目录</b><span>中央技能库、已登记的 Agent 目录与项目工作区；不会遍历整盘。</span></div></div>
+            <div class="skm-readonly-row">${icon("folder", 16)}<div><b>只扫描已登记目录</b><span>只读取已登记的目录。</span></div></div>
             <div class="skm-readonly-row">${icon("fileText", 16)}<div><b>中文展示不改源文件</b><span>中文名称与简介来自本地词目或当前 Profile 覆盖，不会上传或改写 SKILL.md。</span></div></div>
           </div>
         </section>
@@ -696,8 +539,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       if (state.view === "library") return libraryHTML();
       if (state.view === "agents") return agentsHTML();
       if (state.view.startsWith("agent:")) return agentDetailHTML(state.view.slice(6));
-      if (state.view === "workspaces") return workspacesHTML();
-      if (state.view.startsWith("workspace:")) return workspaceDetailHTML(state.view.slice(10));
       if (state.view === "settings") return settingsHTML();
       return overviewHTML();
     }
@@ -823,13 +664,18 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       delete root._wbUnsaved;
     }
 
+    let renderedTop = "";
     function paintTop() {
       const top = q("[data-skm-topbar]", root);
-      if (top) top.innerHTML = topbarHTML();
-      const sub = q("[data-skm-subnav]", root);
-      if (sub) {
-        const html = subnavHTML();
-        if (sub.innerHTML !== html) sub.innerHTML = html;
+      const html = topbarHTML();
+      if (top && renderedTop !== html) {
+        const active = top.contains(document.activeElement) ? document.activeElement : null;
+        const view = active?.dataset.view;
+        const action = active?.dataset.act;
+        top.innerHTML = html;
+        renderedTop = html;
+        if (view) q(`[data-view="${CSS.escape(view)}"]`, top)?.focus({preventScroll:true});
+        else if (action) q(`[data-act="${CSS.escape(action)}"]`, top)?.focus({preventScroll:true});
       }
     }
 
@@ -859,7 +705,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
         if (signal?.aborted) return;
         state.overview = d;
         state.agents = d.agents || [];
-        state.workspaces = d.workspaces || [];
         state.presets = d.presets || [];
         state.tags = d.tags || [];
         state.activity = d.activity || [];
@@ -944,21 +789,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       if (state.view === "agent:" + id) paintPage();
     }
 
-    async function loadEntries(id, force) {
-      if (!force && state.entries[id]?.data) return;
-      state.entries[id] = { loading: true };
-      paintPage();
-      try {
-        const d = await api("POST", "/workspace/entries", { id });
-        if (signal?.aborted) return;
-        state.entries[id] = { data: d };
-      } catch (err) {
-        if (signal?.aborted) return;
-        state.entries[id] = { error: err.message || "读取工作区失败" };
-      }
-      if (state.view === "workspace:" + id) paintPage();
-    }
-
     async function go(view) {
       if (state.view !== view) closeSheet(true);
       state.view = view;
@@ -966,7 +796,7 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       state.focusPage = true;
       paintTop();
       paintPage();
-      if (view === "overview" || view === "settings" || view === "agents" || view === "workspaces") {
+      if (view === "overview" || view === "settings" || view === "agents") {
         if (!state.overview) { await loadOverview(); paint(); }
         if (view === "settings" && !state.settings) { await loadSettings(); paintPage(); }
         if (view === "overview" && !state.library.loaded && (state.overview?.libraryTotal || 0) > 0) {
@@ -976,7 +806,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       }
       if (view === "library" && !state.library.loaded) await loadLibrary();
       if (view.startsWith("agent:")) await loadAgentSkills(view.slice(6));
-      if (view.startsWith("workspace:")) await loadEntries(view.slice(10));
       paintTop();
     }
 
@@ -990,7 +819,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       paint();
       if (state.view === "library") await loadLibrary();
       if (state.view.startsWith("agent:")) await loadAgentSkills(state.view.slice(6), true);
-      if (state.view.startsWith("workspace:")) await loadEntries(state.view.slice(10), true);
       notify("数据已刷新");
     }
 
@@ -1053,35 +881,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
           if (state.view.startsWith("agent:")) await loadAgentSkills(state.view.slice(6), true);
           notify(isNew ? "已添加 Agent" : "Agent 目录已保存");
         } catch (err) { notify(err.message || "保存失败", "error"); }
-      };
-    }
-
-    function openWorkspaceDialog() {
-      const agents = state.agents.filter((a) => a.projectRelative || a.id);
-      const body = `<div class="skm-dialog">
-        <p class="skm-inline-note">关联目录必须是本机已存在的绝对路径。登记后只读取其中的 SKILL.md，不会创建目录或执行技能。</p>
-        ${dialogForm([
-          { name: "name", label: "工作区名称（可选，最多 80 字）", value: "", max: 80 },
-          { name: "root", label: "目录绝对路径", value: "", max: 400, placeholder: "D:\\path\\to\\workspace" },
-        ])}
-        <div class="skm-field"><span>绑定 Agent</span><div class="skm-checks">${agents.map((a) => `<label class="skm-check"><input type="checkbox" name="agent" value="${esc(a.id)}" ${a.projectRelative ? "checked" : ""}><span>${esc(a.name)}</span></label>`).join("")}</div></div>
-        <div class="skm-dialog-actions"><button class="skm-btn skm-btn-secondary" data-dlg-cancel>取消</button><button class="skm-btn skm-btn-primary" data-dlg-save>关联目录</button></div>
-      </div>`;
-      const dlg = U().dialog("关联工作区目录", body);
-      q("[data-dlg-cancel]", dlg.body).onclick = () => dlg.close(true);
-      q("[data-dlg-save]", dlg.body).onclick = async () => {
-        const form = q("[data-form]", dlg.body);
-        const name = String(q('[name="name"]', form).value || "").trim();
-        const dir = String(q('[name="root"]', form).value || "").trim();
-        const agentIds = [...form.querySelectorAll('[name="agent"]:checked')].map((x) => x.value);
-        if (!dir || !/^[A-Za-z]:[\\/]|^\//.test(dir)) return notify("请填写本机绝对路径", "error");
-        try {
-          await api("POST", "/workspaces", { name: name || undefined, root: dir, agentIds });
-          dlg.close(true);
-          await loadOverview(true);
-          paint();
-          notify("工作区已关联");
-        } catch (err) { notify(err.message || "关联失败", "error"); }
       };
     }
 
@@ -1189,6 +988,12 @@ import { skillCategories } from "../../src/shared/skill-presentation";
     }
 
     function bindEvents(app) {
+      app.addEventListener("change", event => {
+        if (!event.target.matches("[data-library-preset]")) return;
+        state.library.preset = event.target.value;
+        state.library.offset = 0;
+        paintLibraryResults();
+      });
       app.addEventListener("click", async (ev) => {
         const card = ev.target.closest("[data-open-skill]");
         if (card && app.contains(card)) { await openSheet(card.dataset.openSkill); return; }
@@ -1196,19 +1001,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
         if (!target || !app.contains(target)) return;
         const act = target.dataset.act;
         if (act === "nav") { closeSheet(true); await go(target.dataset.view); return; }
-        if (act === "group") {
-          const key = target.dataset.group;
-          state.groups[key] = !state.groups[key];
-          paintTop();
-          return;
-        }
-        if (act === "preset") {
-          state.library.preset = target.dataset.preset || "";
-          state.library.offset = 0;
-          if (state.view !== "library") await go("library");
-          else { paintPage(); paintLibraryResults(); }
-          return;
-        }
         if (act === "lib-status") { state.library.status = target.dataset.status; state.library.offset = 0; paintPage(); return; }
         if (act === "lib-category") { state.library.category = target.dataset.category; state.library.offset = 0; await loadLibrary(); paintPage(); q(`[data-act=lib-category][data-category="${CSS.escape(state.library.category)}"]`,root)?.focus({preventScroll:true}); return; }
         if (act === "lib-source") { state.library.source = target.dataset.source; state.library.offset = 0; paintPage(); return; }
@@ -1229,10 +1021,8 @@ import { skillCategories } from "../../src/shared/skill-presentation";
           paintPage();
           return;
         }
-        if (act === "clear-preset") { state.library.preset = ""; state.library.offset = 0; paintPage(); return; }
         if (act === "refresh") { await refreshAll(); return; }
         if (act === "scan") { await scanLibrary(target); return; }
-        if (act === "new-workspace") { openWorkspaceDialog(); return; }
         if (act === "new-preset") { await openPresetDialog(); return; }
         if (act === "new-agent") { openAgentEditor(null); return; }
         if (act === "edit-agent") { openAgentEditor(state.agents.find((a) => a.id === target.dataset.id)); return; }
@@ -1270,18 +1060,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
           return;
         }
         if (act === "refresh-agent") { await loadAgentSkills(target.dataset.id, true); notify("已刷新"); return; }
-        if (act === "refresh-workspaces") { await loadOverview(true); paint(); notify("已刷新"); return; }
-        if (act === "ws-refresh") { await loadEntries(target.dataset.id, true); return; }
-        if (act === "ws-delete") {
-          const w = state.workspaces.find((x) => x.id === target.dataset.id);
-          confirmDialog("移除关联工作区", `确定移除「${w?.name || "该工作区"}」吗？只会移除登记，不会删除本机目录。`, async () => {
-            await api("POST", "/workspaces/delete", { id: target.dataset.id });
-            await loadOverview(true);
-            await go("workspaces");
-            notify("已移除工作区");
-          }, "移除");
-          return;
-        }
         if (act === "edit-library") {
           const current = state.settings?.libraryRoot || state.overview?.library?.root || "";
           const body = `<div class="skm-dialog"><p class="skm-inline-note">中央技能库路径必须是本机绝对路径。修改后不会移动或删除已有文件。</p>${dialogForm([{ name: "root", label: "中央技能库绝对路径", value: current, max: 400 }])}<div class="skm-dialog-actions"><button class="skm-btn skm-btn-secondary" data-dlg-cancel>取消</button><button class="skm-btn skm-btn-primary" data-dlg-save>保存</button></div></div>`;
@@ -1374,7 +1152,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
     root.classList.add("wb-fixed-layout");
     root.innerHTML = `<div class="skm-app skm-catalog" data-skm>
       <header class="skm-topbar" data-skm-topbar aria-label="技能管理导航"></header>
-      <div class="skm-subnav" data-skm-subnav aria-label="技能管理二级导航"></div>
       <main class="skm-main" data-skm-main><div class="skm-main-scroll"><div data-skm-page></div></div></main>
       <div class="skm-sheet" data-skm-sheet hidden></div>
       <div class="skm-live" aria-live="polite"></div>
@@ -1389,7 +1166,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       clearTimeout(state.searchTimer);
       try { priorDispose?.(); } catch {}
     };
-    state.groups = { presets: true, agents: true, workspaces: true };
     paint();
     await Promise.all([loadOverview(), loadSettings()]);
     if (signal?.aborted || !root.isConnected) return;
@@ -1398,7 +1174,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
     void loadAgentCounts();
     if (state.view === "library" && !state.library.loaded) await loadLibrary();
     if (state.view.startsWith("agent:")) await loadAgentSkills(state.view.slice(6));
-    if (state.view.startsWith("workspace:")) await loadEntries(state.view.slice(10));
   }
 
   window.LibraryViews = { ...(window.LibraryViews || {}), skills };

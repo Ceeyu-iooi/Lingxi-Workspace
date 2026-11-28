@@ -300,7 +300,7 @@
   color: var(--skm-text-2);
 }
 
-/* 二级横向导航：预设 / Agents / 工作区 分组铺开在一条可换行的轨道里 */
+/* 设计预览的旧分类栏 */
 .skm-subnav {
   display: flex;
   flex: none;
@@ -537,11 +537,7 @@
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
-  transition: background-color 0.14s var(--skm-ease), border-color 0.14s var(--skm-ease), color 0.14s var(--skm-ease), transform 0.1s var(--skm-ease);
-}
-
-.skm-btn:active:not(:disabled) {
-  transform: scale(0.98);
+  transition: background-color 0.14s var(--skm-ease), border-color 0.14s var(--skm-ease), color 0.14s var(--skm-ease);
 }
 
 .skm-btn:disabled {
@@ -2956,8 +2952,7 @@
 
   .skm-card:hover,
   .skm-agent-card:hover,
-  .skm-ws-card:hover,
-  .skm-btn:active {
+  .skm-ws-card:hover {
     transform: none;
   }
 }
@@ -3033,12 +3028,23 @@
 .skm-catalog .skm-topbar{background:var(--skm-surface);padding:10px 18px;min-height:56px}
 .skm-catalog .skm-subnav{background:var(--layer-panel);border-inline-end:1px solid var(--layer-border)}
 .skm-catalog .skm-main-scroll{background:var(--layer-panel)}
-.skm-catalog .skm-page-head{border-bottom:1px solid var(--layer-border);padding-bottom:16px;margin-bottom:16px}
-.skm-catalog .skm-page-title{font-size:clamp(24px,3vw,34px);letter-spacing:-.035em;line-height:1.15}
+.skm-catalog .skm-page-head{padding-bottom:8px;margin-bottom:12px}
+.skm-catalog .skm-page-title{font-size:24px;font-weight:500;line-height:1.3}
 .skm-catalog .skm-card-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,245px),1fr));gap:14px}
-.skm-catalog .skm-card{background:color-mix(in srgb,var(--section-tint,var(--accent)) 6%,var(--layer-panel));border-color:var(--layer-border);border-top:3px solid color-mix(in srgb,var(--section-tint,var(--accent)) 64%,var(--line));min-width:0;min-height:0}
+.skm-catalog .skm-card{background:color-mix(in srgb,var(--section-tint,var(--accent)) 6%,var(--layer-panel));border-color:var(--layer-border);min-width:0;min-height:0}
 .skm-catalog .skm-card:hover,.skm-catalog .skm-card:focus-visible{border-color:var(--accent)}
 .skm-catalog .skm-card-title{font-weight:650}
 .skm-catalog .skm-card-desc{line-height:1.65}
 .skm-catalog .skm-toolbar-wrap{background:var(--layer-panel)}
-@media(max-width:700px){.skm-catalog .skm-topbar{flex-wrap:wrap;gap:8px;padding:8px 12px}.skm-catalog .skm-brand{border:0}.skm-catalog .skm-nav-primary{order:3;flex-basis:100%}}
+@media(max-width:700px){.skm-catalog .skm-topbar{flex-wrap:wrap;gap:8px;padding:8px 12px}.skm-catalog .skm-brand{border:0}.skm-catalog .skm-topbar-actions{flex:0 1 auto;flex-wrap:wrap;min-width:0}.skm-catalog .skm-nav-primary{order:3;flex-basis:100%}}
+
+.skm-prompt-filters { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.skm-prompt-filters select { max-width:min(220px, 55vw); }
+.skm-prompt-more { padding:0 0 10px; }
+.skm-prompt-more > summary { width:fit-content; padding:6px 2px; color:var(--skm-text-3); cursor:pointer; }
+.skm-prompt-more .skm-chip-row { margin-top:4px; }
+.skm-prompt-tags { display:contents; }
+.skm-app :is(button, input, select, summary, [role="button"]):focus-visible {
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+}
