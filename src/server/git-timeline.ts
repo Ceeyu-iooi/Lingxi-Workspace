@@ -55,6 +55,58 @@ const NUMSTAT_PRETTY = "--pretty=format:%x1e%H";
 const REF_FORMAT =
   "--format=%(objectname)%1f%(*objectname)%1f%(refname)%1f%(creatordate:iso-strict)%1f%(objecttype)";
 const GITHUB_API = "https://api.github.com";
+const PUBLIC_HISTORY_REPOSITORY = "Ceeyu-iooi/Lingxi-Workspace";
+const PUBLIC_HISTORY_URL = "https://raw.githubusercontent.com/" + PUBLIC_HISTORY_REPOSITORY + "/git-history/git-timeline-snapshot.json";
+
+function gitHubHeaders(authenticated = true): Record<string, string> {
+  const token = authenticated ? (process.env.WORKBENCH_GIT_TOKEN ?? process.env.GITHUB_TOKEN ?? "").trim() : "";
+  return {
+    "User-Agent": "Lingxi-Workbench-Git-Timeline",
+    "X-GitHub-Api-Version": "2022-11-28",
+    ...(token ? { Authorization: /^(Bearer|token)\s/i.test(token) ? token : "Bearer " + token } : {}),
+  };
+}
+
+function publishedSnapshot(payload: string, remote: string, limit: number): GitTimelineResult | undefined {
+  const bundle = JSON.parse(payload) as { repository?: string; snapshots?: Record<string, GitTimelineResult> };
+  const snapshot = bundle.repository === remote ? bundle.snapshots?.[String(limit)] : undefined;
+  if (!snapshot?.available || snapshot.remote !== remote || !snapshot.summary || !snapshot.commits?.length ||
+      !Number.isFinite(Date.parse(snapshot.cachedAt ?? snapshot.generatedAt))) return undefined;
+  return snapshot;
+}
+
+function patchPath(value: string): string {
+  if (!value.startsWith('"')) return value.split("\t", 1)[0];
+  const raw = value.slice(1, value.lastIndexOf('"'));
+  const escaped = raw.replace(/\\([0-7]{3}|[\\trn"])/g, (_, part: string) => {
+    if (/^[0-7]{3}$/.test(part)) return String.fromCharCode(parseInt(part, 8));
+    return { "\\": "\\", t: "\t", r: "\r", n: "\n", '"': '"' }[part] ?? part;
+  });
+  return Buffer.from(escaped, "latin1").toString("utf8");
+}
+
+function parsePublicDiff(diff: string) {
+  return diff.split(/(?=^diff --git )/m).flatMap(patch => {
+    if (!patch.startsWith("diff --git ")) return [];
+    const hunk = patch.search(/^@@ /m);
+    const header = hunk < 0 ? patch : patch.slice(0, hunk);
+    const entry = /^rename to (.+)$/m.exec(header)?.[1];
+    const after = /^\+\+\+ (.+)$/m.exec(header)?.[1];
+    const before = /^--- (.+)$/m.exec(header)?.[1];
+    const binary = /^Binary files .+ and (.+) differ$/m.exec(header)?.[1];
+    const files = / ("b\/(?:[^"\\]|\\.)*"|b\/.+)$/m.exec(header.split("\n", 1)[0])?.[1];
+    const path = entry ? patchPath(entry) : patchPath((after === "/dev/null" ? before : after) ?? (binary === "/dev/null" ? files : binary) ?? files ?? "").replace(/^[ab]\//, "");
+    if (!path) return [];
+    let added = 0, deleted = 0;
+    if (hunk >= 0) {
+      for (const line of patch.slice(hunk).split("\n")) {
+        if (line.startsWith("+")) added += 1;
+        if (line.startsWith("-")) deleted += 1;
+      }
+    }
+    return [{ path, added: binary ? null : added, deleted: binary ? null : deleted, patch: hunk >= 0 ? patch : null }];
+  }).slice(0, 500);
+}
 const REPOSITORY_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 
 interface GitCommandResult {
@@ -611,11 +663,18 @@ export class GitTimeline {
   }
 
   private async fetchCommitFiles(repository: string, hash: string) {
-    const response = await httpsGet(`${GITHUB_API}/repos/${repository}/commits/${hash}?per_page=100`, {
-      "User-Agent": "Lingxi-Workbench-Git-Timeline",
-      "X-GitHub-Api-Version":"2022-11-28",
-    });
-    if (response.status!==200) throw Error("GitHub 提交详情暂不可用（HTTP "+response.status+"）");
+    const response = await httpsGet(
+      `${GITHUB_API}/repos/${repository}/commits/${hash}?per_page=100`, gitHubHeaders(),
+    );
+    if (response.status !== 200) {
+      if (repository.toLowerCase() === PUBLIC_HISTORY_REPOSITORY.toLowerCase()) {
+        const publicDiff = await httpsGet(`https://github.com/${PUBLIC_HISTORY_REPOSITORY}/commit/${hash}.diff`, {
+          ...gitHubHeaders(false), Accept: "text/plain",
+        });
+        if (publicDiff.status === 200 && publicDiff.body.startsWith("diff --git ")) return parsePublicDiff(publicDiff.body);
+      }
+      throw Error("GitHub 提交详情暂不可用（HTTP " + response.status + "）");
+    }
     const result = JSON.parse(response.body) as {files?:{filename:string; additions?:number; deletions?:number; patch?:string}[]};
     return (result.files??[]).filter(file=>typeof file.filename==="string").slice(0,100).map(file=>({
       path:file.filename,added:file.additions??null,deleted:file.deletions??null,patch:typeof file.patch==="string"?file.patch:null,
@@ -1093,7 +1152,7 @@ export class GitTimeline {
         const cached: GitTimelineResult = {
           ...stored.result,
           cached: true,
-          cachedAt: stored.at.toISOString(),
+          cachedAt: stored.result.cachedAt ?? stored.at.toISOString(),
         };
         this.memory.set(cacheKey, { at: stored.at.getTime(), limit, result: cached });
         return this.finalize(cached, this.signatureOf(cached), started);
@@ -1112,29 +1171,29 @@ export class GitTimeline {
               error instanceof Error ? error.message : String(error),
             );
       const fallback = this.readDiskCache(remote, limit, { ignoreAge: true });
-      // Upgrading a desktop install can leave an older cache beside the new
-      // bundled snapshot. Choose the most recently captured eligible history.
-      let saved: GitTimelineResult | undefined;
+      const published = await this.readPublishedHistory(remote, limit);
+      let bundled: GitTimelineResult | undefined;
       try {
         const file = this.options.snapshotFile;
-        if (file) {
-          const bundle = JSON.parse(readFileSync(file, "utf8")) as {
-            repository?: string; snapshots?: Record<string, GitTimelineResult>;
-          };
-          const candidate = bundle.repository === remote ? bundle.snapshots?.[String(limit)] : undefined;
-          if (candidate?.available && Array.isArray(candidate.commits) && candidate.summary) saved = candidate;
-        }
+        if (file) bundled = publishedSnapshot(readFileSync(file, "utf8"), remote, limit);
       } catch {
-        // A missing or malformed snapshot must not mask the original error.
+        // Ignore an invalid bundled snapshot.
       }
-
-      const useDisk = fallback && (!saved || fallback.at.getTime() >= Date.parse(saved.cachedAt ?? saved.generatedAt));
-      const cached = useDisk ? fallback.result : saved;
-      if (cached) {
-        const cachedAt = useDisk ? fallback.at.toISOString() : cached.cachedAt ?? cached.generatedAt;
+      const candidates = [published, bundled, fallback?.result].filter(
+        (candidate): candidate is GitTimelineResult => !!candidate,
+      );
+      const time = (candidate: GitTimelineResult) => Date.parse(candidate.cachedAt ?? candidate.generatedAt);
+      candidates.sort((left, right) => time(right) - time(left));
+      const history = candidates[0];
+      if (history === published && published) {
+        this.memory.set(cacheKey, { at: Date.now(), limit, result: published });
+        this.writeDiskCache(remote, limit, published);
+        return this.finalize(published, this.signatureOf(published), started);
+      }
+      if (history) {
         const stale: GitTimelineResult = {
-          ...cached, cached: true, stale: true, cachedAt, code: failure.code,
-          unverified: [...(cached.unverified ?? []), `实时读取失败：${failure.message}`],
+          ...history, cached: true, stale: true, code: failure.code,
+          unverified: [...(history.unverified ?? []), `实时读取失败：${failure.message}`],
         };
         return this.finalize(stale, this.signatureOf(stale), started);
       }
@@ -1237,16 +1296,28 @@ export class GitTimeline {
   }
 
   /** 通过 GitHub REST 拉取提交、分支与标签。 */
+  private async readPublishedHistory(remote: string, limit: number): Promise<GitTimelineResult | undefined> {
+    if (remote !== PUBLIC_HISTORY_REPOSITORY) return undefined;
+    try {
+      const response = await httpsGet(PUBLIC_HISTORY_URL, { ...gitHubHeaders(false), Accept: "application/json" });
+      const result = response.status === 200 ? publishedSnapshot(response.body, remote, limit) : undefined;
+      if (!result) return undefined;
+      return {
+        ...result,
+        sourceLabel: "公开发布记录",
+        cached: false,
+        stale: false,
+        unverified: ["实时接口不可用，使用公开仓库最近一次发布所生成的记录。"],
+      };
+    } catch {
+      return undefined;
+    }
+  }
+
   private async fetchRemote(remote: string, limit: number): Promise<RemoteSnapshot> {
     const notes: string[] = [];
-    const token = (process.env.WORKBENCH_GIT_TOKEN ?? process.env.GITHUB_TOKEN ?? "").trim();
-    const headers: Record<string, string> = {
-      "User-Agent": "Lingxi-Workbench-Git-Timeline",
-      "X-GitHub-Api-Version": "2022-11-28",
-    };
-    if (token) {
-      headers.Authorization = /^(Bearer|token)\s/i.test(token) ? token : `Bearer ${token}`;
-    }
+    const headers = gitHubHeaders();
+    const token = headers.Authorization;
 
     let requests = 0;
     const get = async (path: string): Promise<RemoteResponse> => {

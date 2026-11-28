@@ -2,7 +2,7 @@
 
 ![技术架构](docs/images/architecture.svg)
 
-前端以 React + TypeScript + Vite 构建 SPA，React 管理应用壳、路由和页面入口。`frontend/compat` 保存原有图表、编辑器与 DOM 交互适配，保留已经使用验证的行为；这些适配目前未全面开启严格类型检查。新页面入口、共享契约和 Node 后端通过严格 TypeScript 检查。应用内集成的第三方组件成品继续复用，不公开付费原源码或源码映射。
+前端以 React + TypeScript + Vite 构建 SPA，React 管理应用壳、路由与主应用入口。Git 时间轴是单独的 Vite 页面，仅这一入口编译 Semanote-Agent 的 Vue 组件。`frontend/compat` 保存原有图表、编辑器与 DOM 交互适配，保留已经使用验证的行为；这些适配目前未全面开启严格类型检查。新页面入口、共享契约和 Node 后端通过严格 TypeScript 检查。应用内集成的第三方组件成品继续复用，不公开付费原源码或源码映射。
 
 `scripts/web_launcher.mjs` 定位工程、启动自有 Node 子进程、核验版本/PID/Profile/service 身份、处理正常退出和受控资料迁移，不依赖终端当前目录。`src/server/main.ts` 用 Fastify 提供 HTTP 路由和构建后的页面资源，`src/shared` 保存共享接口。服务端模块覆盖业务、提示词、市场、技能、供应商适配、日志采集、证据汇总、历史计价与备份。
 
@@ -26,7 +26,7 @@ Electron 桌面使用自带 Chromium，JavaScript 主进程管理独立 Node.js 
 
 按小时趋势已取消（0.1.32），趋势只保留按日视图；`/api/usage/chart` 收到 `granularity=hour` 时明确报错，不保留隐藏入口或兼容开关。会话用量由 `/api/usage/sessions` 提供，它与 `/api/usage` 读取同一份已筛选行与同一套筛选规则，因此会话合计必然等于同条件的日汇总，不存在第二套口径。会话标识取日志稳定字段，未报告时归入“未识别会话”；字段未返回计入 unknown 并单独标注，缓存／推理等子集只显示已核验部分。
 
-横向 Git 时间轴由 `/api/git/timeline` 只读提供：`execFileSync` 逐参数调用 `git log`／`branch`／`tag`，8000ms 超时、24MiB 缓冲、无 shell 拼接、无网络；泳道按父子关系贪心分配并封顶 6 条，变更统计仅在 60 条内用一次 `--numstat` 计算，超出时字段保持 `null` 并附中文说明。结果缓存 15 秒，`version()` 只在内容签名变化时递增。页面 `git-timeline.html` 与主应用共用主题令牌，入口在帮助菜单。前端布局语义参考 Bootstrap 5.3.8，但只有项目自有的 `static/bootstrap-scope.css`（`.bs-scope`）生效，上游 `bootstrap.min.css` 仅作审计基线且从不全局引入。
+横向 Git 时间轴由 `/api/git/timeline` 只读提供：`execFileSync` 逐参数调用 `git log`／`branch`／`tag`，8000ms 超时、24MiB 缓冲、无 shell 拼接、无网络；桌面经 GitHub REST、公开发布记录或离线快照读取同一契约。图形泳道由 Semanote-Agent 前端依据引用和父提交关系生成，变更统计仅在 60 条内用一次 `--numstat` 计算，超出时字段保持 `null` 并附中文说明。结果缓存 15 秒，`version()` 只在内容签名变化时递增。页面 `git-timeline.html` 与主应用共用主题令牌，入口在帮助菜单。前端布局语义参考 Bootstrap 5.3.8，但只有项目自有的 `static/bootstrap-scope.css`（`.bs-scope`）生效，上游 `bootstrap.min.css` 仅作审计基线且从不全局引入。
 
 六套侧栏与强调色主题的浅深配色在 `src/shared/theme-presets.ts` 中维护；跨页面外观消息按 profileId 隔离。页面缩放使用共享内容层，不与字号设置叠加。DeepSeek 授权仅在用户点击获取时打开 Electron 官方临时窗口，完成后关闭本次连接；服务端只保存匹配 Key 所需的平台凭据，不记录密码、页面正文或网络请求原文。
 

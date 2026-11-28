@@ -138,7 +138,9 @@ import {extraAgentSources, extraAgentIds, isExtraAgent} from "../../src/shared/l
   function viewHeader(root, text, desc, actions) {
     paint(
       root,
-      title(text, desc, actions) + '<div class="control-content"></div>',
+      (root.closest(".settings-workspace")?.querySelector("#settings-title")?.textContent === text
+        ? `<div class="control-heading">${desc ? `<p>${e(desc)}</p>` : ""}${actions ? `<div class="control-actions">${actions}</div>` : ""}</div>`
+        : title(text, desc, actions)) + '<div class="control-content"></div>',
     );
     return q(".control-content", root);
   }
@@ -147,7 +149,7 @@ import {extraAgentSources, extraAgentIds, isExtraAgent} from "../../src/shared/l
     const hash = location.hash,
       ticket = (root._settingsSequence || 0) + 1;
     root._settingsSequence = ticket;
-    if (!root.querySelector(".settings-layout"))
+    if (!root.querySelector(".settings-workspace"))
       root.innerHTML = '<div class="control-loading">正在读取设置…</div>';
     let current;
     try {
@@ -165,50 +167,82 @@ import {extraAgentSources, extraAgentIds, isExtraAgent} from "../../src/shared/l
       ticket !== root._settingsSequence
     )
       return;
-    const requestedSection = location.hash.split("/")[2] || "general";
-    const requested = requestedSection === "updates" ? "about" : requestedSection;
+    const requestedSection = location.hash.split("/")[2];
+    const requested = requestedSection === "updates" ? "about" : (requestedSection || "general");
     if(requestedSection === "updates")history.replaceState(history.state,'',location.pathname+location.search+'#/settings/about');
     const selected = sections.find((s) => s[0] === requested) || sections[0];
     root
       .closest(".module-surface")
       ?.classList.toggle("wb-redesign", selected[0] !== "usage");
-    if (!root.querySelector(".settings-layout"))
-      root.innerHTML =
-        '<div class="settings-layout"><aside class="settings-nav"></aside><section id="settings-panel" class="settings-panel"></section></div>';
-    paint(
-      q(".settings-nav", root),
-      `${root.closest("dialog") ? "" : '<div class="settings-nav-top"><a href="#/overview" class="btn ghost">‹ 返回工作台</a></div>'}<input type="search" id="settings-search" placeholder="搜索设置" aria-label="搜索设置"><div class="settings-nav-list">${groups
-        .map(
-          ([id, name]) =>
-            `<section class="settings-group"><h3>${name}</h3>${sections
-              .filter((s) => s[3] === id)
-              .map(
-                (s) =>
-                  `<a href="#/settings/${s[0]}" data-section="${s[0]}" class="settings-nav-item ${s[0] === selected[0] ? "selected" : ""}" ${s[0] === selected[0] ? 'aria-current="page"' : ""}>${sectionIcon(s[0])}<span>${e(label(s))}</span></a>`,
-              )
-              .join("")}</section>`,
-        )
-        .join("")}</div>`,
-    );
+    if (!root.querySelector(".settings-workspace")) {
+      // SettingsDialog frame, category groups, search and pane header adapted
+      // from PapilotAI/papilot src/web/settings.tsx (MIT).
+      root.innerHTML = `<section class="settings-workspace" data-browse="${!requestedSection}">
+        <aside class="settings-sidebar">
+          <h2 class="settings-sidebar-title">设置${root.closest("dialog") ? "" : ' <a class="settings-exit" href="#/overview">返回工作坊</a>'}</h2>
+          <label class="settings-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m15.5 15.5 4 4"/></svg>
+            <input type="search" id="settings-search" placeholder="搜索设置" aria-label="搜索设置">
+          </label>
+          <nav class="settings-categories" aria-label="设置分类">${groups.map(([id, name]) =>
+            `<section class="settings-category-group"><h3>${name}</h3>${sections.filter(section => section[3] === id).map(section =>
+              `<a href="#/settings/${section[0]}" data-section="${section[0]}" class="settings-category">${sectionIcon(section[0])}<span>${e(label(section))}</span></a>`,
+            ).join("")}</section>`,
+          ).join("")}<p class="settings-search-empty" role="status" hidden>没有匹配的设置</p></nav>
+          <div class="settings-sidebar-bottom"><footer class="settings-footer"><span>灵犀工作坊 ${e(__LINGXI_VERSION__)}</span><a href="https://github.com/Ceeyu-iooi/Lingxi-Workspace" target="_blank" rel="noopener noreferrer">GitHub</a></footer></div>
+        </aside>
+        <section class="settings-pane" aria-labelledby="settings-title">
+          <header class="settings-content-header">
+            <button type="button" class="settings-back settings-mobile-back" aria-label="返回设置分类">‹ 设置</button>
+            <h2 id="settings-title" tabindex="-1"></h2>
+          </header>
+          <div id="settings-panel"></div>
+        </section>
+      </section>`;
+      const layout = q(".settings-workspace", root);
+      const search = q("#settings-search", root);
+      search.oninput = () => {
+        const term = search.value.trim().toLocaleLowerCase();
+        qa(".settings-category-group", root).forEach(group => {
+          const name = q("h3", group).textContent;
+          const entries = qa(".settings-category", group);
+          entries.forEach(entry => { entry.hidden = !`${name} ${entry.textContent}`.toLocaleLowerCase().includes(term); });
+          group.hidden = entries.every(entry => entry.hidden);
+        });
+        q(".settings-search-empty", root).hidden = qa(".settings-category-group", root).some(group => !group.hidden);
+      };
+      q(".settings-mobile-back", root).onclick = () => {
+        layout.dataset.browse = "true";
+        (q('.settings-category[aria-current="page"]:not([hidden])', root) || search).focus({preventScroll:true});
+      };
+      q(".settings-categories", root).addEventListener("click", event => {
+        if (!event.target.closest('.settings-category[aria-current="page"]')) return;
+        layout.dataset.browse = "false";
+        q("#settings-title", root).focus({preventScroll:true});
+      });
+    }
     const holder = q("#settings-panel", root);
-    q("#settings-search", root).oninput = (ev) => {
-      const value = ev.target.value.toLowerCase();
-      qa(".settings-nav-item", root).forEach(
-        (a) => (a.hidden = !a.textContent.toLowerCase().includes(value)),
-      );
-      qa(".settings-group", root).forEach(
-        (g) => (g.hidden = !qa(".settings-nav-item", g).some((a) => !a.hidden)),
-      );
-    };
-    const filter = q("#settings-search", root);
-    if (filter.value)
-      filter.dispatchEvent(new Event("input", { bubbles: true }));
+    const layout = q(".settings-workspace", root);
+    const titleNode = q("#settings-title", root);
+    titleNode.textContent = label(selected);
+    qa(".settings-category", root).forEach(entry => {
+      const section = sections.find(item => item[0] === entry.dataset.section);
+      q("span", entry).textContent = label(section);
+      if (section === selected) entry.setAttribute("aria-current", "page");
+      else entry.removeAttribute("aria-current");
+    });
+    q("#settings-search", root).oninput();
+    if (requestedSection) layout.dataset.browse = "false";
+    if (root.dataset.section && root.dataset.section !== selected[0]) {
+      q(".settings-pane", root).scrollTop = 0;
+      titleNode.focus({preventScroll:true});
+    }
     if (root.dataset.section === selected[0]) return;
     window.workbenchDesign?.dispose(holder);
     holder.replaceChildren();
     root.dataset.section = selected[0];
     const panel = document.createElement("div");
-    panel.className = "settings-content";
+    panel.className = "settings-content settings-page";
     holder.append(panel);
     holder._wbUnsaved = () =>
       panel._wbUnsaved

@@ -11,3 +11,13 @@ declare module "virtual:lingxi-runtime" {
 declare module "virtual:lingxi-standalone" {
   export function installStandalone(): void;
 }
+
+declare module "*.vue" {
+  import type { Component } from "vue";
+  const component: Component;
+  export default component;
+}
+
+declare module "virtual:lingxi-appearance" {
+  export function installAppearance(): void;
+}

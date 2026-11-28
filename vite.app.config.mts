@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import vue from "@vitejs/plugin-vue";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 const root = process.cwd();
@@ -14,6 +15,7 @@ export default defineConfig({
   plugins: [
     {name:"lingxi-design-source",generateBundle(){this.emitFile({type:"asset",fileName:"design.md",source:readFileSync(resolve(root,"DESIGN.md"),"utf8")});}},
     react(),
+    vue({ include: /GitTimeline\.vue$/ }),
     {
       name: "lingxi-interaction-runtime",
       resolveId(id) {
@@ -23,11 +25,13 @@ export default defineConfig({
         if(id === "virtual:lingxi-accent-colors")return resolve(root,"src/shared/accent-colors.ts");
         if (id === "virtual:lingxi-runtime") return "\0lingxi-runtime";
         if (id === "virtual:lingxi-standalone") return "\0lingxi-standalone";
+        if (id === "virtual:lingxi-appearance") return "\0lingxi-appearance";
       },
       load(id) {
-        if (!["\0lingxi-runtime", "\0lingxi-standalone"].includes(id)) return;
-        const standalone = id === "\0lingxi-standalone",
-          order = standalone
+        if (!["\0lingxi-runtime", "\0lingxi-standalone", "\0lingxi-appearance"].includes(id)) return;
+        const standalone = id !== "\0lingxi-runtime",
+          appearanceOnly = id === "\0lingxi-appearance",
+          order = appearanceOnly ? ["theme.ts", "rounded-selects.ts"] : standalone
             ? [
                 "theme.ts",
                 "ui-core.ts",
@@ -49,7 +53,7 @@ export default defineConfig({
               ).replace(/^\/\/ @ts-nocheck\s*/, "").replace(/^import .*?;\s*$/gm, ""),
             )
             .join("\n;\n");
-        return `import {formatCount,formatRate} from "../../src/shared/session-usage"; import {skillCategories} from "../../src/shared/skill-presentation"; import {extraAgentSources,extraAgentIds,isExtraAgent} from "../../src/shared/local-agent-sources"; import {decimalAxis} from "../../src/shared/chart-scale"; import {animateNumber} from "virtual:lingxi-number-motion"; import {animateCount} from "virtual:lingxi-count-motion"; import {modelFamilies} from "../../src/shared/model-families"; import {modelBrand} from "../../src/shared/model-brand"; import {quotaWindows as readQuotaWindows} from "../../src/shared/usage-presentation"; import {marked} from "marked"; import DOMPurify from "dompurify"; import {themePresets,presetPalette} from "virtual:lingxi-theme-presets"; import {accentColors} from "virtual:lingxi-accent-colors"; export function ${standalone ? "installStandalone" : "installRuntime"}(){\nfunction onReady(callback){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',callback,{once:true});else queueMicrotask(()=>callback(new Event('DOMContentLoaded')));}\n${source}\n${standalone ? "" : "return appReady.then(()=>({render,refresh,getUser:()=>user}));"}\n}`;
+        return `import {formatCount,formatRate} from "../../src/shared/session-usage"; import {skillCategories} from "../../src/shared/skill-presentation"; import {extraAgentSources,extraAgentIds,isExtraAgent} from "../../src/shared/local-agent-sources"; import {decimalAxis} from "../../src/shared/chart-scale"; import {animateNumber} from "virtual:lingxi-number-motion"; import {animateCount} from "virtual:lingxi-count-motion"; import {modelFamilies} from "../../src/shared/model-families"; import {modelBrand} from "../../src/shared/model-brand"; import {quotaWindows as readQuotaWindows} from "../../src/shared/usage-presentation"; import {marked} from "marked"; import DOMPurify from "dompurify"; import {themePresets,presetPalette} from "virtual:lingxi-theme-presets"; import {accentColors} from "virtual:lingxi-accent-colors"; export function ${appearanceOnly ? "installAppearance" : standalone ? "installStandalone" : "installRuntime"}(){\nfunction onReady(callback){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',callback,{once:true});else queueMicrotask(()=>callback(new Event('DOMContentLoaded')));}\n${source}\n${standalone ? "" : "return appReady.then(()=>({render,refresh,getUser:()=>user}));"}\n}`;
       },
     },
   ],

@@ -30,9 +30,9 @@
 | 主题、缩放 | Profile设置；共享主题预设与唯一缩放写入口 | 应用外壳及共享Token；页面只消费变量 | 浅深、125%缩放、保存／放弃、多窗口修订冲突 |
 | 用量筛选 | 主应用和任务栏插件各自筛选；响应绑定已提交查询 | 现有日期／模型控件，禁止另做相似控件 | 模型或／其他条件且；快速切换、失败保留快照身份 |
 | 会话用量 | `/api/usage/sessions` 复用 `/api/usage` 同一份已筛选行；`src/shared/session-usage.ts` 为唯一契约 | 服务端 `src/server/session-usage.ts`；插件 `frontend/private/floating/sessions.tsx` 与 `style.css`；布局语义取 `.bs-scope` 适配层 | 合计与日汇总对账、未识别会话归并、未知字段标注、项目和会话用同一五列表头，真实标题，模型条仅显示 Token |
-| Git 时间轴 | `/api/git/timeline` 只读 `git log`／`branch`／`tag`；`src/shared/git-timeline.ts` 契约 | 服务端 `src/server/git-timeline.ts`；页面 `frontend/app/git-timeline.tsx`；样式 `static/git-timeline.css` | Semanote-Agent 分支图与逐行差异、来源与离线时间、变更统计上限、浅深与窄屏 |
+| Git 时间轴 | `/api/git/timeline` 只读 `git log`／`branch`／`tag`；`src/shared/git-timeline.ts` 契约 | 服务端 `src/server/git-timeline.ts`；页面 `frontend/app/GitTimeline.vue`；样式 `static/git-timeline.css` | Semanote-Agent 原组件布局和差异视图、实时 API 与公开发布记录、源与离线时间、浅深与窄屏 |
 | 图表交互 | 数据宿主维护结果，usageCharts维护绘图和提示 | `frontend/compat/usage-charts.ts`；沿用图表令牌 | 鼠标／键盘提示、空数据、缩放、离页观察器与监听释放 |
-| 技能资源 | 登记目录的只读索引；本地中文词目与Profile展示覆盖 | library-views、skillIdentity、ui-system及workspace-layout | 原名主标题、英文下方中文副标题、中文搜索、快速分页／失败快照、来源隔离、详情保存不改原文件 |
+| 技能资源 | 登记目录的只读索引；本地中文词目与Profile展示覆盖 | library-views、skillIdentity、ui-system及workspace-layout | 原名主标题、英文下方中文副标题、中文搜索、Agent 导航和 README 功能表、分页与来源隔离、详情保存不改原文件 |
 | 任务栏配置 | 主进程带修订号配置为权威；设置持有未保存草稿 | frontend/app/taskbar-settings.tsx与taskbar-settings.css；两入口共用严格类型组件及轻量样式预览 | 双窗口修改、保存失败和放弃、旧响应不覆盖新编辑 |
 
 局部样式留在所属组件；共用数值进入现有Token，页面不得通过更高优先级重复覆盖实例。新增共享逻辑使用严格类型；保留的兼容DOM代码要通过实际入口操作验证。清理生命周期由创建该宿主的模块负责，外壳不提前释放仍留在页面中的实例；替换宿主内容前先释放其旧实例。

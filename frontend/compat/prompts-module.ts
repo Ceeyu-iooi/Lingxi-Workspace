@@ -106,7 +106,7 @@
     injectCss();
     root.innerHTML = `<div class="skm-app skm-catalog skm-app-prompts" data-skm>
       <header class="skm-topbar" data-skm-topbar aria-label="提示词管理导航"></header>
-      <main class="skm-main" data-skm-main><div class="skm-main-scroll"><div data-skm-page></div></div></main>
+      <div class="skm-main" data-skm-main><div class="skm-main-scroll"><div data-skm-page></div></div></div>
       <div class="skm-sheet" data-skm-sheet hidden></div>
       <div class="skm-live" aria-live="polite"></div>
     </div>`;

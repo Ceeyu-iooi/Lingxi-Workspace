@@ -22,6 +22,7 @@
   },
   "include": [
     "frontend/app/main.tsx",
+    "frontend/app/git-timeline.ts",
     "frontend/app/standalone.tsx",
     "frontend/app/runtime.d.ts",
     "src/shared/contracts.ts",

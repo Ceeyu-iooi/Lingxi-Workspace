@@ -363,14 +363,16 @@
     "route": "/api/git/timeline",
     "page": "/git-timeline.html",
     "contract": "src/shared/git-timeline.ts",
-    "presentation": "frontend/app/git-presentation.ts",
+    "presentation": "frontend/app/GitTimeline.vue",
     "server": "src/server/git-timeline.ts",
+    "presentationAdapter": "frontend/app/git-workbench-api.ts",
+    "publishedHistory": "git-history / git-timeline-snapshot.json",
     "styles": "static/git-timeline.css",
     "readOnly": true
   },
   "moduleNavigation": {
-    "skills": "two-level-top-bar: overview/library/agents/workspaces/settings + preset,agent,workspace chips",
-    "prompts": "two-level-top-bar: library/market/stats + folder,tag,state,template-source chips",
+    "skills": "library/readme/settings + shared Agent filter bar",
+    "prompts": "library/market/stats + primary toolbar and advanced filters",
     "scope": "module-internal; global sidebar keeps 240/64 states",
     "narrow": "under 860px labels collapse to icons, active item keeps its label",
     "detail": "shared full-screen sheet; skill detail and prompt template preview reuse the same surface"

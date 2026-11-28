@@ -9,22 +9,6 @@
 .settings-center-modal .settings-center-head button,.usage-supplier-manager>[data-manager-close]{pointer-events:auto;display:grid;place-items:center;min-height:28px!important;width:28px;height:28px;padding:0!important;border:0!important;border-radius:8px;background:transparent;font-size:20px;line-height:1;box-shadow:none}
 .settings-center-modal .settings-center-head button:hover,.usage-supplier-manager>[data-manager-close]:hover{background:var(--dsh-module)}
 .settings-center-content{height:100%;overflow:hidden;min-height:0}
-.settings-center-content .settings-layout{height:100%;min-height:0;display:grid;grid-template-columns:188px minmax(0,1fr);gap:0}
-.settings-center-content .settings-nav{display:flex;flex-direction:column;gap:12px;min-height:0;padding:22px 12px 18px;border:0;background:transparent;overflow:hidden}
-.settings-center-content .settings-nav-top{display:block;padding:0 12px}
-.settings-center-content .settings-nav-top>a{display:none}
-.settings-center-content .settings-nav-top h2{margin:0;font-size:16px;font-weight:500;line-height:24px}
-.settings-center-content .settings-nav input{flex:none;width:100%;height:32px;margin:0;padding:6px 10px;border:1px solid var(--dsh-border);border-radius:8px;background:transparent;font-size:12px}
-.settings-center-content .settings-nav-list{flex:1;min-height:0;overflow:auto;scrollbar-width:thin}
-.settings-center-content .settings-group{margin:0 0 10px}
-.settings-center-content .settings-group h3{font-size:11px;padding:8px 12px 5px;margin:0;color:var(--dsh-muted);font-weight:400}
-.settings-center-content .settings-nav-item{display:flex;align-items:center;gap:8px;height:40px;margin:4px 0;padding:9px 12px;border-radius:12px;font-size:14px;line-height:22px;font-weight:400;color:var(--ink)}
-.settings-center-content .settings-nav-item svg{width:16px;height:16px;flex:none}
-.settings-center-content .settings-nav-item.selected{background:var(--dsh-selected);color:var(--ink)}
-.settings-center-content .settings-panel{height:100%;min-height:0;padding:58px 24px 24px;overflow:auto;scrollbar-width:thin}
-.settings-center-content .control-heading{margin:0 0 20px;gap:8px}
-.settings-center-content .control-heading h2{font-size:16px;line-height:24px;font-weight:500;margin:0}
-.settings-center-content .control-heading p{font-size:12px;line-height:20px;font-weight:400;margin:4px 0 0;color:var(--dsh-muted)}
 .settings-center-content .control-content{min-width:0}
 .settings-center-content .control-section{border-width:.5px;box-shadow:none}
 .settings-center-content .resource-row{flex-wrap:wrap;padding:12px 14px;border-width:.5px}
@@ -106,17 +90,6 @@
 :is(.settings-center-modal,.usage-supplier-manager) :is(button,a,input,select,textarea):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media(max-width:600px){
  :is(.settings-center-modal,.usage-supplier-manager){width:calc(100vw - 24px);height:calc(100dvh - 24px);max-height:calc(100dvh - 24px);border-radius:16px}
- .settings-center-content .settings-layout{display:flex;flex-direction:column;height:100%;min-height:0}
- .settings-center-content .settings-nav{flex:none;max-height:none;padding:18px 16px 10px;gap:8px;overflow:hidden;border-bottom:1px solid var(--dsh-border)}
- .settings-center-content .settings-nav-top{padding:0 0 4px}
- .settings-center-content .settings-nav input{width:calc(100% - 32px)}
- .settings-center-content .settings-nav-list{display:flex;gap:4px;min-height:40px;overflow:auto;flex:none}
- .settings-center-content .settings-group{display:contents}
- .settings-center-content .settings-group[hidden],.settings-center-content .settings-nav-item[hidden]{display:none}
- .settings-center-content .settings-group h3{display:none}
- .settings-center-content .settings-nav-item{flex:none;margin:0;padding:8px 10px;height:36px;font-size:12px;white-space:nowrap}
- .settings-center-content .settings-panel{height:auto;flex:1;min-height:0;padding:20px 16px;overflow:auto}
- .settings-center-content .control-heading{margin-bottom:18px}
  .dsh-theme-cube{min-width:68px}
  .dsh-theme-cube>span{padding:16px 6px;font-size:12px}
  .dsh-setting-row{font-size:13px}

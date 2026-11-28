@@ -19,8 +19,11 @@ document.addEventListener('click', event => {
 function animateDialog(dialog: HTMLDialogElement, leaving = false) {
   const rest = { opacity: 1, transform: 'scale(1)' };
   const faded = { opacity: 0, transform: 'scale(.98)' };
-  dialog.getAnimations().forEach(animation => animation.cancel());
-  return dialog.animate(leaving ? [rest, faded] : [faded, rest], {
+  const animations = dialog.getAnimations();
+  const interrupted = animations.length && getComputedStyle(dialog);
+  const initial = interrupted ? {opacity: interrupted.opacity, transform: interrupted.transform} : leaving ? rest : faded;
+  animations.forEach(animation => animation.cancel());
+  return dialog.animate([initial, leaving ? faded : rest], {
     duration: leaving ? 120 : 180,
     easing: ease,
   }).finished.catch(() => {});
@@ -61,7 +64,7 @@ HTMLDialogElement.prototype.close = function (value?: string) {
 };
 function rows(root: HTMLElement, scrolling = false, keepVisible = false) {
   if (quiet()) return () => {};
-  const selector = '.lingxi-about-card,.usage-managed-key,.resource-summary,.resource-group,.lingxi-carousel,[data-motion-row],.preview-card,.preview-swatch,.wb-library-toolbar,.library-toolbar,.wb-library-head,.wb-empty,.empty,.preview-type-row,.preview-section>h2,.preview-section>.preview-lead,.card,.hot-card,.ob-panel,.ob-stats>article,.control-section,.sum-card,.wb-library-card,.resource-row,.workspace-browser,.workspace-files,.dsh-setting-row,.wb-setting-switch,.usage-summary>article,.usage-lifetime>article,.lingxi-account-details>section,.account-quota-window';
+  const selector = '.lingxi-about-card,.usage-managed-key,.resource-summary,.resource-group,.lingxi-carousel,[data-motion-row],.preview-card,.preview-swatch,.wb-library-toolbar,.library-toolbar,.wb-library-head,.preview-type-row,.preview-section>h2,.preview-section>.preview-lead,.ob-panel,.ob-stats>article,.control-section,.sum-card,.resource-row,.workspace-browser,.workspace-files,.dsh-setting-row,.wb-setting-switch,.usage-summary>article,.usage-lifetime>article,.lingxi-account-details>section,.account-quota-window';
   const selected = [...root.querySelectorAll<HTMLElement>(selector)].filter(node=>node.offsetHeight && !node.closest('.usage-toolbar,.skm-toolbar-wrap,.wb-library-toolbar,.library-toolbar,[data-overlay-portal]') && !node.parentElement?.closest('.lingxi-carousel') && !(node.matches('.control-section')&&node.querySelector('.dsh-setting-row,.wb-setting-switch')));
   const ancestors=new Set(selected);
   const candidates=selected.filter(node=>{for(let parent=node.parentElement;parent&&parent!==root;parent=parent.parentElement)if(ancestors.has(parent))return false;return true;});

@@ -48,12 +48,16 @@
       focus = document.activeElement;
       const d = document.createElement("dialog");
       d.className = "control-dialog wb-redesign settings-center-modal lingxi-dialog";
-      d.addEventListener("close",()=>d.remove(),{once:true});
+      const returnFocus = focus;
+      d.addEventListener("close", () => {
+        d.remove();
+        if (returnFocus?.isConnected) returnFocus.focus({preventScroll:true});
+      }, {once:true});
       d.id = "settings-center-dialog";
       d.dataset.dialogSize="settings";
       d.setAttribute("aria-label", "设置中心");
       d.innerHTML =
-        '<header class="settings-center-head"><div class="dialog-brand-title"><img class="lingxi-window-logo" src="assets/lingxi-logo.svg" alt="灵犀"><h2>设置中心</h2></div><button type="button" class="btn ghost" aria-label="关闭设置中心">×</button></header><div class="settings-center-content module-surface wb-redesign"></div>';
+        '<button type="button" class="settings-window-close" data-settings-close aria-label="关闭设置中心"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button><div class="settings-center-content module-surface wb-redesign"></div>';
       d._settingsAbort = new AbortController();
       contentFor(d)._wbAbort = d._settingsAbort;
       d.addEventListener("input", (e) => {
@@ -64,7 +68,7 @@
         if (e.target.matches("input,textarea,select"))
           e.target.dataset.wbDirty = "true";
       });
-      d.querySelector("header button").onclick = () => close();
+      d.querySelector("[data-settings-close]").onclick = () => close();
       d.addEventListener("cancel", (e) => {
         e.preventDefault();
         close();
@@ -83,16 +87,13 @@
       document.body.append(d);
       dialog = d;
       d.showModal();
-      d.querySelector("header button").focus();
+      d.querySelector("[data-settings-close]").focus();
     }
     dialog.dataset.settingsRoute = location.hash;
-    return Promise.resolve(renderer(content())).then(()=>{if(dialog){window.workbenchDesign?.reveal(content(),true);
-      const selected=content()?.querySelector(".settings-nav-item.selected");
-      const nav=selected?.closest(".settings-nav-list");
-      if(nav&&nav.scrollWidth>nav.clientWidth){
-        const box=selected.getBoundingClientRect(),frame=nav.getBoundingClientRect();
-        if(box.left<frame.left||box.right>frame.right)nav.scrollLeft+=box.left-frame.left-6;
-      }if(location.hash.startsWith("#/settings/usage"))window.dispatchEvent(new CustomEvent("workbench:usage-enter"));}});
+    return Promise.resolve(renderer(content())).then(() => {
+      if (dialog && location.hash.startsWith("#/settings/usage"))
+        window.dispatchEvent(new CustomEvent("workbench:usage-enter"));
+    });
   }
   window.addEventListener("workbench:state", (e) => {
     if (!e.detail?.user || (identity && e.detail.user.username !== identity))

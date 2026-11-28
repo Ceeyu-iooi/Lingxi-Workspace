@@ -136,7 +136,7 @@
 .finance-workspace .finance-stats>div:nth-child(2){--section-tint:var(--workspace-teal)}
 .finance-workspace .finance-insights{background:transparent}
 .finance-workspace .finance-highlights{background:color-mix(in srgb,var(--workspace-amber) 7%,var(--surface))}
-.skm-catalog .skm-topbar{background:color-mix(in srgb,var(--accent) 4%,var(--surface))}
+.skm-catalog .skm-topbar{background:var(--surface)}
 .skm-catalog .skm-card:is(:hover,:focus-visible){border-color:var(--section-tint)}
 .skm-catalog .skm-card[data-market-id]{--section-tint:var(--workspace-amber)}
 .skm-card[data-skill-category="设计与媒体"]{--section-tint:var(--workspace-violet)}

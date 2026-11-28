@@ -36,7 +36,7 @@ function follow(popup:HTMLElement,trigger:HTMLElement,width?:()=>number,onDetach
  const abort=new AbortController();document.addEventListener('scroll',queue,{capture:true,passive:true,signal:abort.signal});window.addEventListener('resize',queue,{signal:abort.signal});
  const observer=new ResizeObserver(queue);observer.observe(trigger);observer.observe(popup);
  const visibility=new IntersectionObserver(queue);visibility.observe(trigger);
- queue();if(ownsFocus&&focused instanceof HTMLElement)focused.focus({preventScroll:true});
+ update();if(ownsFocus&&focused instanceof HTMLElement)focused.focus({preventScroll:true});
  return ()=>{abort.abort();observer.disconnect();visibility.disconnect();cancelAnimationFrame(frame);delete popup.dataset.overlayPortal;popup.style.cssText='';if(parent.isConnected)parent.insertBefore(popup,next?.parentNode===parent?next:null);};
 }
 function disclosure(shell:HTMLDetailsElement,popup:HTMLElement){

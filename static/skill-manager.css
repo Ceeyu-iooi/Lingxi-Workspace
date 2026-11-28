@@ -84,7 +84,7 @@
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   font-size: 13px;
   line-height: 1.5;
-  letter-spacing: -0.005em;
+  letter-spacing: normal;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -3031,9 +3031,9 @@
 .skm-catalog .skm-page-head{padding-bottom:8px;margin-bottom:12px}
 .skm-catalog .skm-page-title{font-size:24px;font-weight:500;line-height:1.3}
 .skm-catalog .skm-card-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,245px),1fr));gap:14px}
-.skm-catalog .skm-card{background:color-mix(in srgb,var(--section-tint,var(--accent)) 6%,var(--layer-panel));border-color:var(--layer-border);min-width:0;min-height:0}
+.skm-catalog .skm-card{background:var(--surface);border-color:var(--line);min-width:0;min-height:0}
 .skm-catalog .skm-card:hover,.skm-catalog .skm-card:focus-visible{border-color:var(--accent)}
-.skm-catalog .skm-card-title{font-weight:650}
+.skm-catalog .skm-card-title{font-weight:500;line-height:1.5}
 .skm-catalog .skm-card-desc{line-height:1.65}
 .skm-catalog .skm-toolbar-wrap{background:var(--layer-panel)}
 @media(max-width:700px){.skm-catalog .skm-topbar{flex-wrap:wrap;gap:8px;padding:8px 12px}.skm-catalog .skm-brand{border:0}.skm-catalog .skm-topbar-actions{flex:0 1 auto;flex-wrap:wrap;min-width:0}.skm-catalog .skm-nav-primary{order:3;flex-basis:100%}}
@@ -3048,3 +3048,15 @@
   outline:2px solid var(--accent);
   outline-offset:2px;
 }
+
+.skm-agent-nav { display:flex; flex-wrap:nowrap; overflow:auto; scrollbar-width:thin; align-items:center; gap:4px 8px; padding-bottom:8px; border-bottom:1px solid var(--line); }
+.skm-agent-nav button { display:inline-flex; flex:none; gap:6px; align-items:center; min-height:36px; padding:0 8px; background:transparent; border:1px solid transparent; border-radius:8px; color:var(--ink); font:inherit; white-space:nowrap; cursor:pointer; }
+.skm-agent-nav button:hover { background:var(--surface-soft); }
+.skm-agent-nav button[aria-pressed="true"] { border-color:var(--line); background:var(--color-selected); font-weight:500; }
+.skm-readme-table { overflow:auto; }
+.skm-readme-table .skm-table { width:100%; min-width:360px; }
+.skm-readme-table caption { padding:8px 12px; text-align:left; color:var(--ink-2); }
+.skm-readme-table :is(th,td) { vertical-align:top; overflow-wrap:anywhere; line-height:1.55; }
+.skm-readme-table tbody th { text-align:left; }
+.skm-readme-table tbody th small { display:block; color:var(--ink-2); font-weight:400; }
+.skm-readme-table .skm-link { text-align:left; white-space:normal; }

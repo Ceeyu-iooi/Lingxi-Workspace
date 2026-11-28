@@ -1,9 +1,9 @@
 {
-  "version": "0.1.47",
+  "version": "0.1.48",
   "files": [
     {
       "file": "README.md",
-      "sha256": "5b0aa9be732f860e8cfba32a83e83d84ee85df624a9fcdc64a54d6fd2f4e57c5"
+      "sha256": "0bf23e5b42e8df709cb27e67b3cf47de6aa57a8e6450c62689bf859efc785183"
     },
     {
       "file": "LICENSE",
@@ -11,7 +11,7 @@
     },
     {
       "file": "THIRD_PARTY_NOTICES.md",
-      "sha256": "557672ed876ed37ba43adc1859af1365c08574af1ec2d7db41fd169fa41f70f6"
+      "sha256": "888783669a475243ef526b3b05d5899a94f3fb08a681994294e34dfae18f106c"
     },
     {
       "file": "TOKEN_ACCOUNTING.md",
@@ -19,11 +19,11 @@
     },
     {
       "file": "UI_DESIGN.md",
-      "sha256": "e1e635217217f4f998d835f7e2790e3aadf85a5fbfcece17a28bf8c28fcca2b5"
+      "sha256": "f42b304248803f73360c14d30cd444e545bfc13d3daeb4282293c070e6b91b10"
     },
     {
       "file": "ARCHITECTURE.md",
-      "sha256": "89cbf24536cef4632c34051c109436bcfab51050967c0cb9a81aeecc71573759"
+      "sha256": "61da2fd4882d8a853a91fa2beb71f6b4ae057a7a1abed87a7895ad4e0f8c302f"
     },
     {
       "file": "BOOTSTRAP_USAGE.md",
@@ -35,11 +35,11 @@
     },
     {
       "file": "VERSION",
-      "sha256": "339576cb65d219c73663037939204654d18f39683f3b38ed72ecd3edba722f57"
+      "sha256": "1679cbd52219b78a560c17522b2ac9c6e20e42d6559032a297c41abc5342e450"
     },
     {
       "file": "DESIGN.md",
-      "sha256": "940f422220229c0c117525faab821c65d2ab34aaae0896df4eef2d69bec6039c"
+      "sha256": "d71b614cf0ce4d0ed542a82c6829e1926e0ae3af07c94cb78ca95cda7cae5017"
     },
     {
       "file": "start.bat",
@@ -51,11 +51,11 @@
     },
     {
       "file": "vite.app.config.mts",
-      "sha256": "b92b60c3fe123a58835cacb17fcd112f8895eea637b752a52cc659945a8c39d1"
+      "sha256": "b6ec47c6952ef84d81f96f234ca5eb2c44fc9268cf574fc5f235e9928e0a5b74"
     },
     {
       "file": "tsconfig.app.json",
-      "sha256": "870d33b1f1149c05b6b8059f8173474d7fbaa532ee0436e4f45adfac36859e69"
+      "sha256": "07c7e1cf667b067dbbde52f3e7bd0e5c15855430eac0ae8cb4dd329c15a92b5c"
     },
     {
       "file": "tsconfig.server.json",
@@ -135,7 +135,7 @@
     },
     {
       "file": "src/server/git-timeline.ts",
-      "sha256": "832bbc1e0054f488a5e97c07d8507d11563c56488403290e2fb7a04b890ebf0d"
+      "sha256": "d5affdca906a2684db3c556a3921f272266dee1245e48fa8836734dbe99cad7e"
     },
     {
       "file": "src/server/lmu.ts",
@@ -375,15 +375,23 @@
     },
     {
       "file": "frontend/app/git-timeline.html",
-      "sha256": "058e25c4c1fbb07510ac238c8569294f4769b77e7fc24ca15c91dd370bdc4764"
+      "sha256": "861e290d09b254980c8ca7aa54cb2f064792fdf889292bc7462b4b4f4a8c3c27"
     },
     {
-      "file": "frontend/app/git-timeline.tsx",
-      "sha256": "4522d451b2dfa5c2ca79578e9d2c115b1f58437631ee207e7386cb1dc9c2b9ef"
+      "file": "frontend/app/git-timeline.ts",
+      "sha256": "d959c8c85c59367bfffe5b80c5b2bdd727a1c09d6696b98f9fe76ab33e2cf602"
+    },
+    {
+      "file": "frontend/app/git-workbench-api.ts",
+      "sha256": "ead328f82f57ff257e62172d0677f84893b0e4ae366a2a3e6010ba59de1321c4"
+    },
+    {
+      "file": "frontend/app/GitTimeline.vue",
+      "sha256": "b596c29d7794ef218b096c84a30fd45b43c69c5b92d703189c4d8df28381aea3"
     },
     {
       "file": "frontend/app/index.html",
-      "sha256": "90c97d70dbe61192213b4a885ccc69b0877fb68527e6cb58e71a1da1cab4d746"
+      "sha256": "20a9eb23e1780467bc58da40403aea9ddcfe74b158c63166d342571f7dc41cce"
     },
     {
       "file": "frontend/app/main.tsx",
@@ -391,7 +399,7 @@
     },
     {
       "file": "frontend/app/motion.ts",
-      "sha256": "b5f43c35bfc5ddd67b49ebef27837b1dcfb64488f343e55d4419528b16ce8775"
+      "sha256": "f7b0ef8df01a65dab5560328f5224856a2310502f086d40deea8f5363761c087"
     },
     {
       "file": "frontend/app/number-motion.css",
@@ -403,7 +411,7 @@
     },
     {
       "file": "frontend/app/overlay.ts",
-      "sha256": "ba507222a0896d7d4f8f7c08aea9ce374bf24a8cfd64a52d5c02dabcb90a363e"
+      "sha256": "c2594754ae320e7d6169ee8e8015ecd6b894b3dbc795634b7af4de0a66eb732b"
     },
     {
       "file": "frontend/app/page-zoom.ts",
@@ -411,15 +419,15 @@
     },
     {
       "file": "frontend/app/preview-dark.html",
-      "sha256": "9da1c2242de953961f969a434ce02708841aac08f8ad960deea375768ff9df47"
+      "sha256": "3f7a6ab0758e65a6c9558598d465077ae6f40ad0a551881e89f9dedd0cbb8fef"
     },
     {
       "file": "frontend/app/preview.html",
-      "sha256": "bf262017b341b1279c225129dd6a0df4398061b4325b367104de3f5fd13bc3ce"
+      "sha256": "550a5c9153a795ac743333075212dba0d13921677d299794a0001286232d5e06"
     },
     {
       "file": "frontend/app/preview.ts",
-      "sha256": "b0069c2343ec17391e156e86cea6482ec22cf62134436fd99b65f449d075e3e1"
+      "sha256": "76d60333e83f67dcdf3845a7077d273cfefff07198500e9887c222cb7214f9d1"
     },
     {
       "file": "frontend/app/prices.html",
@@ -431,11 +439,15 @@
     },
     {
       "file": "frontend/app/runtime.d.ts",
-      "sha256": "42b7c7e4289621d3692966f50921b1147e1d9599b2382a403b1636b7ac26c2fe"
+      "sha256": "f5f8f8e25edd8930beb46203ed2c922fedabc49ed8d780326c31745de3951a34"
     },
     {
       "file": "frontend/app/selects.css",
       "sha256": "f38aae6d4fcd56f67ed21cab976c49b22a10659bfabecb27519d405b0a0c434e"
+    },
+    {
+      "file": "frontend/app/semanote-git-presentation.js",
+      "sha256": "49fcbc91a53f9743f5b86f4f840fc25831fe71f0c8f36d33ac24079b7d842ede"
     },
     {
       "file": "frontend/app/standalone.tsx",
@@ -487,7 +499,7 @@
     },
     {
       "file": "frontend/compat/control-center.ts",
-      "sha256": "b7e807cd2e6e66daaa952450a5801b202d65ef16e68bf962254e3051086bbd4f"
+      "sha256": "887c77b69c2f08c8237f0a7189b18c87e67b131cd2fe7e5cacc45cd8bb2a2477"
     },
     {
       "file": "frontend/compat/dialogs.ts",
@@ -503,7 +515,7 @@
     },
     {
       "file": "frontend/compat/library-views.ts",
-      "sha256": "be279429360be450492d9fddec46526bea886adeef14acd4c9468db24d713cb6"
+      "sha256": "df1483814d6e03dac170ae0ba7ec1ac5d2611671a8d8740994848358303ce543"
     },
     {
       "file": "frontend/compat/lingxi-design.ts",
@@ -531,7 +543,7 @@
     },
     {
       "file": "frontend/compat/prompts-module.ts",
-      "sha256": "206335c95a7cac49e843361787bde1a2b129b3638ca05535c2b002dca1506dd6"
+      "sha256": "c55eafacb7e89485d583f0bf39f3a7f52a6d04bb1b57a78b6de88d700ca215c9"
     },
     {
       "file": "frontend/compat/rounded-selects.ts",
@@ -539,7 +551,7 @@
     },
     {
       "file": "frontend/compat/settings-center.ts",
-      "sha256": "b15b6f05307caa2ea1bf2e4e634efbc5d0d8e237ca66f6c71e25c252f0734a11"
+      "sha256": "e837cbfa5df477021cfeb9252ac3267d01189ebd82b0003a0bc1f83f0d9d267d"
     },
     {
       "file": "frontend/compat/shell-navigation.ts",
@@ -791,7 +803,7 @@
     },
     {
       "file": "static/dsh-settings.css",
-      "sha256": "a2dd105f5793b6754f06a78185e946f3c07c6301088e4e32c12cba3dfd62e325"
+      "sha256": "f93b8bf3c5bbee117ffbdad140f1917c61e91a6aedb4e068fc6b22113ae16d2c"
     },
     {
       "file": "static/entrance-motion.css",
@@ -803,7 +815,7 @@
     },
     {
       "file": "static/git-timeline.css",
-      "sha256": "659ca7fbfdc3652f396065daf2da90ff08314dff8bfa7bf836dc5341b7fa168d"
+      "sha256": "7628414aa1b02c96c0adb75fda743358bcb5a4da895474f67b71e21b4b653d0b"
     },
     {
       "file": "static/index.html",
@@ -854,6 +866,10 @@
       "sha256": "e848ce41e9d31455320eff806c7fd2e401f5414a8c560bfea40a19b2e2d7f377"
     },
     {
+      "file": "static/settings-workspace.css",
+      "sha256": "88cb0f2596da4372c19153b2763451580bb88a95fe09ade9363ab3be8e101c61"
+    },
+    {
       "file": "static/shell/window-controls.css",
       "sha256": "97c04bbffd03021f9afa4ad0561626bcd83a5d2f97c16ed4e36c98a855a202f2"
     },
@@ -867,7 +883,7 @@
     },
     {
       "file": "static/skill-manager.css",
-      "sha256": "41e7f84adb8635bbfe2f1fafed14feefb66068e24c0625221882aa216ac71b9e"
+      "sha256": "47a5a7cbf1ca0ac8586b6c8bd366c32da84bd658fdc08870bcef13e22990b4e7"
     },
     {
       "file": "static/startup.css",
@@ -895,7 +911,7 @@
     },
     {
       "file": "static/usage-stable.css",
-      "sha256": "86450d800a8d7b58f3bc5817117ff5b84e8cb96476166a4cb72f80bf15d29136"
+      "sha256": "06b867aa014210b60f0f9bfbd2de6349b29295fddfec7c44f60d90bff349aa3d"
     },
     {
       "file": "static/usage-v23.css",
@@ -991,7 +1007,7 @@
     },
     {
       "file": "static/workspace-layout.css",
-      "sha256": "a557bc41310fd69a0d7e9c876b0562586b9fbb47170af9162d1cc185e12eefda"
+      "sha256": "fec8ebec93984664f9f9eb6a7bce2cd0237d250b8b217f026f0fe09f995bdf87"
     },
     {
       "file": "static/zcode-tokens.css",
@@ -1003,7 +1019,7 @@
     },
     {
       "file": "docs/design-coverage.json",
-      "sha256": "5c01a707b4ba0848f5c1565ad628d9a1d09e3f427abddd6c6c555b7ff7ad21c8"
+      "sha256": "145579581de25e3becc5f91762d10bc38e500a38a35495cae2343f8cc74a2838"
     },
     {
       "file": "docs/design-reference-audit.json",
@@ -1024,6 +1040,34 @@
     {
       "file": "docs/images/overview.png",
       "sha256": "7d9b7b37346f180d25bcd2291f801638ec335ca0b8e692272990192dbd1ec555"
+    },
+    {
+      "file": "docs/images/workbench/overview-compact.webp",
+      "sha256": "80bd70947944aa4e30b9eb53629dab8b14a5fb62a9129eddd2a03848a8373bd7"
+    },
+    {
+      "file": "docs/images/workbench/overview-dark.webp",
+      "sha256": "473b84573827fa799d049b833427903474a7de29114febffff3f33f7676e578a"
+    },
+    {
+      "file": "docs/images/workbench/overview.webp",
+      "sha256": "e8646d68d5a935d479bd7e3ca792105cff5745ba44237940c6f1c63926ad2f18"
+    },
+    {
+      "file": "docs/images/workbench/planning.webp",
+      "sha256": "a28d754826241b7a9c351b881426cd935790350ba6f2f11143e434dbd95df28a"
+    },
+    {
+      "file": "docs/images/workbench/settings.webp",
+      "sha256": "7f1f834108d1207304955f077cf5c2226c3409e1b5729609411fd6e1a076eeea"
+    },
+    {
+      "file": "docs/images/workbench/skills.webp",
+      "sha256": "73249a46a5ebab02ff15a8c1d7ac6945f255c925c38c6cff294bec80102c300d"
+    },
+    {
+      "file": "docs/images/workbench/usage.webp",
+      "sha256": "6d1b5fb373e508101104c0b5dabfc0a44b382ef2d9ed82f51d473f713e01b2d9"
     },
     {
       "file": "docs/product-manifest.json",
@@ -1064,10 +1108,6 @@
     {
       "file": "scripts/capture_antigravity_usage.mjs",
       "sha256": "42b4e8838a40ed66bc538fbd72f703637cf02ca1e7427bb6959c7cb360d80f07"
-    },
-    {
-      "file": "frontend/app/git-presentation.ts",
-      "sha256": "cea51e3c862a37e07b9c6f38b4620b5576fa87bcde4aea9a2d66388af1b73e67"
     }
   ]
 }

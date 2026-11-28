@@ -82,8 +82,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
         items: [], total: 0, q: "", tag: "", agent: "", status: "all", source: "", category: "", view: "grid",
         offset: 0, limit: 12, loading: false, loaded: false, error: "", preset: "",
       },
-      agentCounts: {},
-      agentSkills: {},
       detail: null,
       error: "",
       busy: false,
@@ -229,16 +227,9 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       return `<div class="skm-alert" role="alert">${icon("alert", 16)}<span>${esc(message)}</span>${retry ? '<button class="skm-link" data-act="retry">重试</button>' : ""}</div>`;
     }
 
-    function coverCount() {
-      const total = state.overview?.libraryTotal ?? state.library.total;
-      const items = state.library.items || [];
-      const synced = items.filter((s) => deployedAgents(s).length > 0).length;
-      return { total, synced };
-    }
-
-    // 模块页签。Agent 详情从 Agents 列表进入。
+    // 视图与 Agent 筛选各自保持单一入口。
     function navItem(view, label, ico, count, cls = "") {
-      const active = state.view === view || (view === "agents" && state.view.startsWith("agent:"));
+      const active = state.view === view;
       return `<button class="skm-nav${active ? " is-active" : ""}${cls ? " " + cls : ""}" data-act="nav" data-view="${view}" aria-label="${esc(label)}"${active ? ' aria-current="page"' : ""}>
         ${icon(ico, 15, "skm-nav-ico")}<span class="skm-nav-label">${esc(label)}</span>${count != null ? `<span class="skm-nav-count">${nf(count)}</span>` : ""}</button>`;
     }
@@ -249,80 +240,13 @@ import { skillCategories } from "../../src/shared/skill-presentation";
           <span class="skm-brand-name">技能管理</span>
         </div>
         <nav class="skm-nav-primary" aria-label="技能管理导航">
-          ${navItem("overview", "概览", "dashboard")}
-          ${navItem("library", "技能库", "layers", state.overview?.libraryTotal ?? state.library.total)}
-          ${navItem("agents", "Agents", "bot")}
+          ${navItem("library", "技能库", "layers", null)}
+          ${navItem("readme", "README", "fileText")}
         </nav>
         <div class="skm-topbar-actions">
           <button class="skm-icon-btn" data-act="refresh" aria-label="刷新数据" title="刷新数据">${icon("refresh", 16)}</button>
           ${navItem("settings", "设置", "settings", null, "skm-nav-settings")}
         </div>`;
-    }
-
-    function overviewHTML() {
-      const o = state.overview;
-      if (!o) {
-        return `<div class="skm-page is-narrow">${pageHead("概览")}${alertBox(state.error || "正在读取技能管理数据…", false)}</div>`;
-      }
-      const agents = o.agents || [];
-      const missingAgents = agents.filter((a) => !a.exists);
-      const connected = agents.filter((a) => a.exists && a.enabled);
-      const { total, synced } = coverCount();
-      const coverage = total ? `${synced}/${total}` : "0";
-      const recent = (state.activity && state.activity.length ? state.activity : (o.activity || [])).slice(0, 6);
-      const dirRows = [
-        { name: "中央技能库", path: o.library?.root, ok: true, tag: "中央库" },
-        ...agents.map((a) => ({ name: a.name, path: a.globalPath, ok: a.exists, tag: a.origin === "builtin" ? "内置 Agent" : "自定义 Agent", agent: a.id })),
-      ];
-      const recentHTML = recent.length
-        ? `<section class="skm-section">
-            <h2 class="skm-section-title">近期活动</h2>
-            <div class="skm-panel skm-activity">
-              ${recent.map((ev) => `<div class="skm-activity-row">
-                <span class="skm-activity-mark">${esc(String(ev.skillName || ev.action || "·").charAt(0).toUpperCase())}</span>
-                <div class="skm-activity-main"><b>${esc(ev.skillName || ev.action || "操作")}</b><span>${esc(ev.detail || ev.action || "")}</span></div>
-                <span class="skm-activity-time">${esc(fmtTime(ev.at))}${ev.ok === false ? " · 失败" : ""}</span>
-              </div>`).join("")}
-            </div>
-          </section>`
-        : "";
-      return `<div class="skm-page is-narrow">
-        ${pageHead("概览", { sub: `技能库中 ${nf(total)} 个技能 · 已接入 ${nf(connected.length)} 个 Agent` })}
-        ${state.error ? alertBox(state.error) : ""}
-        ${missingAgents.length ? `<div class="skm-setup-card">
-          <span class="skm-setup-ico">${icon("alert", 18)}</span>
-          <div class="skm-setup-main"><h2>${nf(missingAgents.length)} 个 Agent 目录尚未创建</h2><p>扫描只读取已登记的目录，不会自行创建或修改任何 Agent 目录。可先在「全部 Agents」中确认路径，再扫描本机。</p></div>
-          <button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="nav" data-view="agents">查看 Agents</button>
-        </div>` : ""}
-        <div class="skm-stats">
-          <div class="skm-stat"><div><p class="skm-section-title">技能库技能</p><strong>${nf(total)}</strong></div><span class="skm-stat-ico is-accent">${icon("layers", 16)}</span></div>
-          <div class="skm-stat"><div><p class="skm-section-title">同步覆盖</p><strong>${coverage}</strong></div><span class="skm-stat-ico is-ok">${icon("check", 16)}</span></div>
-          <div class="skm-stat"><div><p class="skm-section-title">连接 Agent</p><strong>${nf(connected.length)}<span class="skm-stat-total">/${nf(agents.length)}</span></strong></div><span class="skm-stat-ico is-sky">${icon("bot", 16)}</span></div>
-        </div>
-        <div class="skm-actions">
-          <button class="skm-btn skm-btn-primary" data-act="scan">${icon("scan", 16)}扫描本机目录</button>
-        </div>
-        <section class="skm-section">
-          <h2 class="skm-section-title">登记目录</h2>
-          <div class="skm-panel skm-dir-list">
-            ${dirRows.map((row) => `<div class="skm-dir-row">
-              <span class="skm-dir-ico">${icon(row.agent ? "bot" : "layers", 15)}</span>
-              <div class="skm-dir-main"><div class="skm-dir-name">${esc(row.name)}<span class="skm-mini-pill">${esc(row.tag)}</span></div><code class="skm-path" title="${esc(row.path)}">${esc(row.path || "—")}</code></div>
-              <span class="skm-status ${row.ok ? "is-ok" : "is-muted"}"><span class="skm-dot sm${row.ok ? " is-on" : ""}"></span>${row.ok ? "已创建" : "目录未创建"}</span>
-              ${row.agent ? `<button class="skm-icon-btn" data-act="nav" data-view="agent:${esc(row.agent)}" title="查看 Agent">${icon("chevronRight", 15)}</button>` : ""}
-            </div>`).join("")}
-          </div>
-        </section>
-        <section class="skm-section">
-          <h2 class="skm-section-title">索引与只读边界</h2>
-          <div class="skm-panel skm-readonly">
-            <div class="skm-readonly-row">${icon("lock", 16)}<div><b>不会执行技能内容</b><span>预览只读取 SKILL.md 文本；不会运行其中的脚本、命令或任何安装步骤。</span></div></div>
-            <div class="skm-readonly-row">${icon("folder", 16)}<div><b>只扫描已登记目录</b><span>只读取已登记的目录。</span></div></div>
-            <div class="skm-readonly-row">${icon("fileText", 16)}<div><b>索引状态</b><span>${o.scan ? `上次索引 ${esc(fmtTime(o.scan.at))} · 收录 ${nf(o.scan.count)} 项 · 新吸收 ${nf(o.scan.absorbed)} 项` : "尚未建立索引。首次扫描会生成只读快照。"}</span></div></div>
-          </div>
-        </section>
-        ${recentHTML}
-      </div>`;
     }
 
     function libraryFiltered() {
@@ -344,7 +268,7 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       if (l.loading && !l.loaded) {
         return `<div class="skm-skeleton">${Array.from({ length: 6 }).map(() => '<div class="skm-skeleton-card"></div>').join("")}</div>`;
       }
-      if (l.error) return alertBox(l.error);
+      if (l.error) return alertBox(l.error) + (l.loaded && l.items.length ? '<p class="skm-meta-note">可重新查询以加载当前筛选。</p>' : "");
       const items = libraryFiltered();
       const start = l.offset;
       const page = items.slice(start, start + l.limit);
@@ -361,14 +285,22 @@ import { skillCategories } from "../../src/shared/skill-presentation";
             : '<div class="skm-empty-actions"><button class="skm-btn skm-btn-primary" data-act="scan">扫描本机目录</button></div>',
         });
       }
-      const body = l.view === "grid"
+      const table = () => `<div class="skm-table-wrap skm-readme-table"><table class="skm-table">
+        <caption>技能功能与部署位置</caption>
+        <thead><tr><th scope="col">技能</th><th scope="col">功能</th><th scope="col">Agent</th></tr></thead>
+        <tbody>${page.map(skill => `<tr>
+          <th scope="row"><button type="button" class="skm-link" data-open-skill="${esc(skill.id)}">${esc(skill.name || skill.displayName || "未命名技能")}</button>${zhName(skill) ? `<small>${esc(zhName(skill))}</small>` : ""}</th>
+          <td>${esc(zhDescription(skill) || skill.description || "暂无简介")}</td>
+          <td>${esc(deployedAgents(skill).map(agent => agent.name).join("、") || "未部署")}</td>
+        </tr>`).join("")}</tbody>
+      </table></div>`;
+      const body = state.view === "readme" ? table() : l.view === "grid"
         ? `<div class="skm-card-grid">${page.map(skillCard).join("")}</div>`
         : `<div class="skm-rows">${page.map(skillRow).join("")}</div>`;
-      const loadedNote = l.total > l.items.length ? `<span class="skm-meta-note">已载入前 ${nf(l.items.length)} / ${nf(l.total)} 项</span>` : "";
       const pages = Math.max(1, Math.ceil(items.length / l.limit));
       const pageNo = Math.floor(start / l.limit) + 1;
       const pager = `<div class="skm-pager">
-        <span class="skm-pager-meta">第 ${nf(start + 1)}–${nf(Math.min(start + l.limit, items.length))} 项，共 ${nf(items.length)} 项 ${loadedNote}</span>
+        <span class="skm-pager-meta">第 ${nf(start + 1)}–${nf(Math.min(start + l.limit, items.length))} 项，共 ${nf(items.length)} 项</span>
         <div class="skm-pager-actions">
           <button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="lib-page" data-dir="-1" ${pageNo <= 1 ? "disabled" : ""}>${icon("chevronRight", 14, "skm-flip")}上一页</button>
           <span class="skm-pager-no">第 ${pageNo} / ${pages} 页</span>
@@ -378,6 +310,16 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       return body + pager;
     }
 
+    function agentNavigation() {
+      const current = state.library.agent;
+      return `<nav class="skm-agent-nav" aria-label="按 Agent 筛选">
+        <button type="button" data-act="library-agent" data-agent="" aria-pressed="${!current}">全部 Agent</button>
+        ${state.agents.filter(agent => agent.enabled || agent.id === current).map(agent =>
+          `<button type="button" data-act="library-agent" data-agent="${esc(agent.id)}" aria-pressed="${current === agent.id}">
+            ${agentTile(agent, 18)}<span>${esc(agent.name)}</span>
+          </button>`).join("")}
+      </nav>`;
+    }
     function libraryHTML() {
       const l = state.library;
       const sourceTypes = [...new Set((l.items || []).map((s) => s.source?.type || "local"))];
@@ -389,7 +331,8 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       const tagChips = tags.map((t) => `<button class="skm-chip${l.tag === t.name ? " is-active" : ""}" data-act="tag" data-tag="${esc(t.name)}" aria-pressed="${l.tag === t.name}">${esc(t.name)}<span>${nf(t.count)}</span></button>`).join("");
       const preset = l.preset ? state.presets.find((p) => p.id === l.preset) : null;
       return `<div class="skm-page">
-        ${pageHead("技能库", { badge: nf(l.total), actions: `<button class="skm-btn skm-btn-primary skm-btn-sm" data-act="scan">${icon("scan", 15)}扫描本机</button>` })}
+        ${pageHead(state.view === "readme" ? "技能 README" : "技能库", { badge: nf(l.total), actions: `<button class="skm-btn skm-btn-primary skm-btn-sm" data-act="scan">${icon("scan", 15)}扫描本机</button>` })}
+        ${agentNavigation()}
         <div class="skm-toolbar-wrap">
         <div class="skm-toolbar">
           <div class="skm-toolbar-main">
@@ -401,7 +344,7 @@ import { skillCategories } from "../../src/shared/skill-presentation";
           </div>
           <div class="skm-toolbar-actions">
             <button class="skm-btn skm-btn-ghost skm-btn-sm" data-act="new-preset">${icon("plus", 14)}新建预设</button>
-            <div class="skm-segmented is-icon" role="group" aria-label="视图">
+            <div class="skm-segmented is-icon" role="group" aria-label="视图"${state.view === "readme" ? " hidden" : ""}>
               <button class="skm-seg skm-seg-icon${l.view === "grid" ? " is-active" : ""}" data-act="lib-view" data-view="grid" aria-pressed="${l.view === "grid"}" title="网格视图">${icon("grid", 15)}</button>
               <button class="skm-seg skm-seg-icon${l.view === "list" ? " is-active" : ""}" data-act="lib-view" data-view="list" aria-pressed="${l.view === "list"}" title="列表视图">${icon("list", 15)}</button>
             </div>
@@ -414,72 +357,15 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       </div>`;
     }
 
-    function agentsHTML() {
-      if (!state.overview) return `<div class="skm-page">${pageHead("Agents")}${alertBox(state.error || "正在读取…", false)}</div>`;
-      const agents = state.agents || [];
-      const detected = agents.filter((a) => a.exists).length;
-      return `<div class="skm-page">
-        ${pageHead("Agents", { badge: `${detected}/${agents.length}`, sub: "已登记的 Agent 技能目录。目录存在与否、启用状态与实际部署分别判断。", actions: `<button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="new-agent">${icon("plus", 15)}自定义 Agent</button>` })}
-        ${state.error ? alertBox(state.error) : ""}
-        <div class="skm-agent-grid">
-          ${agents.map((a) => `<button class="skm-agent-card" data-act="nav" data-view="agent:${esc(a.id)}">
-            ${agentTile(a, 36)}
-            <div class="skm-agent-main">
-              <div class="skm-agent-name">${esc(a.name)}<span class="skm-mini-pill">${a.origin === "builtin" ? "内置" : "自定义"}</span>${a.enabled ? "" : '<span class="skm-mini-pill is-warn">已停用</span>'}</div>
-              <p class="skm-agent-sub">${state.agentCounts[a.id] == null ? "正在读取技能数…" : `${nf(state.agentCounts[a.id])} 个 Skills`} · ${a.exists ? "目录已创建" : "目录未创建"}</p>
-            </div>
-            ${icon("chevronRight", 16, "skm-agent-chev")}
-          </button>`).join("")}
-        </div>
-        <section class="skm-section">
-          <h2 class="skm-section-title">只读边界</h2>
-          <div class="skm-panel skm-readonly">
-            <div class="skm-readonly-row">${icon("lock", 16)}<div><b>目录未创建 ≠ 未启用</b><span>路径不存在时仅表示本机还没有这个目录；启用状态与文件存在性分别展示，不会自动创建目录。</span></div></div>
-            <div class="skm-readonly-row">${icon("folderOpen", 16)}<div><b>只读扫描</b><span>扫描只读取各 Agent 目录中的 SKILL.md，不会写入 Agent 配置或执行技能脚本。</span></div></div>
-          </div>
-        </section>
-      </div>`;
-    }
-
-    function agentDetailHTML(id) {
-      const a = state.agents.find((x) => x.id === id);
-      if (!a) return `<div class="skm-page">${pageHead("Agent 未找到")}${emptyState({ title: "没有这个 Agent", hint: "它可能已被移除，或链接已失效。", action: '<button class="skm-btn skm-btn-secondary" data-act="nav" data-view="agents">返回 Agents</button>' })}</div>`;
-      const skills = state.agentSkills[id];
-      return `<div class="skm-page">
-        <header class="skm-page-head">
-          <div class="skm-page-head-main">
-            <h1 class="skm-page-title skm-title-with-tile">${agentTile(a, 28)}${esc(a.name)}<span class="skm-badge">${skills ? nf(skills.total) : "…"}</span></h1>
-            <p class="skm-page-sub skm-path-line">${icon("folder", 13)}<code class="skm-path" title="${esc(a.globalPath)}">${esc(a.globalPath || "未设置目录")}</code></p>
-          </div>
-          <div class="skm-page-actions">
-            <button class="skm-switch${a.enabled ? " is-on" : ""}" role="switch" aria-checked="${a.enabled}" data-act="agent-toggle" data-id="${esc(a.id)}" title="${a.enabled ? "停用" : "启用"}" aria-label="${a.enabled ? "停用" : "启用"} ${esc(a.name)}"><span></span></button>
-            <button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="edit-agent" data-id="${esc(a.id)}">${icon("edit", 14)}编辑目录</button>
-            ${a.origin === "builtin" ? `<button class="skm-btn skm-btn-ghost skm-btn-sm" data-act="agent-restore" data-id="${esc(a.id)}">恢复默认</button>` : `<button class="skm-btn skm-btn-ghost skm-btn-sm is-danger" data-act="agent-delete" data-id="${esc(a.id)}">${icon("trash", 14)}删除</button>`}
-          </div>
-        </header>
-        ${state.error ? alertBox(state.error) : ""}
-        <div class="skm-meta-grid">
-          <div class="skm-kv"><span>目录状态</span><b class="${a.exists ? "is-ok" : "is-muted"}">${a.exists ? "已创建" : "目录未创建"}</b></div>
-          <div class="skm-kv"><span>启用状态</span><b>${a.enabled ? "已启用" : "已停用"}</b></div>
-          <div class="skm-kv"><span>来源</span><b>${a.origin === "builtin" ? "内置" : "自定义"}</b></div>
-          <div class="skm-kv"><span>项目相对目录</span><b class="skm-mono">${esc(a.projectRelative || "无")}</b></div>
-        </div>
-        <section class="skm-section">
-          <div class="skm-section-head"><h2 class="skm-section-title">此 Agent 的技能</h2><button class="skm-btn skm-btn-ghost skm-btn-sm" data-act="refresh-agent" data-id="${esc(a.id)}">${icon("refresh", 14)}刷新</button></div>
-          ${skills
-            ? (skills.items.length
-              ? `<div class="skm-card-grid">${skills.items.map(skillCard).join("")}</div>`
-              : emptyState({ title: "这个 Agent 目录还没有技能", hint: a.exists ? "目录存在，但其中没有检测到 SKILL.md。" : "目录尚未创建，因此没有任何技能可读取。", action: `<button class="skm-btn skm-btn-secondary" data-act="edit-agent" data-id="${esc(a.id)}">检查目录路径</button>` }))
-            : `<div class="skm-skeleton">${Array.from({ length: 3 }).map(() => '<div class="skm-skeleton-card"></div>').join("")}</div>`}
-        </section>
-      </div>`;
-    }
-
     function agentSettingsRows() {
       return state.agents.map((a) => `<div class="skm-set-row">
         <div class="skm-set-label"><div class="skm-set-name">${agentTile(a, 24)}<b>${esc(a.name)}</b><span class="skm-mini-pill">${a.origin === "builtin" ? "内置" : "自定义"}</span><span class="skm-status ${a.exists ? "is-ok" : "is-muted"}"><span class="skm-dot sm${a.exists ? " is-on" : ""}"></span>${a.exists ? "已创建" : "未创建"}</span></div>
           <code class="skm-path" title="${esc(a.globalPath)}">${esc(a.globalPath || "未设置")}</code></div>
-        <div class="skm-set-control"><button class="skm-switch${a.enabled ? " is-on" : ""}" role="switch" aria-checked="${a.enabled}" data-act="agent-toggle" data-id="${esc(a.id)}" aria-label="${a.enabled ? "停用" : "启用"} ${esc(a.name)}"><span></span></button><button class="skm-icon-btn" data-act="edit-agent" data-id="${esc(a.id)}" title="编辑目录">${icon("edit", 15)}</button></div>
+        <div class="skm-set-control"><button class="skm-switch${a.enabled ? " is-on" : ""}" role="switch" aria-checked="${a.enabled}" data-act="agent-toggle" data-id="${esc(a.id)}" aria-label="${a.enabled ? "停用" : "启用"} ${esc(a.name)}"><span></span></button><button class="skm-icon-btn" data-act="edit-agent" data-id="${esc(a.id)}" title="编辑目录">${icon("edit", 15)}</button>
+          ${a.origin === "builtin"
+            ? `<button class="skm-btn skm-btn-ghost skm-btn-sm" data-act="agent-restore" data-id="${esc(a.id)}">恢复默认</button>`
+            : `<button class="skm-btn skm-btn-ghost skm-btn-sm is-danger" data-act="agent-delete" data-id="${esc(a.id)}">移除</button>`}
+        </div>
       </div>`).join("");
     }
 
@@ -509,8 +395,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
               </div></div>
             </div>
             <div class="skm-set-row">
-            </div>
-            <div class="skm-set-row">
               <div class="skm-set-label"><b>索引状态</b><p>${scan ? `上次索引 ${esc(fmtTime(scan.at))}，读取 ${nf(scan.visited)} 个目录，收录 ${nf(scan.count)} 项。` : "尚未建立索引。扫描只读取已登记目录，不会执行技能内容。"}</p>${scan ? `<span class="skm-mini-pill ${scan.limited ? "is-warn" : "is-ok"}">${scan.limited ? "达到扫描上限" : "只读索引完成"}</span>` : ""}</div>
               <div class="skm-set-control"><button class="skm-btn skm-btn-secondary skm-btn-sm" data-act="scan">${icon("scan", 14)}重建索引</button></div>
             </div>
@@ -524,23 +408,12 @@ import { skillCategories } from "../../src/shared/skill-presentation";
             <div class="skm-readonly-row">${icon("fileText", 16)}<div><b>中文展示不改源文件</b><span>中文名称与简介来自本地词目或当前 Profile 覆盖，不会上传或改写 SKILL.md。</span></div></div>
           </div>
         </section>
-        <section class="skm-section">
-          <h2 class="skm-section-title">维护</h2>
-          <div class="skm-actions">
-            <button class="skm-btn skm-btn-secondary" data-act="refresh">${icon("refresh", 15)}刷新全部数据</button>
-            <button class="skm-btn skm-btn-ghost" data-act="nav" data-view="library">前往技能库</button>
-          </div>
-        </section>
       </div>`;
     }
 
     function pageHTML() {
-      if (state.view === "overview") return overviewHTML();
-      if (state.view === "library") return libraryHTML();
-      if (state.view === "agents") return agentsHTML();
-      if (state.view.startsWith("agent:")) return agentDetailHTML(state.view.slice(6));
       if (state.view === "settings") return settingsHTML();
-      return overviewHTML();
+      return libraryHTML();
     }
 
     function sheetHTML() {
@@ -724,43 +597,50 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       }
     }
 
-    async function loadAgentCounts() {
-      await Promise.all(state.agents.map(async (a) => {
-        try {
-          const d = await api("GET", `/library?agent=${encodeURIComponent(a.id)}&limit=1`);
-          state.agentCounts[a.id] = d.total || 0;
-        } catch {
-          state.agentCounts[a.id] = null;
-        }
-      }));
-      if (root.isConnected && state.view !== "library") paintTop();
-    }
-
+    let libraryRequest = 0, loadedQuery = "";
     async function loadLibrary() {
+      const ticket = ++libraryRequest;
       const l = state.library;
+      const params = new URLSearchParams({limit:"100"});
+      if (l.q) params.set("q", l.q);
+      if (l.tag) params.set("tag", l.tag);
+      if (l.category) params.set("category", l.category);
+      if (l.agent) params.set("agent", l.agent);
+      const scope = params.toString();
+      if (scope !== loadedQuery) l.loaded = false;
       l.loading = true;
       l.error = "";
       paintLibraryResults();
       try {
-        const params = new URLSearchParams({ limit: "100" });
-        if (l.q) params.set("q", l.q);
-        if (l.tag) params.set("tag", l.tag);
-        if (l.category) params.set("category", l.category);
-        if (l.agent) params.set("agent", l.agent);
-        const d = await api("GET", "/library?" + params.toString());
-        if (signal?.aborted) return;
-        l.items = d.items || [];
-        l.total = d.total || 0;
+        const first = await api("GET", "/library?" + params);
+        if (signal?.aborted || ticket !== libraryRequest) return;
+        const items = [...(first.items || [])];
+        const seen = new Set(items.map(item => item.id));
+        for (let offset = items.length; offset && offset < first.total;) {
+          params.set("offset", String(offset));
+          const result = await api("GET", "/library?" + params);
+          if (signal?.aborted || ticket !== libraryRequest) return;
+          const batch = result.items || [];
+          if (!batch.length) break;
+          for (const item of batch) {
+            if (!seen.has(item.id)) { items.push(item); seen.add(item.id); }
+          }
+          offset += batch.length;
+        }
+        l.items = items;
+        l.total = first.total ?? items.length;
         l.loaded = true;
+        loadedQuery = scope;
         if (l.offset >= libraryFiltered().length) l.offset = 0;
       } catch (err) {
-        if (signal?.aborted) return;
+        if (signal?.aborted || ticket !== libraryRequest) return;
         l.error = err.message || "读取技能库失败";
         if (!l.loaded) { l.items = []; l.total = 0; }
       } finally {
-        l.loading = false;
-        paintLibraryResults();
-        paintTop();
+        if (!signal?.aborted && ticket === libraryRequest) {
+          l.loading = false;
+          paintLibraryResults();
+        }
       }
     }
 
@@ -771,22 +651,7 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       const total = q("[data-lib-total]", root);
       if (total) total.textContent = nf(state.library.total);
       const badge = q(".skm-page-title .skm-badge", root);
-      if (badge && state.view === "library") badge.textContent = nf(state.library.total);
-    }
-
-    async function loadAgentSkills(id, force) {
-      if (!force && state.agentSkills[id]) return;
-      state.agentSkills[id] = null;
-      paintPage();
-      try {
-        const d = await api("GET", `/library?agent=${encodeURIComponent(id)}&limit=100`);
-        if (signal?.aborted) return;
-        state.agentSkills[id] = { items: d.items || [], total: d.total || 0 };
-      } catch (err) {
-        if (signal?.aborted) return;
-        state.agentSkills[id] = { items: [], total: 0, error: err.message };
-      }
-      if (state.view === "agent:" + id) paintPage();
+      if (badge && state.view !== "settings") badge.textContent = nf(state.library.total);
     }
 
     async function go(view) {
@@ -796,16 +661,9 @@ import { skillCategories } from "../../src/shared/skill-presentation";
       state.focusPage = true;
       paintTop();
       paintPage();
-      if (view === "overview" || view === "settings" || view === "agents") {
-        if (!state.overview) { await loadOverview(); paint(); }
-        if (view === "settings" && !state.settings) { await loadSettings(); paintPage(); }
-        if (view === "overview" && !state.library.loaded && (state.overview?.libraryTotal || 0) > 0) {
-          await loadLibrary();
-          paintPage();
-        }
-      }
-      if (view === "library" && !state.library.loaded) await loadLibrary();
-      if (view.startsWith("agent:")) await loadAgentSkills(view.slice(6));
+      if (!state.overview) { await loadOverview(); paint(); }
+      if (view === "settings" && !state.settings) { await loadSettings(); paintPage(); }
+      if (view !== "settings" && !state.library.loaded) await loadLibrary();
       paintTop();
     }
 
@@ -814,11 +672,8 @@ import { skillCategories } from "../../src/shared/skill-presentation";
     async function refreshAll() {
       await Promise.all([loadOverview(true), loadSettings()]);
       state.library.loaded = false;
-      state.agentSkills = {};
-      state.entries = {};
       paint();
-      if (state.view === "library") await loadLibrary();
-      if (state.view.startsWith("agent:")) await loadAgentSkills(state.view.slice(6), true);
+      if (state.view !== "settings") await loadLibrary();
       notify("数据已刷新");
     }
 
@@ -829,11 +684,9 @@ import { skillCategories } from "../../src/shared/skill-presentation";
         await U().job(task, { signal });
         await loadOverview(true);
         state.library.loaded = false;
-        state.agentSkills = {};
-        state.entries = {};
         state.library.offset = 0;
         paint();
-        if (state.view === "library") await loadLibrary();
+        if (state.view !== "settings") await loadLibrary();
         notify("只读索引已更新", "success");
       } catch (err) {
         if (!signal?.aborted) notify(err.message || "扫描失败", "error");
@@ -878,7 +731,6 @@ import { skillCategories } from "../../src/shared/skill-presentation";
           dlg.close(true);
           await loadOverview(true);
           paint();
-          if (state.view.startsWith("agent:")) await loadAgentSkills(state.view.slice(6), true);
           notify(isNew ? "已添加 Agent" : "Agent 目录已保存");
         } catch (err) { notify(err.message || "保存失败", "error"); }
       };
@@ -1001,6 +853,16 @@ import { skillCategories } from "../../src/shared/skill-presentation";
         if (!target || !app.contains(target)) return;
         const act = target.dataset.act;
         if (act === "nav") { closeSheet(true); await go(target.dataset.view); return; }
+        if (act === "library-agent") {
+          const id = target.dataset.agent;
+          if (id === state.library.agent) return;
+          state.library.agent = id;
+          state.library.offset = 0;
+          app.querySelectorAll("[data-act=library-agent]").forEach(button =>
+            button.setAttribute("aria-pressed", String(button.dataset.agent === id)));
+          await loadLibrary();
+          return;
+        }
         if (act === "lib-status") { state.library.status = target.dataset.status; state.library.offset = 0; paintPage(); return; }
         if (act === "lib-category") { state.library.category = target.dataset.category; state.library.offset = 0; await loadLibrary(); paintPage(); q(`[data-act=lib-category][data-category="${CSS.escape(state.library.category)}"]`,root)?.focus({preventScroll:true}); return; }
         if (act === "lib-source") { state.library.source = target.dataset.source; state.library.offset = 0; paintPage(); return; }
@@ -1054,12 +916,11 @@ import { skillCategories } from "../../src/shared/skill-presentation";
           confirmDialog("移除自定义 Agent", `确定移除「${agentName(id)}」吗？只会移除登记，不会删除本机目录。`, async () => {
             await api("POST", "/agents", { id, delete: true });
             await loadOverview(true);
-            await go("agents");
+            await go("settings");
             notify("已移除 Agent");
           }, "移除");
           return;
         }
-        if (act === "refresh-agent") { await loadAgentSkills(target.dataset.id, true); notify("已刷新"); return; }
         if (act === "edit-library") {
           const current = state.settings?.libraryRoot || state.overview?.library?.root || "";
           const body = `<div class="skm-dialog"><p class="skm-inline-note">中央技能库路径必须是本机绝对路径。修改后不会移动或删除已有文件。</p>${dialogForm([{ name: "root", label: "中央技能库绝对路径", value: current, max: 400 }])}<div class="skm-dialog-actions"><button class="skm-btn skm-btn-secondary" data-dlg-cancel>取消</button><button class="skm-btn skm-btn-primary" data-dlg-save>保存</button></div></div>`;
@@ -1152,7 +1013,7 @@ import { skillCategories } from "../../src/shared/skill-presentation";
     root.classList.add("wb-fixed-layout");
     root.innerHTML = `<div class="skm-app skm-catalog" data-skm>
       <header class="skm-topbar" data-skm-topbar aria-label="技能管理导航"></header>
-      <main class="skm-main" data-skm-main><div class="skm-main-scroll"><div data-skm-page></div></div></main>
+      <div class="skm-main" data-skm-main><div class="skm-main-scroll"><div data-skm-page></div></div></div>
       <div class="skm-sheet" data-skm-sheet hidden></div>
       <div class="skm-live" aria-live="polite"></div>
     </div>`;
@@ -1171,9 +1032,7 @@ import { skillCategories } from "../../src/shared/skill-presentation";
     if (signal?.aborted || !root.isConnected) return;
     if ((state.overview?.libraryTotal || 0) > 0) await loadLibrary();
     paint();
-    void loadAgentCounts();
-    if (state.view === "library" && !state.library.loaded) await loadLibrary();
-    if (state.view.startsWith("agent:")) await loadAgentSkills(state.view.slice(6));
+    if (state.view !== "settings" && !state.library.loaded) await loadLibrary();
   }
 
   window.LibraryViews = { ...(window.LibraryViews || {}), skills };
